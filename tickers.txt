@@ -1,0 +1,9 @@
+# CALIBER v3 — batch universe
+# One ticker per line. Lines starting with # are comments.
+# Edit freely; this file is the sole source of truth for scheduled runs.
+
+MU
+GOOG
+V
+NOW
+WU

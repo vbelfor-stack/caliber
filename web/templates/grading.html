@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% set active = "grading" %}
+{% block title %}Grading — CALIBER v3{% endblock %}
+{% block content %}
+
+<div class="page-title">Verdict Grading — 90-Day Forward Return</div>
+
+<div class="txt-muted" style="font-size:0.82rem; margin-bottom:20px; line-height:1.6;">
+  Each stored verdict is graded against the actual 90-day price return vs the published E(R).
+  <strong>A</strong> — direction correct, ≥75% of magnitude &nbsp;·&nbsp;
+  <strong>B</strong> — direction correct &nbsp;·&nbsp;
+  <strong>C</strong> — flat (|return| &lt; 3%) &nbsp;·&nbsp;
+  <strong>D</strong> — wrong direction, &lt;15% loss &nbsp;·&nbsp;
+  <strong>F</strong> — wrong direction, ≥15% loss.
+  High-confidence misses are annotated <span class="flag flag-conflict">ANTI-LAUNDER</span>.
+</div>
+
+{% if pending_count %}
+<div style="margin-bottom:14px; font-size:0.85rem; color:var(--muted);">
+  {{ pending_count }} evaluation(s) too recent (&lt;90 days) — grades will appear after the window closes.
+</div>
+{% endif %}
+
+{% if grades %}
+<table class="sortable">
+  <thead>
+    <tr>
+      <th data-col="0">Ticker</th>
+      <th data-col="1">Eval Date</th>
+      <th data-col="2">Lens</th>
+      <th data-col="3" style="text-align:right;">E(R)</th>
+      <th data-col="4" style="text-align:right;">Actual 90d</th>
+      <th data-col="5">Verdict Conf</th>
+      <th data-col="6" style="text-align:center;">Grade</th>
+      <th>Note</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for g in grades %}
+  <tr>
+    <td class="bold">
+      {% if g.eval_id %}
+      <a href="/eval/{{ g.eval_id }}">{{ g.ticker }}</a>
+      {% else %}{{ g.ticker }}{% endif %}
+    </td>
+    <td class="txt-muted mono-val">{{ g.eval_date }}</td>
+    <td>
+      {% if g.lens %}
+      <span class="lens-badge {{ g.lens | lens_cls }}" style="font-size:0.65rem; padding:1px 5px;">{{ g.lens | lens_label }}</span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td style="text-align:right;" data-sort="{{ g.er_published or 0 }}">
+      <span class="mono-val {% if g.er_published and g.er_published >= 0 %}txt-jade{% elif g.er_published %}txt-brick{% endif %}">
+        {{ g.er_published | er_fmt if g.er_published is not none else '—' }}
+      </span>
+    </td>
+    <td style="text-align:right;" data-sort="{{ g.actual_return or 0 }}">
+      <span class="mono-val {% if g.actual_return and g.actual_return >= 0 %}txt-jade{% elif g.actual_return %}txt-brick{% endif %}">
+        {{ g.actual_return | er_fmt if g.actual_return is not none else '—' }}
+      </span>
+    </td>
+    <td>
+      {% if g.verdict_conf %}
+      <span class="{{ g.verdict_conf | conf_cls }}">{{ g.verdict_conf | conf_dot }} {{ g.verdict_conf }}</span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td style="text-align:center;" data-sort="{{ {'A':5,'B':4,'C':3,'D':2,'F':1,'N/A':0, 'PENDING':0}[g.grade] if g.grade in ['A','B','C','D','F','N/A','PENDING'] else 0 }}">
+      <span class="grade-pill grade-{{ g.grade | lower | replace('/', '') }}">{{ g.grade }}</span>
+    </td>
+    <td class="txt-muted" style="font-size:0.78rem;">
+      {% if g.note %}<span class="flag flag-conflict">{{ g.note }}</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="txt-muted" style="margin-top:10px; font-size:0.8rem;">{{ grades | length }} graded evaluation(s).</div>
+
+{# ── Grade distribution ───────────────────────────────────────── #}
+{% if dist %}
+<div class="section" style="margin-top:24px;">
+  <div class="section-head">Grade Distribution</div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+    {% for letter in ['A','B','C','D','F'] %}
+    {% set count = dist.get(letter, 0) %}
+    {% set pct = (count / grades|length * 100) | round(0) | int if grades else 0 %}
+    <div style="text-align:center;">
+      <div class="grade-bar grade-{{ letter | lower }}" style="height:{{ [pct * 2, 4] | max }}px; width:40px; border-radius:2px 2px 0 0;"></div>
+      <div class="grade-pill grade-{{ letter | lower }}" style="margin-top:4px;">{{ letter }}</div>
+      <div class="txt-muted" style="font-size:0.72rem;">{{ count }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div style="padding:40px; text-align:center; color:var(--muted); border:1px dashed var(--border);">
+  No graded evaluations yet. Grades appear after stored evaluations are ≥90 days old.
+  <br><br>
+  To backfill grades manually: run <code>python -c "from core.grading import run_grading; run_grading(min_age_days=0)"</code>
+  (use <code>min_age_days=0</code> during testing to grade all evaluations regardless of age).
+</div>
+{% endif %}
+
+{% endblock %}

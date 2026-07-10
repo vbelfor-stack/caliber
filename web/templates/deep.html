@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% set active = "library" %}
+{% block title %}{{ ev.ticker }} — CALIBER v3{% endblock %}
+{% block content %}
+
+{# ── Header ─────────────────────────────────────────────── #}
+<div style="display:flex; align-items:baseline; gap:14px; margin-bottom:6px; flex-wrap:wrap;">
+  <span style="font-size:1.6rem; font-weight:bold; letter-spacing:0.04em;">{{ ev.ticker }}</span>
+  {% if ev.synthesis and ev.synthesis.company %}
+  <span class="txt-muted" style="font-size:0.95rem;">{{ ev.synthesis.company }}</span>
+  {% endif %}
+  {% if ev.lens %}
+  <span class="lens-badge {{ ev.lens | lens_cls }}">{{ ev.lens | lens_label }}</span>
+  {% endif %}
+</div>
+<div class="txt-muted" style="font-size:0.82rem; margin-bottom:20px; display:flex; gap:20px; flex-wrap:wrap;">
+  <span>Run: {{ ev.run_at | fmt_dt }}</span>
+  {% if ev.avg_score is not none %}<span>Avg score: <strong>{{ "%.1f"|format(ev.avg_score) }}/5.0</strong></span>{% endif %}
+  {% if ev.overall_conf %}<span>Conf: <strong class="{{ ev.overall_conf | conf_cls }}">{{ ev.overall_conf | conf_dot }} {{ ev.overall_conf }}</strong></span>{% endif %}
+  <span><a href="/library">← Library</a></span>
+  <span><a href="/compare?ids={{ ev.id }}">Compare…</a></span>
+</div>
+
+{% if override_msg %}<div class="flash">{{ override_msg }}</div>{% endif %}
+
+{# ── Scenarios + E(R) ───────────────────────────────────── #}
+{% if ev.synthesis and ev.synthesis.scenarios %}
+{% set sc = ev.synthesis.scenarios %}
+<div class="section">
+  <div class="section-head">Scenarios &amp; Expected Return</div>
+
+  {# Price context #}
+  {% set cp = ev.synthesis.get('current_price') if ev.synthesis else none %}
+
+  <div class="scenarios" style="margin-bottom:14px;">
+    {# Bull #}
+    {% if sc.bull %}
+    <div class="scenario scenario-bull">
+      <div class="sc-label txt-jade">Bull</div>
+      <div class="sc-prob">{{ sc.bull.probability | prob_fmt }}</div>
+      <div class="sc-target txt-jade">{{ sc.bull.priceTarget | target_fmt }}</div>
+      {% if ev.synthesis.current_price and sc.bull.priceTarget %}
+      <div class="sc-return">{{ ev.synthesis.current_price | ret_fmt(sc.bull.priceTarget) }}</div>
+      {% endif %}
+      <div class="sc-thesis">{{ sc.bull.thesis }}</div>
+    </div>
+    {% endif %}
+    {# Base #}
+    {% if sc.base %}
+    <div class="scenario scenario-base">
+      <div class="sc-label txt-amber">Base</div>
+      <div class="sc-prob">{{ sc.base.probability | prob_fmt }}</div>
+      <div class="sc-target txt-amber">{{ sc.base.priceTarget | target_fmt }}</div>
+      {% if ev.synthesis.current_price and sc.base.priceTarget %}
+      <div class="sc-return">{{ ev.synthesis.current_price | ret_fmt(sc.base.priceTarget) }}</div>
+      {% endif %}
+      <div class="sc-thesis">{{ sc.base.thesis }}</div>
+    </div>
+    {% endif %}
+    {# Bear #}
+    {% if sc.bear %}
+    <div class="scenario scenario-bear">
+      <div class="sc-label txt-brick">Bear</div>
+      <div class="sc-prob">{{ sc.bear.probability | prob_fmt }}</div>
+      <div class="sc-target txt-brick">{{ sc.bear.priceTarget | target_fmt }}</div>
+      {% if ev.synthesis.current_price and sc.bear.priceTarget %}
+      <div class="sc-return">{{ ev.synthesis.current_price | ret_fmt(sc.bear.priceTarget) }}</div>
+      {% endif %}
+      <div class="sc-thesis">{{ sc.bear.thesis }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# E(R) headline #}
+  {% if ev.expected_return is not none %}
+  <div class="er-headline {% if ev.expected_return >= 5 %}er-pos{% elif ev.expected_return <= -5 %}er-neg{% else %}er-neu{% endif %}">
+    E(R) {{ ev.expected_return | er_fmt }}
+    <span class="txt-muted" style="font-size:0.8rem; font-weight:normal;"> probability-weighted</span>
+  </div>
+  {% endif %}
+
+  {# Verdict reason #}
+  {% if ev.synthesis.verdictReason %}
+  <div style="margin-top:10px; font-style:italic; font-size:0.88rem; color:var(--muted); border-left:2px solid var(--border); padding-left:10px;">
+    <strong class="{{ (ev.verdict_conf or 'low') | conf_cls }}">{{ ev.verdict_conf | conf_dot }} {{ ev.verdict_conf }}</strong>
+    confidence — {{ ev.synthesis.verdictReason }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Five-pillar scorecard ───────────────────────────────── #}
+{% if ev.pillars %}
+<div class="section">
+  <div class="section-head">Five-Pillar Scorecard</div>
+  {% for p in ev.pillars %}
+  {% set cconf = p.confidence | lower %}
+  <div class="card {% if cconf == 'low' %}hatch{% endif %}">
+    <div class="card-head">
+      <span class="card-name">{{ p.name }}</span>
+      {# Score bar #}
+      <div class="score-bar {{ p.score | score_color }}">
+        {% for filled in p.score | score_segs %}
+        <div class="score-seg {% if filled %}on{% endif %}"></div>
+        {% endfor %}
+      </div>
+      <span class="score-num {% if p.score >= 4 %}txt-jade{% elif p.score >= 3 %}txt-amber{% else %}txt-brick{% endif %}">
+        {{ p.score }}/5
+      </span>
+      <span class="{{ cconf | conf_cls }}" style="margin-left:4px;" title="{{ cconf }} confidence">
+        <span class="dot">{{ cconf | conf_dot }}</span>
+        <span style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em;">{{ cconf }}</span>
+      </span>
+      <span class="txt-muted" style="font-size:0.72rem; margin-left:6px;">{{ p.method }}</span>
+    </div>
+
+    {% if p.rationale %}
+    <div class="card-rationale">{{ p.rationale }}</div>
+    {% endif %}
+
+    {% if p.flags %}
+    <div class="flags" style="margin-top:6px;">
+      {% for f in p.flags %}
+      <span class="flag {% if 'CONFLICT' in f or 'SECULAR' in f %}flag-conflict{% endif %}">{{ f }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Red flags ──────────────────────────────────────────── #}
+{% if ev.synthesis and ev.synthesis.redFlags %}
+<div class="section">
+  <div class="section-head">Red Flags</div>
+  <ul style="list-style:none; padding:0;">
+    {% for flag in ev.synthesis.redFlags %}
+    <li style="padding:5px 0 5px 12px; border-left:2px solid var(--brick); margin-bottom:5px; font-size:0.88rem; color:var(--slate);">
+      {{ flag }}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{# ── Technicals overlay ─────────────────────────────────── #}
+{% if ev.synthesis and ev.synthesis.technicals %}
+{% set tech = ev.synthesis.technicals %}
+<div class="section">
+  <div class="section-head" style="color:#8899AA;">Technical Overlay <span style="font-weight:normal; font-style:italic;">(timing signal only — not scored, not a pillar)</span></div>
+  <div class="tech-overlay">
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="t-label">Trend</div>
+        <div class="t-val {% if tech.trend == 'BULLISH' or tech.trend == 'bullish' %}trend-bull{% elif tech.trend == 'BEARISH' or tech.trend == 'bearish' %}trend-bear{% else %}trend-neut{% endif %}">
+          {{ tech.trend or '—' }}
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="t-label">Above MA50</div>
+        <div class="t-val {% if tech.above_ma50 %}trend-bull{% elif tech.above_ma50 == false %}trend-bear{% endif %}">
+          {% if tech.above_ma50 is not none %}{{ 'Yes' if tech.above_ma50 else 'No' }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="t-label">Above MA200</div>
+        <div class="t-val {% if tech.above_ma200 %}trend-bull{% elif tech.above_ma200 == false %}trend-bear{% endif %}">
+          {% if tech.above_ma200 is not none %}{{ 'Yes' if tech.above_ma200 else 'No' }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="t-label">RSI-14</div>
+        <div class="t-val {% if tech.rsi_14 and tech.rsi_14 > 70 %}trend-bear{% elif tech.rsi_14 and tech.rsi_14 < 30 %}trend-bull{% endif %}">
+          {{ "%.1f"|format(tech.rsi_14) if tech.rsi_14 is not none else '—' }}
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="t-label">Vol Confirm</div>
+        <div class="t-val {% if tech.volume_confirmation %}trend-bull{% elif tech.volume_confirmation == false %}trend-bear{% endif %}">
+          {% if tech.volume_confirmation is not none %}{{ 'Yes ✓' if tech.volume_confirmation else 'No' }}{% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+    {% if tech.notes %}
+    <div class="tech-note">{{ tech.notes }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Research ───────────────────────────────────────────── #}
+{% if ev.synthesis and ev.synthesis.research %}
+<div class="section">
+  <div class="section-head">Research</div>
+  {% for r in ev.synthesis.research %}
+  <div style="padding:6px 0; border-bottom:1px dashed var(--border); font-size:0.85rem;">
+    <span class="bold">{{ r.source }}</span>
+    <span class="pill {% if r.tier == 'independent' %}pill-ok{% elif r.tier == 'sell-side' %}pill-med{% else %}pill-fail{% endif %}" style="margin:0 6px;">{{ r.tier }}</span>
+    {% if r.conflicted %}<span class="txt-brick" style="font-size:0.74rem;">[CONFLICTED]</span>{% endif %}
+    — <span class="txt-muted">{{ r.view }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Data gaps ──────────────────────────────────────────── #}
+{% if ev.synthesis and ev.synthesis.dataGaps %}
+<div class="section">
+  <div class="section-head">Data Gaps</div>
+  <ul style="padding-left:18px; font-size:0.85rem; color:var(--muted);">
+    {% for g in ev.synthesis.dataGaps %}
+    <li style="margin-bottom:3px;">{{ g }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{# ── Conflicts & overrides ──────────────────────────────── #}
+{% if conflicts or overrides %}
+<div class="section">
+  <div class="section-head">Source Conflicts &amp; Overrides</div>
+
+  {% if conflicts %}
+  {% for c in conflicts %}
+  {% set p = c.parsed %}
+  <div class="conflict-row">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="bold" style="font-size:0.88rem;">{{ c.pillar or '—' }}</span>
+      <span class="flag flag-conflict">CONFLICT</span>
+      <span class="txt-muted mono-val" style="font-size:0.74rem;">{{ c.as_of or '' }}</span>
+    </div>
+    <div class="conflict-vals">
+      <div>
+        <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px;">{{ p.src_a }}</div>
+        <div class="conflict-val-box primary">{{ p.val_a }}{% if p.date_a %}<span class="txt-muted" style="font-size:0.7em;">@{{ p.date_a }}</span>{% endif %}</div>
+      </div>
+      <span class="vs-sep">vs</span>
+      <div>
+        <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px;">{{ p.src_b }}</div>
+        <div class="conflict-val-box secondary">{{ p.val_b }}{% if p.date_b %}<span class="txt-muted" style="font-size:0.7em;">@{{ p.date_b }}</span>{% endif %}</div>
+      </div>
+    </div>
+
+    {% if c.override %}
+    <div class="override-accepted">
+      ✓ Override accepted: <strong class="mono-val">{{ c.override.override_value }}</strong>
+      ({{ c.override.override_at | fmt_date }})
+      {% if c.override.note %} — <em>{{ c.override.note }}</em>{% endif %}
+    </div>
+    {% else %}
+    {# Override forms — each source gets its own form to avoid multi-value conflict #}
+    <div style="margin-top:8px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="font-size:0.78rem; color:var(--muted);">Accept value:</span>
+      <form method="post" action="/override" style="display:inline;">
+        <input type="hidden" name="ticker" value="{{ ev.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/eval/{{ ev.id }}">
+        <input type="hidden" name="override_value" value="{{ p.val_a }}">
+        <button type="submit" class="btn btn-sm">{{ p.src_a }}: {{ p.val_a }}</button>
+      </form>
+      <form method="post" action="/override" style="display:inline;">
+        <input type="hidden" name="ticker" value="{{ ev.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/eval/{{ ev.id }}">
+        <input type="hidden" name="override_value" value="{{ p.val_b }}">
+        <button type="submit" class="btn btn-sm">{{ p.src_b }}: {{ p.val_b }}</button>
+      </form>
+      <form method="post" action="/override" style="display:inline-flex; gap:4px; align-items:center;">
+        <input type="hidden" name="ticker" value="{{ ev.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/eval/{{ ev.id }}">
+        <input type="number" name="override_value" step="any" required placeholder="Custom value…" style="width:120px;">
+        <input type="text" name="note" placeholder="Note (optional)" style="width:150px;">
+        <button type="submit" class="btn btn-brass btn-sm">Save Override</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="txt-muted" style="font-size:0.85rem;">No source conflicts in this evaluation.</div>
+  {% endif %}
+
+  {% if overrides %}
+  <div style="margin-top:16px;">
+    <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:8px;">All Accepted Overrides for {{ ev.ticker }}</div>
+    {% for ov in overrides %}
+    <div style="font-size:0.82rem; padding:4px 0; border-bottom:1px dashed var(--border); display:flex; gap:12px; flex-wrap:wrap;">
+      <span class="mono-val txt-muted" style="font-size:0.74rem;">{{ ov.field_name }}</span>
+      <span>→ <strong class="mono-val">{{ ov.override_value }}</strong></span>
+      <span class="txt-muted">{{ ov.override_at | fmt_date }}</span>
+      {% if ov.note %}<span class="txt-muted">— {{ ov.note }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

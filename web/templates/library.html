@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set active = "library" %}
+{% block title %}Library — CALIBER v3{% endblock %}
+{% block content %}
+<div class="page-title">Evaluation Library</div>
+
+{% if msg %}<div class="flash">{{ msg }}</div>{% endif %}
+
+{# Filter bar #}
+<div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+  <form method="get" action="/library" style="display:flex; gap:8px; align-items:center;">
+    <input type="text" name="ticker" value="{{ filter_ticker }}"
+           placeholder="Filter ticker…" style="width:110px;">
+    <select name="status" style="padding:5px 8px;">
+      <option value="" {% if not filter_status %}selected{% endif %}>All</option>
+      <option value="ok" {% if filter_status == 'ok' %}selected{% endif %}>OK</option>
+      <option value="failed" {% if filter_status == 'failed' %}selected{% endif %}>Failed</option>
+    </select>
+    <button type="submit" class="btn btn-sm">Filter</button>
+    <a href="/library" class="btn btn-sm" style="background:var(--muted);">Clear</a>
+  </form>
+  <div style="margin-left:auto; display:flex; gap:8px;">
+    <button id="compare-btn" class="btn btn-brass btn-sm" onclick="goCompare()" disabled>Select 2–4 to compare</button>
+  </div>
+</div>
+
+{% if evals %}
+<table class="sortable">
+  <thead>
+    <tr>
+      <th style="width:28px;"></th>
+      <th data-col="1">Ticker</th>
+      <th data-col="2">Date</th>
+      <th data-col="3">Lens</th>
+      <th data-col="4" style="text-align:right;">Score</th>
+      <th data-col="5" style="text-align:right;">E(R)</th>
+      <th data-col="6">Verdict Conf</th>
+      <th data-col="7">Overall Conf</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for ev in evals %}
+  <tr class="{% if ev.status == 'failed' %}row-failed{% endif %}">
+    <td>
+      {% if ev.status == 'ok' %}
+      <input type="checkbox" class="cmp-check" value="{{ ev.id }}" onchange="updateCompareBtn()">
+      {% endif %}
+    </td>
+    <td class="bold">
+      {% if ev.status == 'ok' %}
+      <a href="/eval/{{ ev.id }}">{{ ev.ticker }}</a>
+      {% else %}
+      {{ ev.ticker }}
+      {% endif %}
+    </td>
+    <td class="txt-muted mono-val" data-sort="{{ ev.run_at or '' }}">{{ ev.run_at | fmt_date }}</td>
+    <td>
+      {% if ev.lens %}
+      <span class="lens-badge {{ ev.lens | lens_cls }}">{{ ev.lens | lens_label }}</span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td style="text-align:right;" data-sort="{{ ev.avg_score or 0 }}">
+      {% if ev.avg_score is not none %}
+      <span class="mono-val bold {% if ev.avg_score >= 4 %}txt-jade{% elif ev.avg_score >= 3 %}txt-amber{% else %}txt-brick{% endif %}">
+        {{ "%.1f"|format(ev.avg_score) }}
+      </span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td style="text-align:right;" data-sort="{{ ev.expected_return or 0 }}">
+      {% if ev.expected_return is not none %}
+      <span class="bold mono-val {% if ev.expected_return >= 0 %}txt-jade{% else %}txt-brick{% endif %}">
+        {{ ev.expected_return | er_fmt }}
+      </span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td>
+      {% if ev.verdict_conf %}
+      <span class="{{ ev.verdict_conf | conf_cls }}">
+        <span class="dot">{{ ev.verdict_conf | conf_dot }}</span> {{ ev.verdict_conf }}
+      </span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td>
+      {% if ev.overall_conf %}
+      <span class="{{ ev.overall_conf | conf_cls }}">
+        <span class="dot">{{ ev.overall_conf | conf_dot }}</span> {{ ev.overall_conf }}
+      </span>
+      {% else %}<span class="txt-muted">—</span>{% endif %}
+    </td>
+    <td>
+      {% if ev.status == 'failed' %}
+      <span class="pill pill-fail">FAILED</span>
+      {% else %}
+      <span class="pill pill-ok">OK</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if ev.status == 'ok' %}
+      <a href="/eval/{{ ev.id }}" class="btn btn-sm">View</a>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="txt-muted" style="margin-top:10px; font-size:0.8rem;">
+  {{ evals|length }} evaluation(s) shown{% if filter_ticker %} for {{ filter_ticker }}{% endif %}.
+</div>
+{% else %}
+<div style="padding:40px; text-align:center; color:var(--muted); border:1px dashed var(--border);">
+  No evaluations stored yet. Run <code>python evaluate.py MU</code> or <code>python -m batch.runner</code> to populate.
+</div>
+{% endif %}
+{% endblock %}

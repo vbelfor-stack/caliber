@@ -1,0 +1,91 @@
+{
+  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "ticker": "V",
+  "cik": "0001403161",
+  "submissions_shape": {
+    "company_name": "VISA INC.",
+    "cik": "0001403161",
+    "sic": "7389",
+    "sic_description": "Services-Business Services, NEC",
+    "tickers": [
+      "V"
+    ],
+    "exchanges": [
+      "NYSE"
+    ],
+    "fiscal_year_end": "0930",
+    "total_filings": 1001,
+    "recent_10K": [
+      [
+        "2025-11-06",
+        "0001403161-25-000089",
+        "v-20250930.htm"
+      ],
+      [
+        "2024-11-13",
+        "0001403161-24-000058",
+        "v-20240930.htm"
+      ],
+      [
+        "2023-11-15",
+        "0001403161-23-000099",
+        "v-20230930.htm"
+      ]
+    ],
+    "recent_10Q": [
+      [
+        "2026-04-29",
+        "0001403161-26-000079",
+        "v-20260331.htm"
+      ],
+      [
+        "2026-01-30",
+        "0001403161-26-000045",
+        "v-20251231.htm"
+      ],
+      [
+        "2025-07-30",
+        "0001403161-25-000052",
+        "v-20250630.htm"
+      ]
+    ]
+  },
+  "filing_index_shape": {
+    "error": "404 Client Error: Not Found for url: https://www.sec.gov/Archives/edgar/data/1403161/000140316125000089/0001403161-25-000089-index.json"
+  },
+  "risk_factors_excerpt": null,
+  "mda_excerpt": null,
+  "facts_shape": {
+    "taxonomy_keys": [
+      "dei",
+      "invest",
+      "us-gaap",
+      "srt",
+      "ffd"
+    ],
+    "us_gaap_concept_count": 625,
+    "sample_concepts": [
+      "AccountsPayable",
+      "AccountsPayableCurrent",
+      "AccountsReceivableNetCurrent",
+      "AccruedAdvertisingCurrent",
+      "AccruedIncomeTaxes",
+      "AccruedIncomeTaxesCurrent",
+      "AccruedIncomeTaxesNoncurrent",
+      "AccruedLiabilities",
+      "AccruedLiabilitiesCurrent",
+      "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "AccumulatedOtherComprehensiveIncomeLossAvailableForSaleSecuritiesAdjustmentNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossCumulativeChangesInNetGainLossFromCashFlowHedgesEffectNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossDefinedBenefitPensionAndOtherPostretirementPlansNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossForeignCurrencyTranslationAdjustmentNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "AdditionalPaidInCapital",
+      "AdditionalPaidInCapitalCommonStock",
+      "AdjustmentsNoncashItemsToReconcileNetIncomeLossToCashProvidedByUsedInOperatingActivitiesOther",
+      "AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+      "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue"
+    ],
+    "entityName": "VISA INC."
+  }
+}

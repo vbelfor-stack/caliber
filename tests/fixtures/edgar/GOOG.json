@@ -1,0 +1,96 @@
+{
+  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "ticker": "GOOG",
+  "cik": "0001652044",
+  "submissions_shape": {
+    "company_name": "Alphabet Inc.",
+    "cik": "0001652044",
+    "sic": "7370",
+    "sic_description": "Services-Computer Programming, Data Processing, Etc.",
+    "tickers": [
+      "GOOGL",
+      "GOOG",
+      "GOOGM",
+      "GOOGN"
+    ],
+    "exchanges": [
+      "Nasdaq",
+      "Nasdaq",
+      "Nasdaq",
+      "Nasdaq"
+    ],
+    "fiscal_year_end": "1231",
+    "total_filings": 1000,
+    "recent_10K": [
+      [
+        "2026-02-05",
+        "0001652044-26-000018",
+        "goog-20251231.htm"
+      ],
+      [
+        "2025-02-05",
+        "0001652044-25-000014",
+        "goog-20241231.htm"
+      ],
+      [
+        "2024-01-31",
+        "0001652044-24-000022",
+        "goog-20231231.htm"
+      ]
+    ],
+    "recent_10Q": [
+      [
+        "2026-04-30",
+        "0001652044-26-000048",
+        "goog-20260331.htm"
+      ],
+      [
+        "2025-10-30",
+        "0001652044-25-000091",
+        "goog-20250930.htm"
+      ],
+      [
+        "2025-07-24",
+        "0001652044-25-000062",
+        "goog-20250630.htm"
+      ]
+    ]
+  },
+  "filing_index_shape": {
+    "error": "404 Client Error: Not Found for url: https://www.sec.gov/Archives/edgar/data/1652044/000165204426000018/0001652044-26-000018-index.json"
+  },
+  "risk_factors_excerpt": null,
+  "mda_excerpt": null,
+  "facts_shape": {
+    "taxonomy_keys": [
+      "dei",
+      "us-gaap",
+      "ecd",
+      "ffd"
+    ],
+    "us_gaap_concept_count": 523,
+    "sample_concepts": [
+      "AccountsPayableCurrent",
+      "AccountsReceivableNetCurrent",
+      "AccruedIncomeTaxesCurrent",
+      "AccruedIncomeTaxesNoncurrent",
+      "AccruedLiabilitiesCurrent",
+      "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+      "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+      "AdjustmentsToAdditionalPaidInCapitalTaxEffectFromShareBasedCompensation",
+      "AllocatedShareBasedCompensationExpense",
+      "AllowanceForDoubtfulAccountsReceivable",
+      "AllowanceForDoubtfulAccountsReceivableCurrent",
+      "Assets",
+      "AssetsCurrent",
+      "AssetsNoncurrent",
+      "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax",
+      "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax",
+      "AvailableForSaleDebtSecuritiesAmortizedCostBasis",
+      "AvailableForSaleSecuritiesContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss"
+    ],
+    "entityName": "ALPHABET INC."
+  }
+}

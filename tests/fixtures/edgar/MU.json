@@ -1,0 +1,89 @@
+{
+  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "ticker": "MU",
+  "cik": "0000723125",
+  "submissions_shape": {
+    "company_name": "MICRON TECHNOLOGY INC",
+    "cik": "0000723125",
+    "sic": "3674",
+    "sic_description": "Semiconductors & Related Devices",
+    "tickers": [
+      "MU"
+    ],
+    "exchanges": [
+      "Nasdaq"
+    ],
+    "fiscal_year_end": "0903",
+    "total_filings": 1001,
+    "recent_10K": [
+      [
+        "2025-10-03",
+        "0000723125-25-000028",
+        "mu-20250828.htm"
+      ],
+      [
+        "2024-10-04",
+        "0000723125-24-000027",
+        "mu-20240829.htm"
+      ],
+      [
+        "2023-10-06",
+        "0000723125-23-000054",
+        "mu-20230831.htm"
+      ]
+    ],
+    "recent_10Q": [
+      [
+        "2026-06-25",
+        "0000723125-26-000015",
+        "mu-20260528.htm"
+      ],
+      [
+        "2026-03-19",
+        "0000723125-26-000006",
+        "mu-20260226.htm"
+      ],
+      [
+        "2025-12-18",
+        "0000723125-25-000046",
+        "mu-20251127.htm"
+      ]
+    ]
+  },
+  "filing_index_shape": {
+    "error": "404 Client Error: Not Found for url: https://www.sec.gov/Archives/edgar/data/723125/000072312525000028/0000723125-25-000028-index.json"
+  },
+  "risk_factors_excerpt": null,
+  "mda_excerpt": null,
+  "facts_shape": {
+    "taxonomy_keys": [
+      "dei",
+      "us-gaap",
+      "ffd"
+    ],
+    "us_gaap_concept_count": 629,
+    "sample_concepts": [
+      "AccountsPayableAndAccruedLiabilitiesCurrent",
+      "AccountsPayableOtherCurrent",
+      "AccountsPayableRelatedPartiesCurrent",
+      "AccountsPayableTradeCurrent",
+      "AccountsReceivableNetCurrent",
+      "AccountsReceivableRelatedPartiesCurrent",
+      "AccumulatedDepreciationDepletionAndAmortizationExpensePropertyPlantAndEquipmentCurrentCharge",
+      "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "AccumulatedOtherComprehensiveIncomeLossAvailableForSaleSecuritiesAdjustmentNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossCumulativeChangesInNetGainLossFromCashFlowHedgesEffectNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossDefinedBenefitPensionAndOtherPostretirementPlansNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossForeignCurrencyTranslationAdjustmentNetOfTax",
+      "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "AdditionalPaidInCapitalCommonStock",
+      "AdjustmentsToAdditionalPaidInCapitalEquityComponentOfConvertibleDebt",
+      "AdjustmentsToAdditionalPaidInCapitalEquityComponentOfConvertibleDebtSubsequentAdjustments",
+      "AdjustmentsToAdditionalPaidInCapitalReallocationOfMinorityInterest",
+      "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+      "AllocatedShareBasedCompensationExpense",
+      "AllowanceForDoubtfulAccountsReceivableCurrent"
+    ],
+    "entityName": "Micron Technology, Inc."
+  }
+}

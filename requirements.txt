@@ -1,0 +1,24 @@
+# CALIBER v3 — pinned runtime dependencies
+# Python 3.11+
+
+# Data feeds
+yfinance==0.2.54
+requests==2.32.3
+
+# FRED (optional — degrades gracefully if absent)
+fredapi==0.5.2
+
+# Testing
+pytest==8.3.5
+
+# Phase 2+: synthesis (install now, use later)
+anthropic==0.40.0
+
+# Phase 4+: web frontend
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jinja2==3.1.5
+python-multipart==0.0.20
+
+# Utilities
+python-dotenv==1.0.1

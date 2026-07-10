@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Login — CALIBER v3{% endblock %}
+{% block content %}
+<div style="max-width:360px; margin:80px auto;">
+  <div style="border:1px solid var(--border); border-top:3px solid var(--brass); background:var(--surface); padding:32px 28px;">
+    <div style="font-size:1.1rem; letter-spacing:0.06em; margin-bottom:4px; color:var(--slate);">CALIBER v3</div>
+    <div style="font-size:0.78rem; color:var(--muted); margin-bottom:24px; text-transform:uppercase; letter-spacing:0.08em;">Reliability-Aware Equity Evaluation</div>
+
+    {% if error %}
+    <div class="flash flash-err" style="margin-bottom:16px;">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:5px;">Password</label>
+        <input type="password" name="password" autofocus
+               style="width:100%; padding:8px 12px;" placeholder="Enter APP_PASSWORD">
+      </div>
+      <button type="submit" class="btn btn-brass" style="width:100%; padding:9px;">Enter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

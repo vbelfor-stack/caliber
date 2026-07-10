@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% set active = "compare" %}
+{% block title %}Compare — CALIBER v3{% endblock %}
+{% block content %}
+
+<div class="page-title">Compare Evaluations</div>
+
+{# ── Selector form ────────────────────────────────────────── #}
+<div class="section" style="padding:16px 20px 14px;">
+  <form method="get" action="/compare" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <span style="font-size:0.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em;">Select 2–4:</span>
+    {% for ev in all_evals %}
+    {% set sel = (ev.id | string) in selected_ids.split(',') %}
+    <label style="display:flex; align-items:center; gap:4px; font-size:0.82rem; cursor:pointer; white-space:nowrap;">
+      <input type="checkbox" name="ids" value="{{ ev.id }}"
+             {% if sel %}checked{% endif %}
+             class="sel-check" onchange="updateSel(this)">
+      <span class="lens-badge {{ ev.lens | lens_cls }}" style="font-size:0.65rem; padding:1px 5px;">{{ ev.ticker }}</span>
+      <span class="txt-muted" style="font-size:0.72rem;">{{ ev.run_at | fmt_date }}</span>
+    </label>
+    {% endfor %}
+    <button type="submit" class="btn btn-brass btn-sm" id="cmp-go" {% if all_evals | length < 2 %}disabled{% endif %}>Compare</button>
+    <a href="/compare" class="btn btn-sm">Reset</a>
+  </form>
+</div>
+
+{% if evals %}
+{# ── Comparison grid ───────────────────────────────────────── #}
+<div class="compare-grid" style="grid-template-columns: repeat({{ evals|length }}, 1fr);">
+
+  {# Row 1: Header / ticker / lens / E(R) #}
+  {% for ev in evals %}
+  <div class="cmp-col-head">
+    <div style="font-size:1.4rem; font-weight:bold; letter-spacing:0.05em;">{{ ev.ticker }}</div>
+    {% if ev.lens %}
+    <div style="margin:6px 0 4px;"><span class="lens-badge {{ ev.lens | lens_cls }}">{{ ev.lens | lens_label }}</span></div>
+    {% endif %}
+    {% if ev.expected_return is not none %}
+    <div class="er-headline {% if ev.expected_return >= 5 %}er-pos{% elif ev.expected_return <= -5 %}er-neg{% else %}er-neu{% endif %}" style="font-size:1.1rem; margin-top:6px;">
+      E(R) {{ ev.expected_return | er_fmt }}
+    </div>
+    {% endif %}
+    <div class="txt-muted" style="font-size:0.74rem; margin-top:4px;">
+      {% if ev.avg_score is not none %}Score {{ "%.1f"|format(ev.avg_score) }}/5{% endif %}
+      {% if ev.overall_conf %} · <span class="{{ ev.overall_conf | conf_cls }}">{{ ev.overall_conf | conf_dot }} {{ ev.overall_conf }}</span>{% endif %}
+    </div>
+    <div class="txt-muted" style="font-size:0.72rem; margin-top:2px;">{{ ev.run_at | fmt_date }}</div>
+    <div style="margin-top:8px;"><a href="/eval/{{ ev.id }}" class="btn btn-sm">Deep view →</a></div>
+  </div>
+  {% endfor %}
+
+  {# Row 2: Scenarios (bull/base/bear) for each ticker #}
+  {% for ev in evals %}
+  <div class="cmp-section">
+    <div class="cmp-sect-label">Scenarios</div>
+    {% if ev.synthesis and ev.synthesis.scenarios %}
+    {% set sc = ev.synthesis.scenarios %}
+    {% if sc.bull %}
+    <div class="cmp-scenario-line txt-jade">
+      <span class="cmp-sc-tag">Bull {{ sc.bull.probability | prob_fmt }}</span>
+      {{ sc.bull.priceTarget | target_fmt }}
+      {% if ev.synthesis.current_price and sc.bull.priceTarget %}
+      <span class="txt-muted">({{ ev.synthesis.current_price | ret_fmt(sc.bull.priceTarget) }})</span>
+      {% endif %}
+    </div>
+    {% if sc.bull.thesis %}<div class="cmp-sc-thesis">{{ sc.bull.thesis }}</div>{% endif %}
+    {% endif %}
+    {% if sc.base %}
+    <div class="cmp-scenario-line txt-amber">
+      <span class="cmp-sc-tag">Base {{ sc.base.probability | prob_fmt }}</span>
+      {{ sc.base.priceTarget | target_fmt }}
+      {% if ev.synthesis.current_price and sc.base.priceTarget %}
+      <span class="txt-muted">({{ ev.synthesis.current_price | ret_fmt(sc.base.priceTarget) }})</span>
+      {% endif %}
+    </div>
+    {% if sc.base.thesis %}<div class="cmp-sc-thesis">{{ sc.base.thesis }}</div>{% endif %}
+    {% endif %}
+    {% if sc.bear %}
+    <div class="cmp-scenario-line txt-brick">
+      <span class="cmp-sc-tag">Bear {{ sc.bear.probability | prob_fmt }}</span>
+      {{ sc.bear.priceTarget | target_fmt }}
+      {% if ev.synthesis.current_price and sc.bear.priceTarget %}
+      <span class="txt-muted">({{ ev.synthesis.current_price | ret_fmt(sc.bear.priceTarget) }})</span>
+      {% endif %}
+    </div>
+    {% if sc.bear.thesis %}<div class="cmp-sc-thesis">{{ sc.bear.thesis }}</div>{% endif %}
+    {% endif %}
+    {% else %}
+    <div class="txt-muted" style="font-size:0.8rem;">No synthesis data</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {# Row 3: Pillars side-by-side #}
+  {% set pillar_names = [] %}
+  {% for ev in evals %}{% for p in ev.pillars %}{% if p.name not in pillar_names %}{% set _ = pillar_names.append(p.name) %}{% endif %}{% endfor %}{% endfor %}
+
+  {% for ev in evals %}
+  <div class="cmp-section">
+    <div class="cmp-sect-label">Pillars</div>
+    {% for p in ev.pillars %}
+    <div class="cmp-pillar {% if p.confidence | lower == 'low' %}hatch{% endif %}" style="margin-bottom:6px;">
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span style="font-size:0.78rem; font-weight:bold; min-width:110px;">{{ p.name }}</span>
+        <div class="score-bar {{ p.score | score_color }}">
+          {% for filled in p.score | score_segs %}
+          <div class="score-seg {% if filled %}on{% endif %}"></div>
+          {% endfor %}
+        </div>
+        <span class="score-num {% if p.score >= 4 %}txt-jade{% elif p.score >= 3 %}txt-amber{% else %}txt-brick{% endif %}">
+          {{ p.score }}/5
+        </span>
+        <span class="{{ p.confidence | lower | conf_cls }}" title="{{ p.confidence | lower }} confidence">
+          {{ p.confidence | lower | conf_dot }}
+        </span>
+      </div>
+      {% if p.flags %}
+      <div class="flags" style="margin-top:3px; flex-wrap:wrap;">
+        {% for f in p.flags %}
+        <span class="flag {% if 'CONFLICT' in f or 'SECULAR' in f %}flag-conflict{% endif %}">{{ f }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="txt-muted" style="font-size:0.8rem;">No pillar data</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  {# Row 4: Red flags #}
+  {% for ev in evals %}
+  <div class="cmp-section">
+    <div class="cmp-sect-label">Red Flags</div>
+    {% if ev.synthesis and ev.synthesis.redFlags %}
+    <ul style="list-style:none; padding:0; margin:0;">
+      {% for f in ev.synthesis.redFlags %}
+      <li style="font-size:0.8rem; border-left:2px solid var(--brick); padding-left:7px; margin-bottom:4px;">{{ f }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="txt-muted" style="font-size:0.8rem;">None</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+</div>
+
+{% elif all_evals %}
+<div style="padding:32px; text-align:center; color:var(--muted); border:1px dashed var(--border);">
+  Select 2–4 evaluated tickers above and click Compare.
+</div>
+{% else %}
+<div style="padding:40px; text-align:center; color:var(--muted); border:1px dashed var(--border);">
+  No evaluations stored. Run <code>python evaluate.py MU</code> to get started.
+</div>
+{% endif %}
+
+<script>
+function updateSel(el) {
+  const checked = document.querySelectorAll('.sel-check:checked');
+  const btn = document.getElementById('cmp-go');
+  if (btn) btn.disabled = (checked.length < 2 || checked.length > 4);
+}
+// Build the ids param from checkboxes on submit
+document.querySelector('form').addEventListener('submit', function(e) {
+  const checked = [...document.querySelectorAll('.sel-check:checked')].map(c => c.value);
+  if (checked.length < 2) { e.preventDefault(); return; }
+  // Remove individual checkbox values, add combined ids param
+  e.preventDefault();
+  window.location.href = '/compare?ids=' + checked.join(',');
+});
+</script>
+{% endblock %}

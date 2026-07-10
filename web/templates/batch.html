@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% set active = "batch" %}
+{% block title %}Batch & Conflicts — CALIBER v3{% endblock %}
+{% block content %}
+
+<div class="page-title">Batch Queue &amp; Flag Resolution</div>
+
+{% if msg %}<div class="flash">{{ msg }}</div>{% endif %}
+
+{# ── Run controls ─────────────────────────────────────────── #}
+<div style="display:flex; gap:12px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
+  <form method="post" action="/batch/run" style="display:inline;">
+    <button type="submit" class="btn btn-brass">▶ Run Batch (background)</button>
+  </form>
+  <span class="txt-muted" style="font-size:0.8rem;">Universe: {{ universe | length }} ticker(s)</span>
+  {% if universe %}
+  <span class="txt-muted mono-val" style="font-size:0.76rem;">{{ universe | join(', ') }}</span>
+  {% endif %}
+</div>
+
+{# ── Source Conflicts & Flag Resolution ───────────────────── #}
+<div class="section">
+  <div class="section-head">Source Conflicts — Manual Override Required</div>
+
+  {% if conflicts %}
+  {% for c in conflicts %}
+  {% set p = c.parsed %}
+  <div class="conflict-row">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="bold" style="font-size:0.9rem;">{{ c.ticker }}</span>
+      <span style="font-size:0.8rem; color:var(--muted);">{{ c.pillar or '—' }}</span>
+      <span class="flag flag-conflict">CONFLICT</span>
+      <span class="txt-muted mono-val" style="font-size:0.72rem;">{{ c.as_of or '' }}</span>
+      {% if c.evaluation_id %}
+      <a href="/eval/{{ c.evaluation_id }}" class="btn btn-sm" style="font-size:0.72rem; padding:2px 8px;">View Eval →</a>
+      {% endif %}
+    </div>
+
+    <div class="conflict-vals" style="margin-top:8px;">
+      <div>
+        <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px;">{{ p.src_a }}</div>
+        <div class="conflict-val-box primary">{{ p.val_a }}{% if p.date_a %}<span class="txt-muted" style="font-size:0.7em;"> @{{ p.date_a }}</span>{% endif %}</div>
+      </div>
+      <span class="vs-sep">vs</span>
+      <div>
+        <div style="font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px;">{{ p.src_b }}</div>
+        <div class="conflict-val-box secondary">{{ p.val_b }}{% if p.date_b %}<span class="txt-muted" style="font-size:0.7em;"> @{{ p.date_b }}</span>{% endif %}</div>
+      </div>
+    </div>
+
+    {% if c.override %}
+    <div class="override-accepted" style="margin-top:8px;">
+      ✓ Override in effect: <strong class="mono-val">{{ c.override.override_value }}</strong>
+      ({{ c.override.override_at | fmt_date }})
+      {% if c.override.note %} — <em>{{ c.override.note }}</em>{% endif %}
+    </div>
+    {% else %}
+    <div style="margin-top:10px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="font-size:0.78rem; color:var(--muted);">Accept:</span>
+      <form method="post" action="/override" style="display:inline;">
+        <input type="hidden" name="ticker" value="{{ c.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/batch">
+        <input type="hidden" name="override_value" value="{{ p.val_a }}">
+        <button type="submit" class="btn btn-sm">{{ p.src_a }}: {{ p.val_a }}</button>
+      </form>
+      <form method="post" action="/override" style="display:inline;">
+        <input type="hidden" name="ticker" value="{{ c.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/batch">
+        <input type="hidden" name="override_value" value="{{ p.val_b }}">
+        <button type="submit" class="btn btn-sm">{{ p.src_b }}: {{ p.val_b }}</button>
+      </form>
+      <form method="post" action="/override" style="display:inline-flex; gap:4px; align-items:center;">
+        <input type="hidden" name="ticker" value="{{ c.ticker }}">
+        <input type="hidden" name="field_key" value="{{ c.field_key }}">
+        <input type="hidden" name="redirect_to" value="/batch">
+        <input type="number" name="override_value" step="any" required placeholder="Custom…" style="width:100px;">
+        <input type="text" name="note" placeholder="Note (optional)" style="width:140px;">
+        <button type="submit" class="btn btn-brass btn-sm">Save</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="txt-muted" style="font-size:0.85rem; padding:12px 0;">
+    No source conflicts detected.
+    {% if not universe %}
+    Populate <code>tickers.txt</code> and run a batch to generate evaluations.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{# ── Accepted overrides log ────────────────────────────────── #}
+{% if overrides %}
+<div class="section">
+  <div class="section-head">Accepted Overrides</div>
+  <table style="width:100%; font-size:0.82rem; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Ticker</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Field</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Value</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Date</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Note</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for ov in overrides %}
+    <tr style="border-bottom:1px dashed var(--border);">
+      <td style="padding:5px 8px;" class="bold">{{ ov.ticker }}</td>
+      <td style="padding:5px 8px;" class="mono-val txt-muted">{{ ov.field_name }}</td>
+      <td style="padding:5px 8px;" class="mono-val"><strong>{{ ov.override_value }}</strong></td>
+      <td style="padding:5px 8px;" class="txt-muted">{{ ov.override_at | fmt_date }}</td>
+      <td style="padding:5px 8px;" class="txt-muted">{{ ov.note or '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# ── Recent runs ───────────────────────────────────────────── #}
+<div class="section">
+  <div class="section-head">Recent Runs</div>
+  {% if recent %}
+  <table style="width:100%; font-size:0.82rem; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Ticker</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Lens</th>
+        <th style="text-align:right; padding:5px 8px; font-weight:600;">Score</th>
+        <th style="text-align:right; padding:5px 8px; font-weight:600;">E(R)</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Status</th>
+        <th style="text-align:left; padding:5px 8px; font-weight:600;">Run at</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for ev in recent %}
+    <tr class="{% if ev.status == 'failed' %}row-failed{% endif %}" style="border-bottom:1px dashed var(--border);">
+      <td style="padding:5px 8px;" class="bold">
+        {% if ev.status == 'ok' %}<a href="/eval/{{ ev.id }}">{{ ev.ticker }}</a>{% else %}{{ ev.ticker }}{% endif %}
+      </td>
+      <td style="padding:5px 8px;">
+        {% if ev.lens %}
+        <span class="lens-badge {{ ev.lens | lens_cls }}" style="font-size:0.65rem; padding:1px 5px;">{{ ev.lens | lens_label }}</span>
+        {% else %}<span class="txt-muted">—</span>{% endif %}
+      </td>
+      <td style="text-align:right; padding:5px 8px;">
+        {% if ev.avg_score is not none %}
+        <span class="mono-val {% if ev.avg_score >= 4 %}txt-jade{% elif ev.avg_score >= 3 %}txt-amber{% else %}txt-brick{% endif %}">
+          {{ "%.1f"|format(ev.avg_score) }}
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td style="text-align:right; padding:5px 8px;">
+        {% if ev.expected_return is not none %}
+        <span class="mono-val bold {% if ev.expected_return >= 0 %}txt-jade{% else %}txt-brick{% endif %}">
+          {{ ev.expected_return | er_fmt }}
+        </span>
+        {% else %}<span class="txt-muted">—</span>{% endif %}
+      </td>
+      <td style="padding:5px 8px;">
+        {% if ev.status == 'failed' %}
+        <span class="pill pill-fail">FAILED</span>
+        {% else %}
+        <span class="pill pill-ok">OK</span>
+        {% endif %}
+      </td>
+      <td style="padding:5px 8px;" class="txt-muted mono-val">{{ ev.run_at | fmt_date }}</td>
+      <td style="padding:5px 8px;">
+        {% if ev.status == 'ok' %}
+        <a href="/eval/{{ ev.id }}" class="btn btn-sm" style="font-size:0.72rem; padding:2px 8px;">View</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="txt-muted" style="font-size:0.85rem; padding:8px 0;">
+    No runs yet. Click "Run Batch" or use <code>python evaluate.py &lt;TICKER&gt;</code>.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

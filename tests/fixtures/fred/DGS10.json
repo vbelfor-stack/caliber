@@ -1,0 +1,17 @@
+{
+  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "series": "DGS10",
+  "fred_api_key_present": false,
+  "results": {
+    "fredapi": {
+      "note": "FRED_API_KEY not set \u2014 skipped fredapi path"
+    },
+    "direct_api": {
+      "status_code": 400,
+      "url_shape": "https://api.stlouisfed.org/fred/series/observations",
+      "response_keys": [],
+      "sample_observations": [],
+      "error_message": "Bad Request.  The value for variable api_key is not a 32 character alpha-numeric lower-case string.  Read https://fred.stlouisfed.org/docs/api/api_key.html for more information."
+    }
+  }
+}
