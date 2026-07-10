@@ -107,6 +107,12 @@
       {% endif %}
     </td>
   </tr>
+  {% if ev.status == 'failed' and ev.error_msg %}
+  <tr class="row-failed">
+    <td></td>
+    <td colspan="9" style="padding:2px 8px 8px 8px; font-size:0.78rem; color:var(--brick,#c0392b); font-family:monospace; white-space:pre-wrap; word-break:break-all;">{{ ev.error_msg[:400] }}{% if ev.error_msg|length > 400 %} …{% endif %}</td>
+  </tr>
+  {% endif %}
   {% endfor %}
   </tbody>
 </table>
