@@ -6,11 +6,19 @@
 
 {% if msg %}<div class="flash">{{ msg }}</div>{% endif %}
 
+{# ── Evaluate input ──────────────────────────────────────────── #}
+<form method="post" action="/evaluate" style="display:flex; gap:10px; align-items:center; margin-bottom:24px; flex-wrap:wrap;">
+  <input type="text" name="tickers" placeholder="Enter ticker(s) — e.g. AAPL or AAPL, MSFT, GOOG"
+         style="flex:1; min-width:240px; max-width:480px; font-size:1rem; padding:8px 12px;">
+  <button type="submit" class="btn btn-brass" style="padding:8px 22px; font-size:0.95rem;">▶ Run</button>
+  <span class="txt-muted" style="font-size:0.8rem;">One ticker or several comma-separated. Results appear below when done.</span>
+</form>
+
 {# Filter bar #}
 <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
   <form method="get" action="/library" style="display:flex; gap:8px; align-items:center;">
     <input type="text" name="ticker" value="{{ filter_ticker }}"
-           placeholder="Filter ticker…" style="width:110px;">
+           placeholder="Filter stored…" style="width:110px;">
     <select name="status" style="padding:5px 8px;">
       <option value="" {% if not filter_status %}selected{% endif %}>All</option>
       <option value="ok" {% if filter_status == 'ok' %}selected{% endif %}>OK</option>
@@ -19,9 +27,6 @@
     <button type="submit" class="btn btn-sm">Filter</button>
     <a href="/library" class="btn btn-sm" style="background:var(--muted);">Clear</a>
   </form>
-  <div style="margin-left:auto; display:flex; gap:8px;">
-    <button id="compare-btn" class="btn btn-brass btn-sm" onclick="goCompare()" disabled>Select 2–4 to compare</button>
-  </div>
 </div>
 
 {% if evals %}

@@ -341,13 +341,52 @@ async def batch_run(
         try:
             from batch.runner import run_batch, read_universe
             tickers = read_universe()
-            run_batch(tickers, fixture_mode=False, run_synthesis=False, verbose=False)
+            run_batch(tickers, fixture_mode=False, run_synthesis=True, verbose=False)
         except Exception:
             pass
 
     t = threading.Thread(target=_run, daemon=True)
     t.start()
     return RedirectResponse("/batch?msg=Batch+started+in+background", status_code=303)
+
+
+@app.post("/evaluate")
+async def evaluate_tickers(
+    request: Request,
+    caliber_session: Optional[str] = Cookie(None),
+    tickers: str = Form(...),
+):
+    if not _is_authed(caliber_session):
+        return _redirect_login()
+
+    ticker_list = [t.strip().upper() for t in tickers.replace(",", " ").split() if t.strip()]
+    if not ticker_list:
+        return RedirectResponse("/library?msg=No+tickers+entered", status_code=303)
+
+    eval_ids: list[int] = []
+
+    def _run():
+        try:
+            from batch.runner import run_single_ticker
+            for ticker in ticker_list:
+                result = run_single_ticker(ticker, fixture_mode=False, run_synthesis=True, verbose=False)
+                if result.eval_id:
+                    eval_ids.append(result.eval_id)
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=300)  # wait up to 5 min for foreground feedback
+
+    if len(eval_ids) == 1:
+        return RedirectResponse(f"/eval/{eval_ids[0]}", status_code=303)
+    elif len(eval_ids) > 1:
+        ids_str = ",".join(str(i) for i in eval_ids)
+        return RedirectResponse(f"/compare?ids={ids_str}", status_code=303)
+    else:
+        names = "+".join(ticker_list)
+        return RedirectResponse(f"/library?msg=Evaluating+{names}+in+background", status_code=303)
 
 
 # ── Override (save) ───────────────────────────────────────────────────────────

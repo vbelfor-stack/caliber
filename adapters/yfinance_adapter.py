@@ -278,20 +278,41 @@ def fetch_yfinance(ticker: str, fixture_path: Optional[Path] = None) -> YFinance
 def _from_live(ticker: str) -> YFinanceData:
     try:
         import yfinance as yf
+        import requests as _requests
     except ImportError as e:
         raise RuntimeError(f"[yfinance] package not installed — cannot fetch {ticker}. Error: {e}") from e
 
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-    try:
-        tk = yf.Ticker(ticker)
-        info = tk.info or {}
-    except Exception as e:
+    # Custom session bypasses Yahoo Finance cloud-IP blocking (Replit, AWS, etc.)
+    _session = _requests.Session()
+    _session.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    })
+
+    import time as _time
+    last_exc = None
+    for _attempt in range(3):
+        try:
+            tk = yf.Ticker(ticker, session=_session)
+            info = tk.info or {}
+            break
+        except Exception as e:
+            last_exc = e
+            if _attempt < 2:
+                _time.sleep(2 ** _attempt)
+    else:
         raise RuntimeError(
             f"[yfinance] fetch failed for ticker={ticker}. "
-            f"Error: {type(e).__name__}: {e}"
-        ) from e
+            f"Error: {type(last_exc).__name__}: {last_exc}"
+        ) from last_exc
 
     if not info or len(info) < 5:
         raise RuntimeError(
