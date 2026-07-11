@@ -1,0 +1,10 @@
+run = "python run_server.py"
+entrypoint = "run_server.py"
+
+[deployment]
+run = ["sh", "-c", "python run_server.py"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
