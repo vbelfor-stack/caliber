@@ -9,12 +9,14 @@ from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
 from adapters.edgar_adapter import fetch_edgar, EdgarData
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.alphavantage_adapter import fetch_alphavantage, AlphaVantageData
+from adapters.fmp_adapter import fetch_fmp
 
 FIXTURE_ROOT = Path("tests/fixtures")
 YF = FIXTURE_ROOT / "yfinance"
 EDGAR = FIXTURE_ROOT / "edgar"
 FRED_FX = FIXTURE_ROOT / "fred" / "DGS10.json"
 AV = FIXTURE_ROOT / "alphavantage"
+FMP = FIXTURE_ROOT / "fmp"
 
 
 # ── yfinance adapter ──────────────────────────────────────────────────────────
@@ -335,3 +337,162 @@ class TestAlphaVantangeCrossCheck:
         )
         result = apply_av_cross_checks(yf, no_beta_av)
         assert result.beta.confidence == yf.beta.confidence  # unchanged
+
+
+# ── FMP adapter ───────────────────────────────────────────────────────────────
+
+class TestFmpAdapter:
+    def test_mu_loads_from_fixture(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert isinstance(yf, YFinanceData)
+        assert yf.ticker == "MU"
+
+    def test_mu_name_is_micron(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert "Micron" in (yf.name or "")
+
+    def test_mu_sector_is_technology(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert yf.sector == "Technology"
+
+    def test_mu_industry_semiconductors(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert yf.industry == "Semiconductors"
+
+    def test_mu_current_price_realistic(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert not yf.current_price.is_missing()
+        assert 100 < yf.current_price.value < 5000
+
+    def test_mu_gross_margin_is_prov(self):
+        from adapters.base import Prov
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert isinstance(yf.gross_margin, Prov)
+
+    def test_mu_gross_margin_source_is_fmp(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert yf.gross_margin.source == "fmp"
+
+    def test_mu_gross_margin_confidence_medium(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert yf.gross_margin.confidence == "medium"
+
+    def test_mu_gross_margin_range(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert not yf.gross_margin.is_missing()
+        assert 0.5 < yf.gross_margin.value < 1.0
+
+    def test_mu_roe_positive(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert not yf.roe.is_missing()
+        assert yf.roe.value > 0
+
+    def test_mu_revenue_growth_positive(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert not yf.revenue_growth.is_missing()
+        assert yf.revenue_growth.value > 0
+
+    def test_mu_market_cap_large(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert not yf.market_cap.is_missing()
+        assert yf.market_cap.value > 1e11  # > $100B
+
+    def test_mu_earnings_history_is_list(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert isinstance(yf.earnings_history, list)
+
+    def test_mu_earnings_history_has_actual_and_estimate(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        if yf.earnings_history:
+            row = yf.earnings_history[0]
+            assert "epsActual" in row
+            assert "epsEstimate" in row
+            assert "epsDifference" in row
+            assert "surprisePercent" in row
+
+    def test_mu_price_history_is_list(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert isinstance(yf.price_history, list)
+
+    def test_mu_price_history_has_ohlcv(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        if yf.price_history:
+            row = yf.price_history[0]
+            assert "Open" in row
+            assert "Close" in row
+            assert "Volume" in row
+            assert "date" in row
+
+    def test_mu_insider_transactions_is_empty_list(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        assert yf.insider_transactions == []
+
+    def test_goog_loads(self):
+        yf = fetch_fmp("GOOG", fixture_path=FMP / "GOOG.json")
+        assert yf.ticker == "GOOG"
+
+    def test_v_loads(self):
+        yf = fetch_fmp("V", fixture_path=FMP / "V.json")
+        assert yf.ticker == "V"
+
+    def test_missing_fixture_raises_runtime_error(self):
+        with pytest.raises(RuntimeError, match="fixture not found"):
+            fetch_fmp("FAKE", fixture_path=Path("nonexistent.json"))
+
+    def test_trailing_pe_positive(self):
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        if not yf.trailing_pe.is_missing():
+            assert yf.trailing_pe.value > 0
+
+    def test_all_prov_fields_have_fmp_source(self):
+        from adapters.base import Prov
+        yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
+        prov_fields = [
+            yf.gross_margin, yf.operating_margin, yf.profit_margin,
+            yf.roe, yf.roa, yf.current_ratio, yf.debt_to_equity,
+            yf.total_debt, yf.total_cash, yf.free_cashflow,
+            yf.operating_cashflow, yf.revenue_growth, yf.trailing_pe,
+            yf.forward_pe, yf.analyst_count, yf.target_mean_price,
+            yf.price_to_book, yf.ev_to_ebitda, yf.ev_to_revenue,
+            yf.market_cap, yf.current_price, yf.enterprise_value,
+            yf.fcf_yield, yf.shares_outstanding, yf.beta,
+        ]
+        for p in prov_fields:
+            assert p.source == "fmp", f"Expected source=fmp, got {p.source}"
+
+
+class TestFmpFailover:
+    """Verify that FMP failure triggers yfinance fallback in the batch runner."""
+
+    def test_fmp_exception_triggers_yfinance(self):
+        """If fetch_fmp raises, _fetch_with_failover falls back to yfinance fixture."""
+        import sys
+        from unittest.mock import patch, MagicMock
+        from batch.runner import _fetch_with_failover
+
+        def boom(ticker, fixture_path=None):
+            raise RuntimeError("FMP deliberately borked")
+
+        yf_result = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+
+        with patch("adapters.fmp_adapter.fetch_fmp", side_effect=boom):
+            with patch("batch.runner.fetch_yfinance", return_value=yf_result):
+                result = _fetch_with_failover("MU", log=lambda msg: None)
+
+        assert isinstance(result, YFinanceData)
+        assert result.ticker == "MU"
+
+    def test_both_feeds_failing_raises(self):
+        """If both FMP and yfinance fail, a RuntimeError with diagnostics is raised."""
+        from batch.runner import _fetch_with_failover
+
+        with pytest.raises(RuntimeError, match="All feeds failed"):
+            with __import__("unittest.mock", fromlist=["patch"]).patch(
+                "adapters.fmp_adapter.fetch_fmp",
+                side_effect=RuntimeError("FMP down"),
+            ):
+                with __import__("unittest.mock", fromlist=["patch"]).patch(
+                    "batch.runner.fetch_yfinance",
+                    side_effect=RuntimeError("YF down"),
+                ):
+                    _fetch_with_failover("MU", log=lambda msg: None)

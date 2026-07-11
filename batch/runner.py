@@ -33,7 +33,7 @@ try:
 except ImportError:
     pass
 
-from adapters.yfinance_adapter import fetch_yfinance
+from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
@@ -46,6 +46,35 @@ from store.models import save_evaluation, save_failed_evaluation
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
+
+
+def _fetch_with_failover(ticker: str, log) -> YFinanceData:
+    """
+    Failover chain: FMP primary → yfinance fallback.
+    Raises RuntimeError if all feeds fail, with combined diagnostics.
+    """
+    diagnostics: list = []
+
+    # ── 1. FMP (primary) ─────────────────────────────────────────────────
+    try:
+        from adapters.fmp_adapter import fetch_fmp
+        data = fetch_fmp(ticker)
+        log("data via FMP (primary)")
+        return data
+    except Exception as e:
+        diagnostics.append(f"FMP: {type(e).__name__}: {e}")
+        log(f"FMP failed ({type(e).__name__}: {e}), trying yfinance...")
+
+    # ── 2. yfinance (fallback) ────────────────────────────────────────────
+    try:
+        data = fetch_yfinance(ticker)
+        log("data via yfinance (fallback)")
+        return data
+    except Exception as e:
+        diagnostics.append(f"yfinance: {type(e).__name__}: {e}")
+        log(f"yfinance failed ({type(e).__name__}: {e})")
+
+    raise RuntimeError(f"All feeds failed — {'; '.join(diagnostics)}")
 
 
 def read_universe(path: Path = DEFAULT_UNIVERSE) -> List[str]:
@@ -87,13 +116,15 @@ def run_single_ticker(
     _log = (lambda msg: print(f"  [{ticker}] {msg}")) if verbose else (lambda msg: None)
 
     try:
-        yf_fx = FX_ROOT / "yfinance" / f"{ticker}.json" if fixture_mode else None
         ed_fx = FX_ROOT / "edgar" / f"{ticker}.json" if fixture_mode else None
         fr_fx = FX_ROOT / "fred" / "DGS10.json" if fixture_mode else None
 
-        # ── Adapters ──────────────────────────────────────────────────────────
-        _log("fetching yfinance...")
-        yf = fetch_yfinance(ticker, fixture_path=yf_fx)
+        # ── Primary data feed ─────────────────────────────────────────────────
+        if fixture_mode:
+            _log("fetching yfinance (fixture)...")
+            yf = fetch_yfinance(ticker, fixture_path=FX_ROOT / "yfinance" / f"{ticker}.json")
+        else:
+            yf = _fetch_with_failover(ticker, log=_log)
 
         _log("fetching EDGAR...")
         edgar = fetch_edgar(ticker, fixture_path=ed_fx)
