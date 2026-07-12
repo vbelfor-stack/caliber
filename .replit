@@ -1,0 +1,14 @@
+modules = ["python-3.11"]
+run = "python run_server.py"
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[agent]
+expertMode = true
+
+[nix]
+
+[deployment]
+deploymentTarget = "cloudrun"
+run = ["python", "run_server.py"]
