@@ -42,7 +42,7 @@ from core.cross_check import apply_av_cross_checks
 from core.lens_select import select_lens
 from core.pillars import score_all
 from core.technicals import analyze_technicals
-from store.models import save_evaluation, save_failed_evaluation
+from store.models import save_evaluation, save_failed_evaluation, get_cached_synthesis, save_synthesis_cache
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
@@ -107,6 +107,7 @@ def run_single_ticker(
     fixture_mode: bool = False,
     run_synthesis: bool = True,
     verbose: bool = True,
+    force_refresh: bool = False,
 ) -> TickerResult:
     """
     Run the full CALIBER pipeline for one ticker.
@@ -159,26 +160,45 @@ def run_single_ticker(
 
         _log(f"pillars scored  avg={avg_score:.1f}  conf={overall_conf}  lens={lens}")
 
-        # ── Synthesis ─────────────────────────────────────────────────────────
+        # ── Synthesis (cache-first, deterministic) ────────────────────────────
         synthesis = None
         expected_return = None
         if run_synthesis:
             try:
                 from synthesis.client import run_synthesis as _synth
-                from synthesis.schema import compute_er
+                from synthesis.schema import compute_er, parse_synthesis
+                import json as _json
+                from datetime import date as _date
+
                 current_price = yf.current_price.value if not yf.current_price.is_missing() else None
-                synthesis = _synth(
-                    ticker=ticker,
-                    company_name=yf.name or ticker,
-                    sector=yf.sector or "",
-                    industry=yf.industry or "",
-                    lens=lens,
-                    pillars=pillars,
-                    tech=tech,
-                    current_price=current_price,
-                )
-                if current_price:
-                    expected_return = compute_er(synthesis, current_price)
+                today_str = _date.today().isoformat()
+
+                cached = None if force_refresh else get_cached_synthesis(ticker, today_str)
+                if cached:
+                    _log("synthesis cache hit — reusing today's scenario set")
+                    synthesis = parse_synthesis(cached["synthesis_json"], pillars, ticker)
+                    price_for_er = cached["price_snapshot"] or current_price
+                else:
+                    synthesis = _synth(
+                        ticker=ticker,
+                        company_name=yf.name or ticker,
+                        sector=yf.sector or "",
+                        industry=yf.industry or "",
+                        lens=lens,
+                        pillars=pillars,
+                        tech=tech,
+                        current_price=current_price,
+                    )
+                    save_synthesis_cache(
+                        ticker, today_str,
+                        _json.dumps(synthesis.rawJson),
+                        current_price,
+                    )
+                    price_for_er = current_price
+                    _log("synthesis generated and cached")
+
+                if price_for_er:
+                    expected_return = compute_er(synthesis, price_for_er)
                 _log(f"synthesis ok  verdict={synthesis.verdictConfidence}  E(R)={expected_return:+.1f}%" if expected_return else f"synthesis ok  verdict={synthesis.verdictConfidence}")
             except Exception as e:
                 _log(f"synthesis skipped ({type(e).__name__}: {e})")
