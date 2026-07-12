@@ -74,6 +74,15 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 note            TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS synthesis_cache (
+                ticker          TEXT    NOT NULL,
+                eval_date       TEXT    NOT NULL,
+                synthesis_json  TEXT    NOT NULL,
+                price_snapshot  REAL,
+                created_at      TEXT    NOT NULL,
+                PRIMARY KEY (ticker, eval_date)
+            );
+
             CREATE TABLE IF NOT EXISTS grades (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 evaluation_id   INTEGER UNIQUE NOT NULL REFERENCES evaluations(id),
@@ -100,6 +109,39 @@ def _pillar_to_dict(p: PillarResult) -> Dict[str, Any]:
         "flags": p.flags,
         "method": p.method,
     }
+
+
+def get_cached_synthesis(
+    ticker: str,
+    eval_date: str,
+    db_path: Path = _DEFAULT_DB,
+) -> Optional[Dict[str, Any]]:
+    """Return cached synthesis dict for (ticker, eval_date), or None if absent."""
+    with _conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT synthesis_json, price_snapshot FROM synthesis_cache WHERE ticker=? AND eval_date=?",
+            (ticker, eval_date),
+        ).fetchone()
+    if not row:
+        return None
+    return {"synthesis_json": row["synthesis_json"], "price_snapshot": row["price_snapshot"]}
+
+
+def save_synthesis_cache(
+    ticker: str,
+    eval_date: str,
+    synthesis_json: str,
+    price_snapshot: Optional[float],
+    db_path: Path = _DEFAULT_DB,
+) -> None:
+    """Upsert a synthesis result into the cache."""
+    with _conn(db_path) as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO synthesis_cache
+               (ticker, eval_date, synthesis_json, price_snapshot, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (ticker, eval_date, synthesis_json, price_snapshot, _utc_now()),
+        )
 
 
 def save_evaluation(
