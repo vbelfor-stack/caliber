@@ -428,7 +428,12 @@ def get_ungradeable_evals(
     min_age_days: int = 90,
     db_path: Path = _DEFAULT_DB,
 ) -> List[Dict[str, Any]]:
-    """Return ok evaluations with expected_return that are not yet graded and old enough."""
+    """Return ok evaluations with expected_return that are old enough and not terminally graded.
+
+    Never-graded evals qualify, as do evals whose last outcome was a transient
+    PENDING or PRICE_UNAVAILABLE (retried; upserts into a real grade on success).
+    Terminal states (A-F, N/A) are excluded.
+    """
     init_db(db_path)
     with _conn(db_path) as conn:
         rows = conn.execute(
@@ -436,7 +441,7 @@ def get_ungradeable_evals(
                LEFT JOIN grades g ON g.evaluation_id = e.id
                WHERE e.status = 'ok'
                  AND e.expected_return IS NOT NULL
-                 AND g.id IS NULL
+                 AND (g.id IS NULL OR g.grade IN ('PENDING','PRICE_UNAVAILABLE'))
                  AND julianday('now') - julianday(e.run_at) >= ?
                ORDER BY e.run_at ASC LIMIT 200""",
             (min_age_days,),
