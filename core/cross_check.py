@@ -1,14 +1,17 @@
 """
 Cross-check + confidence engine.
-Compares primary (yfinance) vs secondary (AlphaVantage) values and upgrades or
-downgrades confidence according to ethos rule 1:
+Compares a primary value against a secondary value from an independent source and
+upgrades or downgrades confidence according to ethos rule 1:
   - Two independent sources agree and fresh → high
   - Single source → medium (default from adapter)
   - Sources conflict → low
+
+Note: no secondary feed is currently wired in (the AlphaVantage cross-check was
+removed). apply_cross_check remains the generic engine; with a single source every
+field stays at medium confidence.
 """
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Any, Optional
 
 from adapters.base import Confidence, Prov
@@ -76,56 +79,6 @@ def apply_cross_check(
         )
 
     return Prov(value=primary.value, source=src, as_of=primary.as_of, confidence=conf)
-
-
-def apply_av_cross_checks(yf: "YFinanceData", av: "AlphaVantageData") -> "YFinanceData":
-    """
-    Apply AlphaVantage secondary values to yfinance fields via apply_cross_check.
-    Returns a new YFinanceData with updated confidences (high on agreement, low on conflict).
-    Fields with no AV equivalent are left unchanged (single-source stays medium).
-
-    Tolerance notes:
-      - margins / ratios: 5% relative (default)
-      - market_cap: 10% — share price can drift between fetch times
-    """
-    # Import here to avoid circular at module load (core imports adapters.base only)
-    from adapters.alphavantage_adapter import AlphaVantageData  # noqa: F401
-    from adapters.yfinance_adapter import YFinanceData           # noqa: F401
-
-    src = "alphavantage"
-    as_of = av.as_of
-
-    _SAME_DAY_TOL = 3.0   # price-derived fields: ±3% when both sources share same as-of
-
-    def _cc(
-        prov: Prov,
-        av_val: Optional[float],
-        tol: float = _DEFAULT_TOLERANCE_PCT,
-        same_day_tol: Optional[float] = None,
-    ) -> Prov:
-        return apply_cross_check(
-            prov, av_val, src, as_of,
-            tolerance_pct=tol,
-            same_day_tol_pct=same_day_tol,
-        )
-
-    return replace(
-        yf,
-        # Fundamental ratios: standard 5% tolerance
-        gross_margin=_cc(yf.gross_margin, av.gross_margin),
-        operating_margin=_cc(yf.operating_margin, av.operating_margin),
-        roe=_cc(yf.roe, av.roe),
-        roa=_cc(yf.roa, av.roa),
-        forward_pe=_cc(yf.forward_pe, av.forward_pe),
-        price_to_book=_cc(yf.price_to_book, av.price_to_book),
-        ev_to_ebitda=_cc(yf.ev_to_ebitda, av.ev_to_ebitda),
-        ev_to_revenue=_cc(yf.ev_to_revenue, av.ev_to_revenue),
-        shares_outstanding=_cc(yf.shares_outstanding, av.shares_outstanding),
-        # Price-derived fields: same-day ±3%, wider inter-day fallback
-        trailing_pe=_cc(yf.trailing_pe, av.trailing_pe, same_day_tol=_SAME_DAY_TOL),
-        market_cap=_cc(yf.market_cap, av.market_cap, tol=10.0, same_day_tol=_SAME_DAY_TOL),
-        beta=_cc(yf.beta, av.beta, tol=10.0, same_day_tol=_SAME_DAY_TOL),
-    )
 
 
 def apply_staleness_penalty(prov: Prov, days_old: int, stale_threshold: int = 90) -> Prov:

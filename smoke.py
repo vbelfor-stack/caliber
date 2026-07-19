@@ -110,11 +110,11 @@ def _chk_cross_check() -> None:
     primary = Prov(value=100.0, source="yfinance", as_of="2025-01-01", confidence="medium")
 
     # Agree within tolerance -> high
-    upgraded = apply_cross_check(primary, 101.0, "AV", "2025-01-01")
+    upgraded = apply_cross_check(primary, 101.0, "secondary", "2025-01-01")
     assert upgraded.confidence == "high", f"Expected high, got {upgraded.confidence}"
 
     # Conflict outside tolerance -> low
-    downgraded = apply_cross_check(primary, 200.0, "AV", "2025-01-01")
+    downgraded = apply_cross_check(primary, 200.0, "secondary", "2025-01-01")
     assert downgraded.confidence == "low", f"Expected low, got {downgraded.confidence}"
 
 

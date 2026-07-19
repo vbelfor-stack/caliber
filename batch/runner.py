@@ -4,7 +4,7 @@ CALIBER v3 — batch runner.
 Runs the full evaluation pipeline for a list of tickers with per-name isolation:
   - One ticker failing never kills the batch.
   - Failures are persisted to SQLite as status='failed' with diagnosis.
-  - Live API calls: yfinance, EDGAR, FRED, AlphaVantage, Anthropic (synthesis).
+  - Live API calls: yfinance, EDGAR, FRED, Anthropic (synthesis).
 
 Usage:
   python -m batch.runner                      # reads tickers.txt
@@ -37,8 +37,6 @@ from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
-from adapters.alphavantage_adapter import fetch_alphavantage
-from core.cross_check import apply_av_cross_checks
 from core.lens_select import select_lens
 from core.pillars import score_all
 from core.technicals import analyze_technicals
@@ -136,17 +134,6 @@ def run_single_ticker(
         except Exception as e:
             _log(f"FRED unavailable ({e}), continuing with missing rate")
             fred = FredData(rate_10y=missing_prov("FRED", None))
-
-        # ── AlphaVantage cross-check ───────────────────────────────────────────
-        if not fixture_mode:
-            try:
-                av_fx = FX_ROOT / "alphavantage" / f"{ticker}.json"
-                av = fetch_alphavantage(ticker, fixture_path=av_fx if av_fx.exists() else None)
-                if av is not None:
-                    yf = apply_av_cross_checks(yf, av)
-                    _log("AlphaVantage cross-check applied")
-            except Exception as e:
-                _log(f"AlphaVantage skipped ({e})")
 
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic

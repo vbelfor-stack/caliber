@@ -47,7 +47,6 @@ In the Replit sidebar, open **Tools → Secrets** and add the following keys exa
 |-----|----------|-------|
 | `ANTHROPIC_API_KEY` | **Yes** | Claude claude-sonnet-4-6 synthesis. Never echoed or logged. |
 | `APP_PASSWORD` | **Yes** | Web UI login password. Never echoed or logged. |
-| `ALPHAVANTAGE_API_KEY` | Optional | Cross-check feed. Free tier: 25 req/day. Degrades to single-source (medium confidence) if absent. |
 | `FRED_API_KEY` | Optional | 10-year Treasury rate. Degrades gracefully if absent. |
 
 > `.env` is listed in `.gitignore` and must never be committed. Only Replit Secrets reach the process at runtime.
@@ -118,7 +117,7 @@ Replit's Scheduled Deployments can trigger a run on a cron schedule without keep
 
 ```
 caliber/
-  adapters/       yfinance · EDGAR · FRED · AlphaVantage
+  adapters/       yfinance · EDGAR · FRED · FMP
   core/           cross_check · lens_select · pillars · grading
   synthesis/      prompt · client (Anthropic) · schema (validation + repair)
   store/          SQLite models — evaluations · overrides · grades
@@ -150,6 +149,6 @@ All 9 checks must print `PASS`. Exit code 0 = push-ready.
 
 ## Upgrade path
 
-- **More data feeds:** drop in a new adapter under `adapters/`; hook it into `apply_av_cross_checks` or add a new cross-check function.
+- **More data feeds:** drop in a new adapter under `adapters/`; hook it into the confidence engine via `apply_cross_check` (core/cross_check.py).
 - **Richer LLM model:** change `model` in `synthesis/client.py`.
 - **Persistent grading history:** `core/grading.run_grading()` grades all ungraded evaluations ≥90 days old; run it on a cron alongside the batch sweep.

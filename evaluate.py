@@ -149,40 +149,6 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
         from adapters.base import missing_prov
         fred = FredData(rate_10y=missing_prov("FRED", None))
 
-    # ── AlphaVantage cross-check ──────────────────────────────────────────────
-    if not fixture_mode:
-        try:
-            from adapters.alphavantage_adapter import fetch_alphavantage
-            from core.cross_check import apply_av_cross_checks
-            av = fetch_alphavantage(ticker)
-            if av is not None:
-                yf_checked = apply_av_cross_checks(yf, av)
-                # Count fields upgraded to high confidence
-                _av_fields = [
-                    "gross_margin", "operating_margin", "roe", "roa",
-                    "trailing_pe", "forward_pe", "price_to_book",
-                    "ev_to_ebitda", "ev_to_revenue", "beta",
-                    "market_cap", "shares_outstanding",
-                ]
-                upgraded = sum(
-                    1 for f in _av_fields
-                    if getattr(yf_checked, f).confidence == "high"
-                    and getattr(yf, f).confidence != "high"
-                )
-                conflicts = sum(
-                    1 for f in _av_fields
-                    if getattr(yf_checked, f).confidence == "low"
-                    and not getattr(yf, f).is_missing()
-                    and getattr(av, f) is not None
-                )
-                yf = yf_checked
-                print(f"\n  AlphaVantage cross-check: {upgraded} field(s) upgraded to high"
-                      + (f", {conflicts} conflict(s) -> low" if conflicts else ""))
-            else:
-                print("\n  AlphaVantage cross-check: skipped (ALPHAVANTAGE_API_KEY not set)")
-        except Exception as e:
-            print(f"\n  AlphaVantage cross-check: skipped — {e}", file=sys.stderr)
-
     # Propagate SIC to yfinance data for lens selection
     yf.sic = edgar.sic
 

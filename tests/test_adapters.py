@@ -8,14 +8,12 @@ import pytest
 from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
 from adapters.edgar_adapter import fetch_edgar, EdgarData
 from adapters.fred_adapter import fetch_fred, FredData
-from adapters.alphavantage_adapter import fetch_alphavantage, AlphaVantageData
 from adapters.fmp_adapter import fetch_fmp
 
 FIXTURE_ROOT = Path("tests/fixtures")
 YF = FIXTURE_ROOT / "yfinance"
 EDGAR = FIXTURE_ROOT / "edgar"
 FRED_FX = FIXTURE_ROOT / "fred" / "DGS10.json"
-AV = FIXTURE_ROOT / "alphavantage"
 FMP = FIXTURE_ROOT / "fmp"
 
 
@@ -46,7 +44,7 @@ class TestYFinanceAdapter:
         assert yf.gross_margin.source == "yfinance"
 
     def test_mu_gross_margin_confidence_medium(self):
-        """Single source → medium (AlphaVantage cross-check not applied in isolation)."""
+        """Single source → medium (no secondary cross-check feed wired in)."""
         yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
         assert yf.gross_margin.confidence == "medium"
 
@@ -203,140 +201,6 @@ class TestFredAdapter:
     def test_missing_fixture_raises(self):
         with pytest.raises(RuntimeError, match="fixture not found"):
             fetch_fred(fixture_path=Path("nonexistent.json"))
-
-
-# ── AlphaVantage adapter ──────────────────────────────────────────────────────
-
-class TestAlphaVantageAdapter:
-    def test_mu_loads_from_fixture(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert isinstance(av, AlphaVantageData)
-        assert av.ticker == "MU"
-
-    def test_gross_margin_computed_from_revenue_and_profit(self):
-        """gross_margin = GrossProfitTTM / RevenueTTM — derived, not a raw field."""
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.gross_margin is not None
-        assert 0.5 < av.gross_margin < 1.0, f"Expected >50%, got {av.gross_margin:.2%}"
-
-    def test_operating_margin_present(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.operating_margin is not None
-        assert 0.0 < av.operating_margin < 1.0
-
-    def test_roe_present(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.roe is not None
-
-    def test_trailing_pe_positive(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.trailing_pe is not None
-        assert av.trailing_pe > 0
-
-    def test_forward_pe_positive(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.forward_pe is not None
-        assert av.forward_pe > 0
-
-    def test_market_cap_large(self):
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        assert av.market_cap is not None
-        assert av.market_cap > 1e11  # > $100B
-
-    def test_missing_fixture_raises(self):
-        with pytest.raises(RuntimeError, match="fixture not found"):
-            fetch_alphavantage("FAKE", fixture_path=Path("nonexistent.json"))
-
-    def test_none_string_parsed_as_none(self):
-        """AV returns 'None' string for missing values — must parse to Python None."""
-        from adapters.alphavantage_adapter import _av_float
-        assert _av_float("None") is None
-        assert _av_float("-") is None
-        assert _av_float("") is None
-        assert _av_float("N/A") is None
-        assert _av_float("42.5") == pytest.approx(42.5)
-        assert _av_float("1234567890") == pytest.approx(1234567890.0)
-
-
-# ── AlphaVantage cross-check integration ─────────────────────────────────────
-
-class TestAlphaVantangeCrossCheck:
-    """Tests that apply_av_cross_checks correctly upgrades/downgrades yfinance fields."""
-
-    def _load(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
-        av = fetch_alphavantage("MU", fixture_path=AV / "MU.json")
-        return yf, av
-
-    def test_agreeing_fields_upgrade_to_high(self):
-        from core.cross_check import apply_av_cross_checks
-        yf, av = self._load()
-        result = apply_av_cross_checks(yf, av)
-        # Gross margin should agree (fixture values calibrated within 5%)
-        assert result.gross_margin.confidence == "high", (
-            f"Expected high after AV agreement, got {result.gross_margin.confidence}. "
-            f"yf={yf.gross_margin.value:.4f} av={av.gross_margin:.4f}"
-        )
-
-    def test_operating_margin_upgrades(self):
-        from core.cross_check import apply_av_cross_checks
-        yf, av = self._load()
-        result = apply_av_cross_checks(yf, av)
-        assert result.operating_margin.confidence == "high"
-
-    def test_roe_upgrades(self):
-        from core.cross_check import apply_av_cross_checks
-        yf, av = self._load()
-        result = apply_av_cross_checks(yf, av)
-        assert result.roe.confidence == "high"
-
-    def test_source_attribution_includes_alphavantage(self):
-        from core.cross_check import apply_av_cross_checks
-        yf, av = self._load()
-        result = apply_av_cross_checks(yf, av)
-        assert "alphavantage" in result.gross_margin.source
-
-    def test_conflict_degrades_to_low(self):
-        """Deliberately conflicting AV value → confidence drops to low."""
-        from core.cross_check import apply_av_cross_checks
-        from adapters.alphavantage_adapter import AlphaVantageData
-        yf, av = self._load()
-        # Replace gross_margin with a wildly different value (50% relative diff)
-        bad_av = AlphaVantageData(
-            ticker="MU",
-            gross_margin=0.20,   # yfinance says ~0.726 — far outside tolerance
-            operating_margin=av.operating_margin,
-            roe=av.roe, roa=av.roa,
-            trailing_pe=av.trailing_pe, forward_pe=av.forward_pe,
-            price_to_book=av.price_to_book,
-            ev_to_ebitda=av.ev_to_ebitda, ev_to_revenue=av.ev_to_revenue,
-            beta=av.beta, market_cap=av.market_cap,
-            shares_outstanding=av.shares_outstanding,
-        )
-        result = apply_av_cross_checks(yf, bad_av)
-        assert result.gross_margin.confidence == "low", (
-            "Conflicting AV value must downgrade confidence to low"
-        )
-
-    def test_none_av_field_leaves_primary_unchanged(self):
-        """If AV has no value for a field, primary confidence is not changed."""
-        from core.cross_check import apply_av_cross_checks
-        from adapters.alphavantage_adapter import AlphaVantageData
-        yf, av = self._load()
-        no_beta_av = AlphaVantageData(
-            ticker="MU",
-            gross_margin=av.gross_margin,
-            operating_margin=av.operating_margin,
-            roe=av.roe, roa=av.roa,
-            trailing_pe=av.trailing_pe, forward_pe=av.forward_pe,
-            price_to_book=av.price_to_book,
-            ev_to_ebitda=av.ev_to_ebitda, ev_to_revenue=av.ev_to_revenue,
-            beta=None,   # ← no AV beta
-            market_cap=av.market_cap,
-            shares_outstanding=av.shares_outstanding,
-        )
-        result = apply_av_cross_checks(yf, no_beta_av)
-        assert result.beta.confidence == yf.beta.confidence  # unchanged
 
 
 # ── FMP adapter ───────────────────────────────────────────────────────────────

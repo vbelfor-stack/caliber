@@ -53,10 +53,9 @@ def dry_run(
         f"[scheduler]   1. yfinance (primary)",
         f"[scheduler]   2. EDGAR",
         f"[scheduler]   3. FRED 10Y rate",
-        f"[scheduler]   4. AlphaVantage cross-check (if key set)",
-        f"[scheduler]   5. lens selection + five pillars",
-        f"[scheduler]   6. synthesis (Anthropic API)",
-        f"[scheduler]   7. persist to SQLite",
+        f"[scheduler]   4. lens selection + five pillars",
+        f"[scheduler]   5. synthesis (Anthropic API)",
+        f"[scheduler]   6. persist to SQLite",
         f"[scheduler] isolation: per-ticker try/except; failures stored as failed-with-diagnosis",
         f"[scheduler] tickers queued ({len(tickers)}):",
     ]

@@ -133,7 +133,11 @@ as_of = str(series.dropna().index[-1])
 
 ---
 
-## AlphaVantage (probed 2026-07-09, ticker MU, free tier)
+## AlphaVantage (REMOVED 2026-07-19 — cross-check torn out; FMP is sole source, no re-add)
+> Historical probe record retained below for reference only. The adapter, the
+> apply_av_cross_checks() call, and the ALPHAVANTAGE_API_KEY dependency no longer exist.
+
+## AlphaVantage — historical probe (2026-07-09, ticker MU, free tier)
 
 ### Endpoint used
 - `OVERVIEW` — single call returns all fundamentals + price-derived ratios.
