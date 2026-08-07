@@ -12,7 +12,10 @@
 - LOUD FAILURE BEATS SILENT DEGRADATION. Failures raise a typed signal — never swallowed,
   never masked as success. (yfinance fallback was removed for this reason.)
 - Hard stops — must raise typed signals, never pass silently:
-  - anchor_price divergence   # NOT YET IMPLEMENTED — stated invariant, no code guard (see open thread #4)
+  - anchor_price divergence   # ARMED 2026-08-07 at 15% (B-2). Anchor-AGNOSTIC: trips when the
+    #   model's implied anchor (from its own E(R)+targets) and the live price disagree >15% —
+    #   catches EITHER a stale LLM anchor OR a bad feed price. Raises AnchorPriceDivergence;
+    #   E(R) withheld; status='anchor_divergence'. See Anchor guard note below.
   - PE basis computed on negative forward EPS  (LCID is the negative-forward-PE test fixture)
 - status='ok' must mean a COMPLETE eval (see open thread #2).
 - Golden-ticker regression harness: MU, GOOG, V, NOW, WU. Behavior on these must not change
@@ -64,10 +67,8 @@ real data ~Oct 2026 when the 8 Visa evals mature.
    status semantics lands with R-4's golden-ticker run.
 3. "0 eligible / nothing graded" exits clean — make it distinguishable from "something broke."
    DONE 2026-08-07 (run_grading now emits an explicit "CLEAN EMPTY" line + early return).
-4. anchor_price divergence hard stop — IMPLEMENTED 2026-08-07 as B-2, but ships DISARMED
-   (ANCHOR_DIVERGENCE_THRESHOLD=None): dark-launch computes+logs divergence on every eval,
-   never trips. Derived check (implied_anchor from model E(R) + targets vs live price). Armed
-   trip path coded + tested but off until Vic locks a threshold on R-4's calibration report.
+4. anchor_price divergence hard stop — DONE 2026-08-07 as B-2, ARMED at 15%. See Anchor
+   guard note below for the calibration + MU resolution.
 
 ## Data integrity — test-contamination purge (2026-08-07)
 - Root cause: tests/test_batch.py wrote fixture-mode evals into production caliber.db (no
@@ -81,17 +82,38 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   session) maturing to the grader's first live grades ~2026-10-10. The 11 failed are real
   yfinance-DOA operational records (kept as the evidence trail). grading-eligible still 0.
 
+## Anchor guard — calibration + MU resolution (2026-08-07, B-2 DONE)
+- Guard ARMED at 15% in synthesis/schema.py (ANCHOR_DIVERGENCE_THRESHOLD=0.15). Derived check:
+  implied_anchor = weighted_target / (1 + model_E(R)/100), compared to live price. Divergence is
+  logged on EVERY eval permanently (ongoing calibration); >15% raises AnchorPriceDivergence,
+  caught at both synthesis boundaries → E(R) withheld (NULL), status='anchor_divergence',
+  synthesis_json kept, record-and-continue. threshold=None replays disarmed.
+- Live golden-ticker calibration (R-4): divergence — GOOG 0.6%, NOW 3.2%, V 6.1%, WU 8.2%,
+  MU 90.8%. Healthy band 0.6-8.2%; 15% isolates the pathological case with ~6x margin.
+  null-model-E(R) rate 0/5 (and 0/8 historical) → anchor_unverified rarely fires; no prompt fix
+  needed for that.
+- MU root cause RESOLVED: it was a genuine stale LLM anchor, NOT a feed bug. Model anchored to
+  ~$81 (stale training data); MU really trades ~$881 (~$1T mkt cap, May-2026 HBM-cycle 10x
+  re-rate, no split) — FMP was CORRECT. The guard caught its motivating Phase-B case on first
+  live outing. Canonical positive preserved as eval id=209 (retroactively set anchor_divergence,
+  E(R) NULL). Do NOT delete id=209.
+- Prompt fix (root cause): synthesis/prompt.py now instructs the model to anchor ALL targets to
+  the provided current_price and never use remembered price levels. Verified: MU re-eval (id=214,
+  force_refresh) re-anchored targets to $525/$800/$1225, divergence 90.8% -> 1.1%, status ok.
+- NOTE the guard is anchor-AGNOSTIC: it flags model-vs-live disagreement regardless of which side
+  is wrong (stale LLM anchor OR bad feed price). Withholding a laundered E(R) is correct either way.
+
 ## Roadmap
 - Phase A — NTM forward PE fix. DONE.
-- Phase B — synthesis engine schema overhaul (fix stale price-target anchoring, e.g. MU).
-  Status (2026-08-07): PARTIAL. E(R)-computed-downstream-from-targets is in place; the
-  anchor-divergence hard stop is unimplemented (open thread #4) and the status='ok'-without-
-  synthesis bug still reproduces (open thread #2). IN PROGRESS: B-1 (status schema fix),
-  B-2 (anchor-divergence guard — design stage). Finishing Phase B is the current priority.
+- Phase B — synthesis engine schema overhaul (stale price-target anchoring, e.g. MU). DONE
+  2026-08-07: B-1 (status semantics: ok requires synthesis; no_synthesis/anchor_unverified/
+  anchor_divergence enum) + B-2 (anchor guard ARMED at 15% + prompt anchoring fix). See Anchor
+  guard note above. E(R) computed downstream from targets, never delegated to the LLM.
 - Phase C — KILLED. AlphaVantage cross-check torn out 2026-07-19 (see teardown note below).
 - Phase D — HOLD until teardown Phase 1 done. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
-  >5x adjacent-year EPS jump flagging.
+  >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
+  investigation (the ~$881 price was correct). Stays behind teardown + EDGAR, original sequence.
 - EDGAR — HOLD until teardown Phase 1 done (no point wiring a 2nd source into a type system
   about to be rehomed). # TODO Vic: scope (SEC filings integration?)
 - Teardown (yfinance) — follows Phase B. Phase 1 rehome YFinanceData + trajectory builders
