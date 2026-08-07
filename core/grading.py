@@ -248,6 +248,15 @@ def run_grading(
 ) -> list:
     """Grade all ungraded evaluations that are old enough. Returns list of grade dicts."""
     pending = get_ungradeable_evals(min_age_days=min_age_days, db_path=db_path)
+    if not pending:
+        # Clean-empty exit, explicitly distinguished from a failure. Reaching here
+        # means the query ran fine and simply found nothing >=min_age_days old
+        # awaiting a grade — an expected state, NOT a broken feed/DB (those raise
+        # upstream in get_ungradeable_evals). See open thread #3.
+        if verbose:
+            print(f"[grading] 0 eligible — CLEAN EMPTY: query succeeded, no evaluations "
+                  f">={min_age_days}d old awaiting a grade. Nothing to grade (not an error).")
+        return []
     if verbose:
         print(f"[grading] {len(pending)} evaluation(s) eligible for grading.")
     results = []

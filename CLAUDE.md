@@ -16,7 +16,7 @@
   - PE basis computed on negative forward EPS  (LCID is the negative-forward-PE test fixture)
 - status='ok' must mean a COMPLETE eval (see open thread #2).
 - Golden-ticker regression harness: MU, GOOG, V, NOW, WU. Behavior on these must not change
-  silently across sessions.   # TODO Vic: confirm these five are current
+  silently across sessions.   (confirmed current 2026-08-07)
 
 ## Stack & repo map
 - Python / SQLite / FMP API on Replit. FMP is the sole source (AlphaVantage cross-check
