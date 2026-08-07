@@ -107,6 +107,12 @@ def build_user_message(
             "Produce the full synthesis JSON. Use only the data above for pillar claims. "
             "You may add qualitative context (news, analyst views, filings themes) from your "
             "training knowledge but clearly mark anything beyond the provided data. "
+            "CRITICAL — ANCHOR every scenario priceTarget to the provided current_price above. "
+            "Your internal/training knowledge of this stock's price may be STALE (the live "
+            "price can have moved many-fold since your cutoff); do NOT use remembered price "
+            "levels as the valuation anchor. Each priceTarget is a forward view RELATIVE TO "
+            "current_price, and expectedReturn must be consistent with the probability-weighted "
+            "(priceTarget / current_price - 1). "
             "Value trap: only construct if cheap + solvent + no growth align above. "
             "Probabilities must sum to ~100."
         ),
