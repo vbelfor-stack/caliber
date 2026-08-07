@@ -69,45 +69,45 @@ def test_min_conf_all_missing_returns_low():
 # ── cross_check ───────────────────────────────────────────────────────────────
 
 def test_cross_check_agree_gives_high():
-    primary = Prov(value=100.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, 100.5, "tiingo", "2026-07-09", tolerance_pct=2.0)
     assert result.confidence == "high"
 
 
 def test_cross_check_agree_within_tolerance():
-    primary = Prov(value=100.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, 101.9, "tiingo", "2026-07-09", tolerance_pct=2.0)
     assert result.confidence == "high"
 
 
 def test_cross_check_exact_match_gives_high():
-    primary = Prov(value=50.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=50.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, 50.0, "tiingo", "2026-07-09")
     assert result.confidence == "high"
 
 
 def test_cross_check_conflict_gives_low():
-    primary = Prov(value=100.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, 120.0, "tiingo", "2026-07-09", tolerance_pct=2.0)
     assert result.confidence == "low"
 
 
 def test_cross_check_secondary_none_unchanged():
     """If no secondary value, primary confidence is unchanged."""
-    primary = Prov(value=100.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, None, "tiingo", "2026-07-09")
     assert result.confidence == "medium"
     assert result.value == 100.0
 
 
 def test_cross_check_missing_primary_unchanged():
-    primary = missing_prov("yfinance", "2026-07-09")
+    primary = missing_prov("fmp", "2026-07-09")
     result = apply_cross_check(primary, 100.0, "tiingo", "2026-07-09")
     assert result.is_missing()
 
 
 def test_cross_check_source_attribution():
-    primary = Prov(value=100.0, source="yfinance", as_of="2026-07-09", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2026-07-09", confidence="medium")
     result = apply_cross_check(primary, 100.0, "tiingo", "2026-07-09")
     assert "tiingo" in result.source
 

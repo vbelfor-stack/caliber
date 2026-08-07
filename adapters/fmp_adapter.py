@@ -98,13 +98,13 @@ def _quarterly_to_map(income_q: List[Dict]) -> Dict[str, Dict[str, Optional[floa
 def _build_gm_trajectory(ttm_gm: Optional[float], income_q: List[Dict]) -> Optional[TrajectoryPoint]:
     from core.datatypes import _build_gross_margin_trajectory
     qdata = _quarterly_to_map(income_q)
-    return _build_gross_margin_trajectory(ttm_gm, qdata)
+    return _build_gross_margin_trajectory(ttm_gm, qdata, "fmp")
 
 
 def _build_rg_trajectory(ttm_rg: Optional[float], income_q: List[Dict]) -> Optional[TrajectoryPoint]:
     from core.datatypes import _build_revenue_growth_trajectory
     qdata = _quarterly_to_map(income_q)
-    return _build_revenue_growth_trajectory(ttm_rg, qdata)
+    return _build_revenue_growth_trajectory(ttm_rg, qdata, "fmp")
 
 
 def _compute_revenue_growth(income_annual: List[Dict]) -> Optional[float]:
@@ -267,6 +267,7 @@ def _build(
         price_history=price_hist_records,
         gross_margin_trajectory=gm_traj,
         revenue_growth_trajectory=rg_traj,
+        feed_source="fmp",
     )
 
 

@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 
 from adapters.base import Confidence, Prov, missing_prov
 
-SOURCE = "yfinance/price_history"
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
 
@@ -49,18 +48,20 @@ def _rsi(closes: List[float], period: int = 14) -> Optional[float]:
     return 100 - (100 / (1 + rs))
 
 
-def _prov(val: Optional[float], conf: Confidence = "medium") -> Prov:
+def _prov(val: Optional[float], source: str, conf: Confidence = "medium") -> Prov:
     if val is None:
-        return missing_prov(SOURCE, TODAY_STR)
-    return Prov(value=val, source=SOURCE, as_of=TODAY_STR, confidence=conf)
+        return missing_prov(source, TODAY_STR)
+    return Prov(value=val, source=source, as_of=TODAY_STR, confidence=conf)
 
 
-def analyze_technicals(price_history: List[Dict]) -> TechnicalOverlay:
+def analyze_technicals(price_history: List[Dict], feed_source: str = "unknown") -> TechnicalOverlay:
     """
     Compute technical overlay from OHLCV daily price records.
     price_history: list of dicts with keys Open, High, Low, Close, Volume (case-sensitive).
+    feed_source: the feed that supplied price_history (e.g. 'fmp'); stamped into Prov source.
     Returns TechnicalOverlay. Never raises — missing data returns 'insufficient_data'.
     """
+    src = f"{feed_source}/price_history"
     if not price_history or len(price_history) < 5:
         return TechnicalOverlay(
             trend="insufficient_data",
@@ -68,8 +69,8 @@ def analyze_technicals(price_history: List[Dict]) -> TechnicalOverlay:
             above_ma200=None,
             rsi_14=None,
             volume_confirmation=None,
-            price_vs_ma50_pct=missing_prov(SOURCE, TODAY_STR),
-            price_vs_ma200_pct=missing_prov(SOURCE, TODAY_STR),
+            price_vs_ma50_pct=missing_prov(src, TODAY_STR),
+            price_vs_ma200_pct=missing_prov(src, TODAY_STR),
             notes="Insufficient price history for technical analysis.",
             data_rows=len(price_history),
         )
@@ -84,8 +85,8 @@ def analyze_technicals(price_history: List[Dict]) -> TechnicalOverlay:
             trend="insufficient_data",
             above_ma50=None, above_ma200=None, rsi_14=None,
             volume_confirmation=None,
-            price_vs_ma50_pct=missing_prov(SOURCE, TODAY_STR),
-            price_vs_ma200_pct=missing_prov(SOURCE, TODAY_STR),
+            price_vs_ma50_pct=missing_prov(src, TODAY_STR),
+            price_vs_ma200_pct=missing_prov(src, TODAY_STR),
             notes="Price history format error.",
             data_rows=len(price_history),
         )
@@ -95,8 +96,8 @@ def analyze_technicals(price_history: List[Dict]) -> TechnicalOverlay:
             trend="insufficient_data",
             above_ma50=None, above_ma200=None, rsi_14=None,
             volume_confirmation=None,
-            price_vs_ma50_pct=missing_prov(SOURCE, TODAY_STR),
-            price_vs_ma200_pct=missing_prov(SOURCE, TODAY_STR),
+            price_vs_ma50_pct=missing_prov(src, TODAY_STR),
+            price_vs_ma200_pct=missing_prov(src, TODAY_STR),
             notes="No valid close prices in history.",
             data_rows=0,
         )
@@ -156,8 +157,8 @@ def analyze_technicals(price_history: List[Dict]) -> TechnicalOverlay:
         above_ma200=above_ma200,
         rsi_14=rsi,
         volume_confirmation=volume_confirmation,
-        price_vs_ma50_pct=_prov(vs_ma50_pct, conf),
-        price_vs_ma200_pct=_prov(vs_ma200_pct, conf),
+        price_vs_ma50_pct=_prov(vs_ma50_pct, src, conf),
+        price_vs_ma200_pct=_prov(vs_ma200_pct, src, conf),
         notes=notes,
         data_rows=len(closes),
     )

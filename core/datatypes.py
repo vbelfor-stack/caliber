@@ -21,9 +21,6 @@ from adapters.base import (
 )
 
 TODAY = date.today().isoformat()
-# Source string preserved as "yfinance" for behavior-neutrality of stored
-# provenance during the teardown; the trajectory math itself is feed-agnostic.
-SOURCE = "yfinance"
 
 
 @dataclass
@@ -78,12 +75,18 @@ class TickerData:
     gross_margin_trajectory: Optional[TrajectoryPoint]     # accelerating|peaking|rolling_over|troughing|stable
     revenue_growth_trajectory: Optional[TrajectoryPoint]
 
+    # Feed that populated this record ("fmp" live, or the fixture label). Stamped
+    # into derived-Prov sources (technicals, pillar earnings/insider, trajectories)
+    # so provenance reflects the true feed — EDGAR cross-check will key off this.
+    feed_source: str = "unknown"
+
     fetched_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 def _build_gross_margin_trajectory(
     ttm_gm: Optional[float],
     quarterly_data: Dict,
+    source: str,
     as_of: str = TODAY,
 ) -> Optional[TrajectoryPoint]:
     """
@@ -110,14 +113,14 @@ def _build_gross_margin_trajectory(
         mrq_gm_val = gp_q0 / rev_q0
 
     ttm_prov = Prov(
-        value=ttm_gm, source=SOURCE, as_of=as_of,
+        value=ttm_gm, source=source, as_of=as_of,
         confidence="medium" if ttm_gm is not None else "low",
     )
     mrq_prov = Prov(
-        value=mrq_gm_val, source=f"{SOURCE}/quarterly_financials",
+        value=mrq_gm_val, source=f"{source}/quarterly_financials",
         as_of=mrq_as_of, confidence="medium" if mrq_gm_val is not None else "low",
     )
-    guided_prov = missing_prov(f"{SOURCE}/guidance", None)
+    guided_prov = missing_prov(f"{source}/guidance", None)
 
     tag = derive_trajectory_tag(
         ttm_val=ttm_gm,
@@ -140,6 +143,7 @@ def _build_gross_margin_trajectory(
 def _build_revenue_growth_trajectory(
     ttm_growth: Optional[float],
     quarterly_data: Dict,
+    source: str,
     as_of: str = TODAY,
 ) -> Optional[TrajectoryPoint]:
     """
@@ -154,13 +158,13 @@ def _build_revenue_growth_trajectory(
     if len(cols) < 5:
         # Insufficient history for YoY MRQ; return TTM-only point
         ttm_prov = Prov(
-            value=ttm_growth, source=SOURCE, as_of=as_of,
+            value=ttm_growth, source=source, as_of=as_of,
             confidence="medium" if ttm_growth is not None else "low",
         )
         return TrajectoryPoint(
             ttm=ttm_prov,
-            mrq=missing_prov(f"{SOURCE}/quarterly_financials", None),
-            guided_next_q=missing_prov(f"{SOURCE}/guidance", None),
+            mrq=missing_prov(f"{source}/quarterly_financials", None),
+            guided_next_q=missing_prov(f"{source}/guidance", None),
             tag="stable",
             tag_confidence="low",
         )
@@ -176,14 +180,14 @@ def _build_revenue_growth_trajectory(
         mrq_growth_val = (rev_q0 - rev_q4) / abs(rev_q4)
 
     ttm_prov = Prov(
-        value=ttm_growth, source=SOURCE, as_of=as_of,
+        value=ttm_growth, source=source, as_of=as_of,
         confidence="medium" if ttm_growth is not None else "low",
     )
     mrq_prov = Prov(
-        value=mrq_growth_val, source=f"{SOURCE}/quarterly_financials",
+        value=mrq_growth_val, source=f"{source}/quarterly_financials",
         as_of=mrq_as_of, confidence="medium" if mrq_growth_val is not None else "low",
     )
-    guided_prov = missing_prov(f"{SOURCE}/guidance", None)
+    guided_prov = missing_prov(f"{source}/guidance", None)
 
     tag = derive_trajectory_tag(
         ttm_val=ttm_growth,

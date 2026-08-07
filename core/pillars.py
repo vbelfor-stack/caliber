@@ -275,7 +275,7 @@ def score_management(yf: TickerData, lens: str) -> PillarResult:
 
     # Beat/miss history
     beat_prov = Prov(
-        value=beat_rate, source="yfinance/earnings_history",
+        value=beat_rate, source=f"{yf.feed_source}/earnings_history",
         as_of=TODAY_STR, confidence="medium" if beat_rate is not None else "low",
     )
     if beat_rate is not None:
@@ -302,7 +302,7 @@ def score_management(yf: TickerData, lens: str) -> PillarResult:
 
     # Insider activity
     insider_prov = Prov(
-        value=insider_signal, source="yfinance/insider_transactions",
+        value=insider_signal, source=f"{yf.feed_source}/insider_transactions",
         as_of=TODAY_STR, confidence="medium",
     )
     max_pts += 2
@@ -390,7 +390,7 @@ def score_growth(yf: TickerData, edgar: EdgarData, lens: str) -> PillarResult:
 
     # EPS trajectory from earnings history
     _, _, trend = _analyze_earnings(yf.earnings_history)
-    trend_prov = Prov(value=trend, source="yfinance/earnings_history",
+    trend_prov = Prov(value=trend, source=f"{yf.feed_source}/earnings_history",
                       as_of=TODAY_STR, confidence="medium")
     inputs.append(trend_prov)
 

@@ -131,7 +131,7 @@ def run_single_ticker(
         yf.sic = edgar.sic
         lens = select_lens(yf.sector, yf.industry, edgar.sic)
         pillars = score_all(yf, edgar, fred, lens)
-        tech = analyze_technicals(yf.price_history)
+        tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
 
         avg_score = sum(p.score for p in pillars) / len(pillars)
         from adapters.base import _RANK, _LEVEL
@@ -186,7 +186,7 @@ def run_single_ticker(
             # never misreported as "synthesis skipped" by the broad except.
             if synthesis is not None:
                 try:
-                    _ac = check_anchor(synthesis, price_for_er)   # threshold DISARMED (dark-launch)
+                    _ac = check_anchor(synthesis, price_for_er)   # armed guard (threshold in synthesis.schema)
                     expected_return = _ac.computed_er
                     anchor_status = _ac.status
                     if _ac.divergence is not None:

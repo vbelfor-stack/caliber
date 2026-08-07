@@ -349,3 +349,25 @@ class TestFmpOnlyFetch:
             with patch("adapters.fmp_adapter.fetch_fmp",
                        side_effect=RuntimeError("FMP down")):
                 _fetch("MU", log=lambda msg: None)
+
+
+class TestProvenanceFeedSource:
+    """Derived Prov sources reflect the actual feed (feed_source), never a hardcoded
+    label — the prerequisite for EDGAR's cross-check to see real source diversity."""
+
+    def test_fixture_feed_source_and_derived_labels(self):
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        assert yf.feed_source == "yfinance"                       # recorded data — accurate
+        assert yf.gross_margin_trajectory.ttm.source == "yfinance"
+        assert yf.gross_margin_trajectory.mrq.source == "yfinance/quarterly_financials"
+
+    def test_derived_sources_follow_feed_source(self):
+        from core.technicals import analyze_technicals
+        from core.pillars import score_management
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf.feed_source = "fmp"    # simulate the live FMP feed
+        tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
+        assert tech.price_vs_ma50_pct.source == "fmp/price_history"
+        mgmt = score_management(yf, "cyclical")
+        earn = [p for p in mgmt.key_inputs if p.source and "earnings" in p.source]
+        assert earn and earn[0].source == "fmp/earnings_history"

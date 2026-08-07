@@ -107,7 +107,7 @@ def _chk_cross_check() -> None:
     from adapters.base import Prov
     from core.cross_check import apply_cross_check
 
-    primary = Prov(value=100.0, source="yfinance", as_of="2025-01-01", confidence="medium")
+    primary = Prov(value=100.0, source="fmp", as_of="2025-01-01", confidence="medium")
 
     # Agree within tolerance -> high
     upgraded = apply_cross_check(primary, 101.0, "secondary", "2025-01-01")

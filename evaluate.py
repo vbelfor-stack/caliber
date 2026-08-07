@@ -189,7 +189,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     print(_divider())
 
     # ── Technical overlay ─────────────────────────────────────────────────────
-    tech = analyze_technicals(yf.price_history)
+    tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
     _print_technicals(tech)
 
     # ── Synthesis ─────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
 
         scenario_rets = per_scenario_returns(synthesis, current_price) if current_price else {}
         try:
-            _ac = check_anchor(synthesis, current_price)   # threshold DISARMED (dark-launch)
+            _ac = check_anchor(synthesis, current_price)   # armed guard (threshold in synthesis.schema)
             expected_return = _ac.computed_er
             anchor_status = _ac.status
             if _ac.divergence is not None:

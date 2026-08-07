@@ -86,8 +86,8 @@ def _build(ticker: str, info: Dict, earnings: List[Dict],
     # Build trajectory points from quarterly data
     ttm_gm = coerce(info.get("grossMargins"))
     ttm_rg = coerce(info.get("revenueGrowth"))
-    gm_traj = _build_gross_margin_trajectory(ttm_gm, quarterly_data)
-    rg_traj = _build_revenue_growth_trajectory(ttm_rg, quarterly_data)
+    gm_traj = _build_gross_margin_trajectory(ttm_gm, quarterly_data, SOURCE)
+    rg_traj = _build_revenue_growth_trajectory(ttm_rg, quarterly_data, SOURCE)
 
     return TickerData(
         ticker=ticker,
@@ -139,4 +139,5 @@ def _build(ticker: str, info: Dict, earnings: List[Dict],
         # Temporal trajectory
         gross_margin_trajectory=gm_traj,
         revenue_growth_trajectory=rg_traj,
+        feed_source=SOURCE,
     )
