@@ -42,7 +42,7 @@ from core.lens_select import select_lens
 from core.pillars import score_all
 from core.technicals import analyze_technicals
 from store.models import save_evaluation, save_failed_evaluation, get_cached_synthesis, save_synthesis_cache
-from synthesis.schema import check_anchor, AnchorPriceDivergence
+from synthesis.schema import check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
@@ -205,10 +205,10 @@ def run_single_ticker(
                     expected_return = _ac.computed_er
                     anchor_status = _ac.status
                     if _ac.divergence is not None:
-                        _log(f"[anchor] divergence={_ac.divergence * 100:.1f}%  "
-                             f"E(R)={expected_return:+.1f}%  (dark-launch, no trip)"
-                             if expected_return is not None
-                             else f"[anchor] divergence={_ac.divergence * 100:.1f}%  (dark-launch, no trip)")
+                        _thr_str = (f"armed @ {ANCHOR_DIVERGENCE_THRESHOLD * 100:.0f}%"
+                                    if ANCHOR_DIVERGENCE_THRESHOLD is not None else "DISARMED")
+                        _er_str = f"  E(R)={expected_return:+.1f}%" if expected_return is not None else ""
+                        _log(f"[anchor] divergence={_ac.divergence * 100:.1f}%{_er_str}  ({_thr_str}, no trip)")
                     elif anchor_status == "anchor_unverified":
                         _log("[anchor] model E(R) missing / non-derivable — E(R) withheld, anchor_unverified")
                 except AnchorPriceDivergence as e:

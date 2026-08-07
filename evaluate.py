@@ -25,7 +25,7 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
-from adapters.yfinance_adapter import fetch_yfinance
+from adapters.fmp_adapter import fetch_fmp
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
@@ -35,7 +35,7 @@ from core.technicals import analyze_technicals, TechnicalOverlay
 from synthesis.client import run_synthesis
 from synthesis.schema import (
     SynthesisOutput, compute_er, per_scenario_returns,
-    check_anchor, AnchorPriceDivergence,
+    check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD,
 )
 from store.models import save_evaluation, save_failed_evaluation
 
@@ -121,13 +121,14 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     print(_divider("="))
 
     # ── Load adapters ─────────────────────────────────────────────────────────
-    yf_fx = fx_root / "yfinance" / f"{ticker}.json" if fixture_mode else None
+    # FMP-only (yfinance teardown Phase 2): no failover — fail loud on FMP error.
+    fmp_fx = fx_root / "fmp" / f"{ticker}.json" if fixture_mode else None
     ed_fx = fx_root / "edgar" / f"{ticker}.json" if fixture_mode else None
     fr_fx = fx_root / "fred" / "DGS10.json" if fixture_mode else None
 
-    print(f"\n[1/3] Fetching yfinance data ({'fixture' if fixture_mode else 'live'})...")
+    print(f"\n[1/3] Fetching FMP data ({'fixture' if fixture_mode else 'live'})...")
     try:
-        yf = fetch_yfinance(ticker, fixture_path=yf_fx)
+        yf = fetch_fmp(ticker, fixture_path=fmp_fx)
         print(f"      OK  name={yf.name}  sector={yf.sector}  industry={yf.industry}")
     except RuntimeError as e:
         print(f"      FAIL: {e}", file=sys.stderr)
@@ -152,7 +153,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
         from adapters.base import missing_prov
         fred = FredData(rate_10y=missing_prov("FRED", None))
 
-    # Propagate SIC to yfinance data for lens selection
+    # Propagate SIC to the ticker data for lens selection
     yf.sic = edgar.sic
 
     # ── Lens selection ────────────────────────────────────────────────────────
@@ -226,9 +227,10 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
             expected_return = _ac.computed_er
             anchor_status = _ac.status
             if _ac.divergence is not None:
+                _thr_str = (f"armed @ {ANCHOR_DIVERGENCE_THRESHOLD * 100:.0f}%"
+                            if ANCHOR_DIVERGENCE_THRESHOLD is not None else "DISARMED")
                 print(f"  [anchor] implied=${_ac.implied_anchor:.2f} live=${current_price:.2f} "
-                      f"divergence={_ac.divergence * 100:.1f}%  "
-                      f"(dark-launch — threshold DISARMED, no trip)")
+                      f"divergence={_ac.divergence * 100:.1f}%  ({_thr_str}, no trip)")
             elif anchor_status == "anchor_unverified":
                 print("  [anchor] model E(R) missing / non-derivable — E(R) withheld, "
                       "status=anchor_unverified")
