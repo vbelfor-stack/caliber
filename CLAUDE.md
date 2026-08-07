@@ -22,19 +22,24 @@
   silently across sessions.   (confirmed current 2026-08-07)
 
 ## Stack & repo map
-- Python / SQLite on Replit. Feed reality (corrected 2026-08-07): "FMP sole source" is
-  INACCURATE as previously written. Actual state:
-  - FMP — batch-primary (batch/runner._fetch_with_failover) and the grader's price feed.
-  - yfinance — batch-FALLBACK leg (fires when FMP raises) AND interactive-primary
-    (evaluate.py fetches yfinance directly, no FMP). Rate-limited/IP-blocked on Replit,
-    so the live yfinance paths are dead-on-arrival here (fail loud, ~6.6s, no hang) — but
-    still wired. AlphaVantage cross-check removed 2026-07-19; single-source, no confidence
-    upgrades (see teardown note below).
-  - YFinanceData (in adapters/yfinance_adapter.py) is the pipeline's CANONICAL data type,
-    imported by core/pillars, synthesis/client, synthesis/prompt, batch/runner, AND
-    adapters/fmp_adapter itself — FMP cannot run without the yfinance_adapter module.
-    A true "sole source" state requires the teardown (Phase 1 = rehome this type to a
-    neutral core module). Sequencing: Phase B → teardown Phases 1–3 → EDGAR → Phase D.
+- Python / SQLite on Replit. Feed reality (2026-08-07): FMP IS THE SOLE LIVE FEED — now TRUE.
+  The yfinance teardown is complete (Phases 1–3, commits 7e154cf, 369ad8d, 64f57e5).
+  - FMP — the only live data feed, for both batch (batch/runner._fetch, FMP-only, fail loud,
+    no failover) and interactive (evaluate.py imports fetch_fmp directly). Also the grader's
+    price feed. AlphaVantage cross-check removed 2026-07-19; single-source, medium confidence.
+  - yfinance — GONE. Package pin dropped from requirements.txt; adapters/yfinance_adapter.py
+    deleted; no live yfinance code or import remains in the runtime.
+  - TickerData (core/datatypes.py) is the pipeline's canonical data type (renamed from
+    YFinanceData, rehomed out of the adapter in Phase 1). Populated by fmp_adapter (live) or
+    fixture_adapter (recorded fixtures, offline/tests).
+  - Fixtures: recorded ticker data lives in tests/fixtures/ticker/ (renamed from yfinance/),
+    loaded by adapters/fixture_adapter.fetch_fixture. The data is in the historical yfinance
+    info-dict shape, so its Prov source stamps read "yfinance" — accurate for recorded data.
+  - TRACKED FOLLOW-UP (provenance relabel): live Prov source strings in core/technicals.py,
+    core/pillars.py, and the shared trajectory builders in core/datatypes.py still read
+    "yfinance*" while stamping FMP-sourced fields. Cosmetic mislabel, no behavioral/grade
+    impact; needs source-threading + test updates. Also probe.py (Phase-0 fixture recorder)
+    still imports yfinance and is now dead — archive/remove when convenient.
 - core/grading.py — assign_grade(), grade_evaluation(), run_grading(), _fetch_price_at_date(), PriceUnavailable
 - store/models.py — save_grade(), list_grades(), get_ungradeable_evals(), init_db
 - tests/test_grading.py
@@ -110,15 +115,18 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   anchor_divergence enum) + B-2 (anchor guard ARMED at 15% + prompt anchoring fix). See Anchor
   guard note above. E(R) computed downstream from targets, never delegated to the LLM.
 - Phase C — KILLED. AlphaVantage cross-check torn out 2026-07-19 (see teardown note below).
-- Phase D — HOLD until teardown Phase 1 done. # TODO Vic: scope
+- Teardown (yfinance) — DONE 2026-08-07 (Phases 1–3, commits 7e154cf/369ad8d/64f57e5). FMP is
+  the sole live feed; TickerData rehomed to core/datatypes; yfinance package + adapter removed.
+  See feed-reality section above (incl. the tracked provenance-relabel follow-up).
+- EDGAR — NEXT (unblocked by teardown). Scope: SEC filings integration; unlocks "high"
+  confidence (the wired secondary source that makes the anti-launder NOTE reachable again).
+  # TODO Vic: confirm scope.
+- Phase D — after EDGAR. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
-  investigation (the ~$881 price was correct). Stays behind teardown + EDGAR, original sequence.
-- EDGAR — HOLD until teardown Phase 1 done (no point wiring a 2nd source into a type system
-  about to be rehomed). # TODO Vic: scope (SEC filings integration?)
-- Teardown (yfinance) — follows Phase B. Phase 1 rehome YFinanceData + trajectory builders
-  to neutral core module; Phase 2 migrate evaluate.py to FMP; Phase 3 remove fallback leg +
-  requirements pin. Blast radius logged in session 2026-08-07.
+  investigation (the ~$881 price was correct). Stays behind EDGAR.
+- Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
+  FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
