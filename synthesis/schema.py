@@ -251,12 +251,15 @@ def per_scenario_returns(
 # expectedReturn (we otherwise discard it and recompute E(R) downstream), so the
 # tell is free.
 #
-# The guard ships DISARMED (threshold=None): divergence is computed and logged on
-# every eval (dark-launch) but NEVER trips, until the calibration distribution is
-# reviewed and a threshold is locked. When armed, a divergence beyond threshold
-# raises AnchorPriceDivergence.
+# ARMED 2026-08-07 at 0.15 (15%), locked by Vic on the R-4 calibration report:
+# healthy band across 5 golden tickers was 0.6-8.2%; the MU stale-anchor case sat
+# at 90.8% (model's stale ~$81 anchor vs the real ~$881 live price — a genuine 10x
+# re-rate, FMP correct). 15% isolates the pathological case with ~6x margin above
+# the healthy top. Divergence is still computed+logged on every eval (permanent
+# dark-launch for ongoing calibration); a divergence beyond the threshold now
+# raises AnchorPriceDivergence. Pass threshold=None to replay in disarmed mode.
 
-ANCHOR_DIVERGENCE_THRESHOLD: Optional[float] = None   # DISARMED — dark-launch only (PROVISIONAL 0.15)
+ANCHOR_DIVERGENCE_THRESHOLD: Optional[float] = 0.15   # ARMED at 15%
 
 
 class AnchorPriceDivergence(RuntimeError):

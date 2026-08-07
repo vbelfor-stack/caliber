@@ -406,9 +406,9 @@ def _synth_for_anchor(model_er, bull_t, base_t, bear_t,
 class TestAnchorGuard:
     """B-2: anchor-divergence guard. Ships DISARMED (dark-launch)."""
 
-    def test_default_threshold_disarmed(self):
+    def test_default_threshold_armed_at_15pct(self):
         import synthesis.schema as s
-        assert s.ANCHOR_DIVERGENCE_THRESHOLD is None, "guard must ship disarmed"
+        assert s.ANCHOR_DIVERGENCE_THRESHOLD == 0.15, "guard armed at 15% (locked 2026-08-07)"
 
     def test_consistent_anchor_is_ok(self):
         from synthesis.schema import check_anchor
@@ -419,16 +419,22 @@ class TestAnchorGuard:
         assert ac.computed_er == pytest.approx(10.0)
         assert ac.divergence == pytest.approx(0.0, abs=1e-9)
 
-    def test_stale_anchor_dark_launch_does_not_trip(self):
+    def test_disarmed_replay_mode_does_not_trip(self):
         from synthesis.schema import check_anchor
-        # Model anchored to ~100 (targets 110 @ +10%) but live is 60 (MU-like).
-        syn = _synth_for_anchor(10.0, 110, 110, 110)
-        ac = check_anchor(syn, live_price=60.0)   # threshold defaults to None (disarmed)
-        assert ac.status == "ok", "dark-launch must NOT trip"
+        # Disarmed replay (threshold=None) still available for calibration: it
+        # computes divergence but never trips, even on a gross stale anchor.
+        syn = _synth_for_anchor(10.0, 110, 110, 110)   # implied anchor 100, live 60
+        ac = check_anchor(syn, live_price=60.0, threshold=None)
+        assert ac.status == "ok", "disarmed replay must NOT trip"
         assert ac.divergence == pytest.approx(100.0 / 60.0 - 1.0, rel=1e-6)
-        # E(R) is still computed (and 'laundered') during dark-launch — that's the
-        # point: observe without changing behavior until the threshold is locked.
         assert ac.computed_er == pytest.approx((110.0 / 60.0 - 1.0) * 100.0)
+
+    def test_armed_default_trips_on_stale_anchor(self):
+        from synthesis.schema import check_anchor, AnchorPriceDivergence
+        # With the armed default (15%), the same gross stale anchor now trips.
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        with pytest.raises(AnchorPriceDivergence):
+            check_anchor(syn, live_price=60.0)   # default threshold = 0.15
 
     def test_stale_anchor_trips_when_armed(self):
         from synthesis.schema import check_anchor, AnchorPriceDivergence
