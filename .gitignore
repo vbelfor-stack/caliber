@@ -6,6 +6,8 @@ caliber.db
 *.db
 *.db-shm
 *.db-wal
+*.bak
+caliber.db.*
 
 # Python
 __pycache__/

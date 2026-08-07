@@ -53,16 +53,33 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   via run_grading() (query admits >=90d; PENDING branch requires <90d — mutually exclusive).
 
 ## Open threads (parked, not urgent)
-1. 51 ok-evals have NULL E(R) — correct by design (synthesis never ran; nothing hidden in
-   synthesis_json). Grader correctly excludes them.
-2. Those 51 were written status='ok' despite NO synthesis. status='ok' should mean a complete
-   eval — latent schema question in the evaluate/synthesis path.
+1. RESOLVED 2026-08-07. The "51 (later 119) ok-evals with NULL E(R)" were NOT real evals —
+   they were TEST CONTAMINATION. tests/test_batch.py ran fixture-mode run_single_ticker/
+   run_batch without a db_path, writing into production caliber.db. Purged 2026-08-07 (see
+   Data integrity note). No real no-synthesis 'ok' eval ever existed.
+2. RESOLVED 2026-08-07 by B-1 (producer-side): save_evaluation now derives status from
+   synthesis presence ('ok' only if synthesis present, else 'no_synthesis'). The fix is
+   correct and stands; its ORIGINAL production-backfill "validation" was retroactively vacuous
+   (it operated entirely on the test-contamination rows above). Real-data validation of B-1/B-2
+   status semantics lands with R-4's golden-ticker run.
 3. "0 eligible / nothing graded" exits clean — make it distinguishable from "something broke."
    DONE 2026-08-07 (run_grading now emits an explicit "CLEAN EMPTY" line + early return).
-4. anchor_price divergence hard stop (listed under Core disciplines) is NOT implemented —
-   grep for anchor/divergence returns zero code hits. E(R) is computed downstream from
-   scenario targets against a fresh current_price (correct), but nothing guards the LLM's
-   targets being anchored to a stale price (the MU failure mode). Design = Phase B / B-2.
+4. anchor_price divergence hard stop — IMPLEMENTED 2026-08-07 as B-2, but ships DISARMED
+   (ANCHOR_DIVERGENCE_THRESHOLD=None): dark-launch computes+logs divergence on every eval,
+   never trips. Derived check (implied_anchor from model E(R) + targets vs live price). Armed
+   trip path coded + tested but off until Vic locks a threshold on R-4's calibration report.
+
+## Data integrity — test-contamination purge (2026-08-07)
+- Root cause: tests/test_batch.py wrote fixture-mode evals into production caliber.db (no
+  db_path). Fixed by conftest.py autouse fixture (R-1) that pins the default DB to a temp path;
+  verified no test write reaches production (row count stable across a full suite run).
+- Purge (R-2): removed 189 evaluations (153 no_synthesis fixture clusters MU/GOOG/V + 36 failed
+  synthetic tickers) and 3,060 linked field_provenance rows, under a transaction with a
+  blast-radius assertion (exact 189/3,060 or ROLLBACK). Backup: caliber.db.pre-purge-2026-08-07.bak.
+- TRUE post-purge distribution: ok:8, failed:11, no_synthesis:0 (total 19). The 8 ok are the
+  REAL Visa synthesis evals (live avg=4.0 != fixture 3.8; synthesis present; genuine 2026-07-12
+  session) maturing to the grader's first live grades ~2026-10-10. The 11 failed are real
+  yfinance-DOA operational records (kept as the evidence trail). grading-eligible still 0.
 
 ## Roadmap
 - Phase A — NTM forward PE fix. DONE.
