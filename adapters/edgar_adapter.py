@@ -40,6 +40,87 @@ class FilingRef:
     primary_doc: str     # e.g. mu-20250828.htm
 
 
+# XBRL us-gaap / dei concepts extracted for FMP cross-check (E-1). This is the
+# concept-pull list; synonym → canonical-field resolution + TTM alignment is E-2.
+# (concept, namespace)
+XBRL_CONCEPTS: List[Tuple[str, str]] = [
+    ("Revenues", "us-gaap"),
+    ("RevenueFromContractWithCustomerExcludingAssessedTax", "us-gaap"),
+    ("GrossProfit", "us-gaap"),
+    ("OperatingIncomeLoss", "us-gaap"),
+    ("NetIncomeLoss", "us-gaap"),
+    ("Assets", "us-gaap"),
+    ("AssetsCurrent", "us-gaap"),
+    ("Liabilities", "us-gaap"),
+    ("LiabilitiesCurrent", "us-gaap"),
+    ("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),
+    ("LongTermDebt", "us-gaap"),
+    ("LongTermDebtNoncurrent", "us-gaap"),
+    ("DebtCurrent", "us-gaap"),
+    ("StockholdersEquity", "us-gaap"),
+    ("NetCashProvidedByUsedInOperatingActivities", "us-gaap"),
+    ("PaymentsToAcquirePropertyPlantAndEquipment", "us-gaap"),
+    ("EntityCommonStockSharesOutstanding", "dei"),
+]
+_XBRL_VALID_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
+
+
+@dataclass
+class EdgarFinancials:
+    """Raw XBRL facts extracted from companyfacts (E-1: extraction only).
+
+    concepts: {concept_name: [ {value, unit, start, end, fy, fp, form, accession}, ... ]}
+    each list is most-recent-first, capped. E-2 maps synonyms → canonical fields and
+    assembles TTM; E-3 cross-checks against FMP.
+    """
+    concepts: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+    latest_period_end: Optional[str] = None   # max period-end across concepts (E-3 staleness)
+
+
+def _extract_xbrl_facts(facts_json: Dict, per_concept: int = 8) -> EdgarFinancials:
+    """Pull the mapped concepts' recent facts from a companyfacts JSON.
+
+    Extraction only: numeric coercion + latest-period-first ordering + form filter
+    (10-K/10-Q family). No synonym resolution or TTM assembly (that is E-2).
+    """
+    facts = facts_json.get("facts", {}) if facts_json else {}
+    ns_blocks = {"us-gaap": facts.get("us-gaap", {}), "dei": facts.get("dei", {})}
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    latest_end: Optional[str] = None
+
+    for concept, ns in XBRL_CONCEPTS:
+        block = ns_blocks.get(ns, {}).get(concept)
+        if not block:
+            continue
+        recs: List[Dict[str, Any]] = []
+        for unit, entries in block.get("units", {}).items():
+            for e in entries:
+                if e.get("form") not in _XBRL_VALID_FORMS:
+                    continue
+                try:
+                    val = float(e["val"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                recs.append({
+                    "value": val, "unit": unit,
+                    "start": e.get("start"), "end": e.get("end"),
+                    "fy": e.get("fy"), "fp": e.get("fp"),
+                    "form": e.get("form"), "accession": e.get("accn"),
+                })
+        if not recs:
+            continue
+        recs.sort(key=lambda r: (r["end"] or ""), reverse=True)
+        out[concept] = recs[:per_concept]
+        # Staleness clock (E-3) tracks fiscal PERIOD-END from us-gaap financials only —
+        # dei cover-page dates (e.g. shares-outstanding as-of) are not period ends.
+        if ns == "us-gaap":
+            top = out[concept][0]["end"]
+            if top and (latest_end is None or top > latest_end):
+                latest_end = top
+
+    return EdgarFinancials(concepts=out, latest_period_end=latest_end)
+
+
 @dataclass
 class EdgarData:
     ticker: str
@@ -58,6 +139,9 @@ class EdgarData:
 
     # XBRL concept count (for adapter health check)
     xbrl_concept_count: Optional[int]
+
+    # Extracted XBRL financials for FMP cross-check (E-1)
+    financials: EdgarFinancials = field(default_factory=EdgarFinancials)
 
     fetched_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -160,13 +244,13 @@ def _extract_section(text: str, markers: List[str], max_len: int = 2000) -> str:
     return ""
 
 
-def _xbrl_count(cik: str) -> Optional[int]:
+def _fetch_companyfacts(cik: str) -> Optional[Dict]:
+    """Fetch the full XBRL companyfacts JSON, or None on any error (supplemental)."""
     url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
     try:
         r = requests.get(url, headers=_headers(), timeout=30)
         r.raise_for_status()
-        facts = r.json()
-        return len(facts.get("facts", {}).get("us-gaap", {}))
+        return r.json()
     except Exception:
         return None
 
@@ -214,7 +298,9 @@ def _from_live(ticker: str) -> EdgarData:
             risk_prov = Prov(value=None, source=SOURCE, as_of=TODAY, confidence="low")
             mda_prov = Prov(value=None, source=SOURCE, as_of=TODAY, confidence="low")
 
-    xbrl = _xbrl_count(cik)
+    facts_json = _fetch_companyfacts(cik)
+    xbrl_count = len(facts_json.get("facts", {}).get("us-gaap", {})) if facts_json else None
+    financials = _extract_xbrl_facts(facts_json) if facts_json else EdgarFinancials()
 
     return EdgarData(
         ticker=ticker,
@@ -227,7 +313,8 @@ def _from_live(ticker: str) -> EdgarData:
         recent_10q=tenq,
         risk_factors_excerpt=risk_prov,
         mda_excerpt=mda_prov,
-        xbrl_concept_count=xbrl,
+        xbrl_concept_count=xbrl_count,
+        financials=financials,
     )
 
 
@@ -267,6 +354,12 @@ def _from_fixture(ticker: str, path: Path) -> EdgarData:
         confidence="high" if mda_txt and "not in first" not in str(mda_txt) else "low",
     )
 
+    xf = raw.get("xbrl_facts", {})
+    financials = EdgarFinancials(
+        concepts=xf.get("concepts", {}),
+        latest_period_end=xf.get("latest_period_end"),
+    )
+
     return EdgarData(
         ticker=ticker,
         cik=raw.get("cik", ""),
@@ -279,4 +372,5 @@ def _from_fixture(ticker: str, path: Path) -> EdgarData:
         risk_factors_excerpt=risk_prov,
         mda_excerpt=mda_prov,
         xbrl_concept_count=raw.get("facts_shape", {}).get("us_gaap_concept_count"),
+        financials=financials,
     )

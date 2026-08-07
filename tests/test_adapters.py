@@ -371,3 +371,36 @@ class TestProvenanceFeedSource:
         mgmt = score_management(yf, "cyclical")
         earn = [p for p in mgmt.key_inputs if p.source and "earnings" in p.source]
         assert earn and earn[0].source == "fmp/earnings_history"
+
+
+class TestEdgarXbrlExtraction:
+    """E-1: EDGAR extracts XBRL financial concepts (for the FMP cross-check, E-3)."""
+
+    def test_core_concepts_extracted(self):
+        ed = fetch_edgar("MU", fixture_path=EDGAR / "MU.json")
+        fin = ed.financials
+        assert fin.concepts, "no XBRL concepts extracted"
+        assert "NetIncomeLoss" in fin.concepts
+        assert "Assets" in fin.concepts
+        assert any(c in fin.concepts for c in
+                   ("Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"))
+
+    def test_facts_numeric_dated_and_form_filtered(self):
+        ed = fetch_edgar("MU", fixture_path=EDGAR / "MU.json")
+        rec = ed.financials.concepts["NetIncomeLoss"][0]
+        assert isinstance(rec["value"], float)
+        assert rec["end"]
+        assert rec["form"] in ("10-K", "10-Q", "10-K/A", "10-Q/A")
+
+    def test_records_most_recent_first(self):
+        ed = fetch_edgar("MU", fixture_path=EDGAR / "MU.json")
+        ends = [r["end"] for r in ed.financials.concepts["Assets"]]
+        assert ends == sorted(ends, reverse=True)
+
+    def test_latest_period_end_is_usgaap_not_cover_date(self):
+        """Staleness clock uses us-gaap fiscal period-end, not the dei cover date."""
+        ed = fetch_edgar("V", fixture_path=EDGAR / "V.json")
+        fin = ed.financials
+        usgaap_ends = [r["end"] for name, recs in fin.concepts.items()
+                       if name != "EntityCommonStockSharesOutstanding" for r in recs]
+        assert fin.latest_period_end == max(usgaap_ends)
