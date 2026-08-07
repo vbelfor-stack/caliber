@@ -33,7 +33,10 @@ from core.lens_select import select_lens, lens_label
 from core.pillars import score_all
 from core.technicals import analyze_technicals, TechnicalOverlay
 from synthesis.client import run_synthesis
-from synthesis.schema import SynthesisOutput, compute_er, per_scenario_returns
+from synthesis.schema import (
+    SynthesisOutput, compute_er, per_scenario_returns,
+    check_anchor, AnchorPriceDivergence,
+)
 from store.models import save_evaluation, save_failed_evaluation
 
 
@@ -199,6 +202,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     )
 
     expected_return: Optional[float] = None
+    anchor_status: Optional[str] = None
     try:
         print("  Calling synthesis engine...")
         synthesis = run_synthesis(
@@ -212,12 +216,26 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
             current_price=current_price,
         )
 
-        # ── E(R) — computed here, never delegated to LLM ─────────────────────
+        # ── E(R) via anchor-divergence guard (B-2) — never delegated to LLM ──
         price_as_of = yf.current_price.as_of if not yf.current_price.is_missing() else "?"
         price_str = f"${current_price:.2f} (as-of {price_as_of})" if current_price else "n/a"
 
         scenario_rets = per_scenario_returns(synthesis, current_price) if current_price else {}
-        expected_return = compute_er(synthesis, current_price) if current_price else None
+        try:
+            _ac = check_anchor(synthesis, current_price)   # threshold DISARMED (dark-launch)
+            expected_return = _ac.computed_er
+            anchor_status = _ac.status
+            if _ac.divergence is not None:
+                print(f"  [anchor] implied=${_ac.implied_anchor:.2f} live=${current_price:.2f} "
+                      f"divergence={_ac.divergence * 100:.1f}%  "
+                      f"(dark-launch — threshold DISARMED, no trip)")
+            elif anchor_status == "anchor_unverified":
+                print("  [anchor] model E(R) missing / non-derivable — E(R) withheld, "
+                      "status=anchor_unverified")
+        except AnchorPriceDivergence as e:
+            print(f"  ANCHOR DIVERGENCE — {e}", file=sys.stderr)
+            expected_return = None
+            anchor_status = "anchor_divergence"
 
         print(f"\n  Current price: {price_str}")
         print(f"  {'Scenario':<8}  {'Prob':>5}  {'Target':>10}  {'Return':>8}")
@@ -252,7 +270,8 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     # ── Persist ───────────────────────────────────────────────────────────────
     print(f"\n{_divider()}")
     try:
-        eval_id = save_evaluation(ticker, lens, pillars, synthesis, expected_return=expected_return)
+        eval_id = save_evaluation(ticker, lens, pillars, synthesis,
+                                  expected_return=expected_return, status=anchor_status)
         print(f"  Evaluation saved  (id={eval_id})")
     except Exception as e:
         print(f"  WARN: Could not persist evaluation — {e}", file=sys.stderr)

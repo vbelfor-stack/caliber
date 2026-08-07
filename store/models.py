@@ -44,7 +44,7 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 ticker      TEXT    NOT NULL,
                 run_at      TEXT    NOT NULL,
                 lens        TEXT,
-                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | no_synthesis | failed
+                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | no_synthesis | anchor_unverified | anchor_divergence | failed
                 error_msg   TEXT,
                 pillars_json    TEXT,   -- JSON list of PillarResult dicts
                 synthesis_json  TEXT,   -- JSON SynthesisOutput (raw dict)
@@ -151,9 +151,14 @@ def save_evaluation(
     synthesis: Optional[SynthesisOutput],
     expected_return: Optional[float] = None,
     db_path: Path = _DEFAULT_DB,
+    status: Optional[str] = None,
 ) -> int:
     """
     Persist a complete evaluation. Returns the new evaluation id.
+
+    status: caller override for the eval status (the anchor-guard verdict —
+    'ok' | 'anchor_unverified' | 'anchor_divergence'). When None, it is derived
+    from synthesis presence (B-1: 'ok' if synthesis else 'no_synthesis').
     """
     init_db(db_path)
 
@@ -166,11 +171,15 @@ def save_evaluation(
     # status='ok' must mean a COMPLETE eval. A missing synthesis is a real,
     # auditable degraded state — record it honestly rather than masking as 'ok'.
     # (Pillars are still valid, so we keep the row instead of failing it.)
-    status = "ok" if synthesis is not None else "no_synthesis"
+    # A caller-supplied status (anchor-guard verdict) always wins.
+    if status is None:
+        status = "ok" if synthesis is not None else "no_synthesis"
     verdict_conf = synthesis.verdictConfidence if synthesis else None
-    # Use caller-computed E(R) (computed downstream from scenario targets, per spec).
-    # Fall back to LLM-provided value only if no computed value was passed.
-    if expected_return is None and synthesis is not None:
+    # E(R) is computed downstream from scenario targets, never delegated to the
+    # LLM. Only fall back to the LLM's number for a clean 'ok' eval; NEVER
+    # reinstate it when the anchor guard withheld E(R) (anchor_unverified /
+    # anchor_divergence both persist a NULL E(R) by design).
+    if expected_return is None and synthesis is not None and status == "ok":
         expected_return = synthesis.expectedReturn
 
     with _conn(db_path) as conn:

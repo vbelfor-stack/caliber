@@ -41,6 +41,7 @@ from core.lens_select import select_lens
 from core.pillars import score_all
 from core.technicals import analyze_technicals
 from store.models import save_evaluation, save_failed_evaluation, get_cached_synthesis, save_synthesis_cache
+from synthesis.schema import check_anchor, AnchorPriceDivergence
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
@@ -150,10 +151,12 @@ def run_single_ticker(
         # ── Synthesis (cache-first, deterministic) ────────────────────────────
         synthesis = None
         expected_return = None
+        anchor_status = None
+        price_for_er = None
         if run_synthesis:
             try:
                 from synthesis.client import run_synthesis as _synth
-                from synthesis.schema import compute_er, parse_synthesis
+                from synthesis.schema import parse_synthesis
                 import json as _json
                 from datetime import date as _date
 
@@ -183,17 +186,34 @@ def run_single_ticker(
                     )
                     price_for_er = current_price
                     _log("synthesis generated and cached")
-
-                if price_for_er:
-                    expected_return = compute_er(synthesis, price_for_er)
-                _log(f"synthesis ok  verdict={synthesis.verdictConfidence}  E(R)={expected_return:+.1f}%" if expected_return else f"synthesis ok  verdict={synthesis.verdictConfidence}")
+                _log(f"synthesis ok  verdict={synthesis.verdictConfidence}")
             except Exception as e:
                 _log(f"synthesis skipped ({type(e).__name__}: {e})")
+
+            # ── E(R) via anchor-divergence guard (B-2) ────────────────────────
+            # Kept OUT of the generation try above so an armed divergence trip is
+            # never misreported as "synthesis skipped" by the broad except.
+            if synthesis is not None:
+                try:
+                    _ac = check_anchor(synthesis, price_for_er)   # threshold DISARMED (dark-launch)
+                    expected_return = _ac.computed_er
+                    anchor_status = _ac.status
+                    if _ac.divergence is not None:
+                        _log(f"[anchor] divergence={_ac.divergence * 100:.1f}%  "
+                             f"E(R)={expected_return:+.1f}%  (dark-launch, no trip)"
+                             if expected_return is not None
+                             else f"[anchor] divergence={_ac.divergence * 100:.1f}%  (dark-launch, no trip)")
+                    elif anchor_status == "anchor_unverified":
+                        _log("[anchor] model E(R) missing / non-derivable — E(R) withheld, anchor_unverified")
+                except AnchorPriceDivergence as e:
+                    _log(f"ANCHOR DIVERGENCE — {e}")
+                    expected_return = None
+                    anchor_status = "anchor_divergence"
 
         # ── Persist ───────────────────────────────────────────────────────────
         eval_id = save_evaluation(
             ticker, lens, pillars, synthesis,
-            expected_return=expected_return,
+            expected_return=expected_return, status=anchor_status,
         )
         _log(f"saved  id={eval_id}")
 

@@ -234,6 +234,104 @@ def per_scenario_returns(
     return result
 
 
+# ── Anchor-divergence guard (B-2) ─────────────────────────────────────────────
+#
+# The LLM can anchor its scenario price targets to a STALE base price (e.g. one
+# from training data), producing targets that look internally reasonable but
+# imply a LAUNDERED return once scored against the fresh live price (the MU
+# failure mode). This guard derives the anchor the model actually used — from
+# ITS OWN stated expectedReturn and its scenario targets — and compares it to
+# the live price:
+#
+#   weighted_target Tw = Σ pᵢ·targetᵢ / Σ pᵢ        (scenarios with a target, pᵢ>0)
+#   implied_anchor     = Tw / (1 + model_ER/100)
+#   divergence         = |implied_anchor / live_price − 1|
+#
+# Derived-check only: no new schema/prompt field. The model already returns
+# expectedReturn (we otherwise discard it and recompute E(R) downstream), so the
+# tell is free.
+#
+# The guard ships DISARMED (threshold=None): divergence is computed and logged on
+# every eval (dark-launch) but NEVER trips, until the calibration distribution is
+# reviewed and a threshold is locked. When armed, a divergence beyond threshold
+# raises AnchorPriceDivergence.
+
+ANCHOR_DIVERGENCE_THRESHOLD: Optional[float] = None   # DISARMED — dark-launch only (PROVISIONAL 0.15)
+
+
+class AnchorPriceDivergence(RuntimeError):
+    """The LLM's implied price anchor diverges from the live price beyond the
+    armed threshold: its E(R) was computed off a stale base, so the downstream
+    E(R) would be laundered. Reason-stamped; raised in the compute_er guard path,
+    caught at the synthesis boundaries. Never swallowed into a silent success."""
+
+
+@dataclass
+class AnchorCheck:
+    computed_er: Optional[float]     # E(R) to persist; None = withhold
+    status: str                      # 'ok' | 'anchor_unverified' | 'anchor_divergence'
+    divergence: Optional[float]      # |implied_anchor/live − 1|; None if not derivable
+    implied_anchor: Optional[float]
+    live_price: Optional[float]
+
+
+def _weighted_target(synthesis: SynthesisOutput) -> Optional[float]:
+    """Probability-weighted mean scenario price target, or None if no scenario
+    carries a target with positive probability."""
+    num = 0.0
+    den = 0
+    for sc in (synthesis.bull, synthesis.base, synthesis.bear):
+        if sc.priceTarget is not None and sc.probability > 0:
+            num += sc.probability * sc.priceTarget
+            den += sc.probability
+    if den == 0:
+        return None
+    return num / den
+
+
+def check_anchor(
+    synthesis: SynthesisOutput,
+    live_price: Optional[float],
+    threshold: Optional[float] = ANCHOR_DIVERGENCE_THRESHOLD,
+) -> AnchorCheck:
+    """Anchor-divergence guard over the E(R) computation.
+
+    A missing model expectedReturn is a bypass-by-omission — the anchor cannot be
+    verified, so we WITHHOLD the computed E(R) (None) and mark 'anchor_unverified'
+    (distinct from 'anchor_divergence': couldn't-check vs. checked-and-failed).
+    The same NULL-E(R) grading exclusion applies to both. A non-derivable anchor
+    (no live price, no scenario targets, or a nonsensical model E(R) <= -100%) is
+    likewise 'anchor_unverified'.
+
+    When the anchor IS verifiable and threshold is set (armed), a divergence
+    beyond threshold raises AnchorPriceDivergence. With threshold=None (disarmed
+    dark-launch) the divergence is computed and returned for logging but never trips.
+    """
+    computed = compute_er(synthesis, live_price) if live_price else None
+
+    # Bypass-by-omission guard: no model E(R) → cannot verify → withhold.
+    if synthesis.expectedReturn is None:
+        return AnchorCheck(None, "anchor_unverified", None, None, live_price)
+
+    tw = _weighted_target(synthesis)
+    denom = 1.0 + synthesis.expectedReturn / 100.0
+    if not live_price or live_price <= 0 or tw is None or denom <= 0:
+        # Anchor not derivable → cannot verify.
+        return AnchorCheck(None, "anchor_unverified", None, None, live_price)
+
+    implied_anchor = tw / denom
+    divergence = abs(implied_anchor / live_price - 1.0)
+
+    if threshold is not None and divergence > threshold:
+        raise AnchorPriceDivergence(
+            f"[anchor] {synthesis.ticker}: implied_anchor=${implied_anchor:.2f} "
+            f"vs live=${live_price:.2f} — divergence {divergence * 100:.1f}% "
+            f"> {threshold * 100:.0f}% (model E(R)={synthesis.expectedReturn:+.1f}%); "
+            f"E(R) withheld to avoid laundering a stale-anchored target."
+        )
+    return AnchorCheck(computed, "ok", divergence, implied_anchor, live_price)
+
+
 def parse_synthesis(
     raw: str,
     pillars: List[PillarResult],

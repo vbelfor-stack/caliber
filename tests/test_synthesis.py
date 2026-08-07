@@ -384,3 +384,114 @@ class TestNoSynthesisBackfill:
         assert before == after, "backfill must not change the grading-eligible set"
         assert "GRADEME" in after
         assert "LEGACY" not in after
+
+
+def _synth_for_anchor(model_er, bull_t, base_t, bear_t,
+                      pb=30, pn=40, pr=30, ticker="TST"):
+    """Build a SynthesisOutput with controlled targets + model E(R) for anchor tests."""
+    from synthesis.schema import SynthesisOutput, Scenario, TechnicalsOut
+    return SynthesisOutput(
+        company="C", ticker=ticker, verdictConfidence="medium", verdictReason="",
+        expectedReturn=model_er, redFlags=[],
+        bull=Scenario("", [], pb, bull_t),
+        base=Scenario("", [], pn, base_t),
+        bear=Scenario("", [], pr, bear_t),
+        research=[],
+        technicals=TechnicalsOut(trend="unknown", above_ma50=None, above_ma200=None,
+                                 rsi_14=None, volume_confirmation=None),
+        dataGaps=[],
+    )
+
+
+class TestAnchorGuard:
+    """B-2: anchor-divergence guard. Ships DISARMED (dark-launch)."""
+
+    def test_default_threshold_disarmed(self):
+        import synthesis.schema as s
+        assert s.ANCHOR_DIVERGENCE_THRESHOLD is None, "guard must ship disarmed"
+
+    def test_consistent_anchor_is_ok(self):
+        from synthesis.schema import check_anchor
+        # targets all 110, model E(R)=+10% → implied anchor 100 == live 100.
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        ac = check_anchor(syn, live_price=100.0)
+        assert ac.status == "ok"
+        assert ac.computed_er == pytest.approx(10.0)
+        assert ac.divergence == pytest.approx(0.0, abs=1e-9)
+
+    def test_stale_anchor_dark_launch_does_not_trip(self):
+        from synthesis.schema import check_anchor
+        # Model anchored to ~100 (targets 110 @ +10%) but live is 60 (MU-like).
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        ac = check_anchor(syn, live_price=60.0)   # threshold defaults to None (disarmed)
+        assert ac.status == "ok", "dark-launch must NOT trip"
+        assert ac.divergence == pytest.approx(100.0 / 60.0 - 1.0, rel=1e-6)
+        # E(R) is still computed (and 'laundered') during dark-launch — that's the
+        # point: observe without changing behavior until the threshold is locked.
+        assert ac.computed_er == pytest.approx((110.0 / 60.0 - 1.0) * 100.0)
+
+    def test_stale_anchor_trips_when_armed(self):
+        from synthesis.schema import check_anchor, AnchorPriceDivergence
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        with pytest.raises(AnchorPriceDivergence):
+            check_anchor(syn, live_price=60.0, threshold=0.15)
+
+    def test_within_threshold_when_armed_is_ok(self):
+        from synthesis.schema import check_anchor
+        # implied anchor 100 vs live 95 → ~5.3% divergence < 15% → ok.
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        ac = check_anchor(syn, live_price=95.0, threshold=0.15)
+        assert ac.status == "ok"
+        assert ac.computed_er is not None
+
+    def test_missing_model_er_is_unverified_not_bypass(self):
+        from synthesis.schema import check_anchor
+        # Ruling 4: null model E(R) must NOT fall through — withhold + unverified.
+        syn = _synth_for_anchor(None, 110, 110, 110)
+        ac = check_anchor(syn, live_price=100.0, threshold=0.15)
+        assert ac.status == "anchor_unverified"
+        assert ac.computed_er is None
+
+    def test_no_targets_is_unverified(self):
+        from synthesis.schema import check_anchor
+        syn = _synth_for_anchor(10.0, None, None, None)
+        ac = check_anchor(syn, live_price=100.0)
+        assert ac.status == "anchor_unverified"
+        assert ac.computed_er is None
+
+    def test_no_live_price_is_unverified(self):
+        from synthesis.schema import check_anchor
+        syn = _synth_for_anchor(10.0, 110, 110, 110)
+        ac = check_anchor(syn, live_price=None)
+        assert ac.status == "anchor_unverified"
+        assert ac.computed_er is None
+
+    def test_degenerate_model_er_is_unverified(self):
+        from synthesis.schema import check_anchor
+        # model E(R) = -100% → implied anchor denominator 0 → not derivable.
+        syn = _synth_for_anchor(-100.0, 110, 110, 110)
+        ac = check_anchor(syn, live_price=100.0, threshold=0.15)
+        assert ac.status == "anchor_unverified"
+        assert ac.computed_er is None
+
+
+class TestStatusOverride:
+    """save_evaluation must honor the anchor-guard status and withhold E(R)."""
+
+    def test_anchor_unverified_persists_null_er(self, tmp_path):
+        from store.models import save_evaluation, list_evaluations
+        db = tmp_path / "ov.db"
+        synthesis = parse_synthesis(_valid_synthesis_json(), _high_pillars(), "OVR")
+        # E(R) withheld by the guard; status override supplied.
+        save_evaluation("OVR", "standard", _high_pillars(), synthesis,
+                        expected_return=None, status="anchor_unverified", db_path=db)
+        row = list_evaluations(db_path=db)[0]
+        assert row["status"] == "anchor_unverified"
+        assert row["synthesis_json"] is not None, "synthesis is still persisted for audit"
+        assert row["expected_return"] is None, "withheld E(R) must NOT be reinstated from the LLM"
+
+    def test_no_override_falls_back_to_b1_semantics(self, tmp_path):
+        from store.models import save_evaluation, list_evaluations
+        db = tmp_path / "ov2.db"
+        save_evaluation("NOOV", "standard", _high_pillars(), None, db_path=db)
+        assert list_evaluations(db_path=db)[0]["status"] == "no_synthesis"
