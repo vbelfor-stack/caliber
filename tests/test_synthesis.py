@@ -495,3 +495,31 @@ class TestStatusOverride:
         db = tmp_path / "ov2.db"
         save_evaluation("NOOV", "standard", _high_pillars(), None, db_path=db)
         assert list_evaluations(db_path=db)[0]["status"] == "no_synthesis"
+
+    def test_armed_guard_trips_and_persists_divergence(self, tmp_path):
+        """R-4 synthetic positive: end-to-end trip -> persist contract.
+
+        Mirrors the boundary handling in evaluate.py / batch/runner.py with an
+        explicit (armed) threshold — no API. A stale-anchored synthesis must:
+        raise, withhold E(R) (NULL), and persist status='anchor_divergence' with
+        synthesis_json intact.
+        """
+        from store.models import save_evaluation, list_evaluations
+        from synthesis.schema import check_anchor, AnchorPriceDivergence
+        db = tmp_path / "trip.db"
+        # Targets imply anchor ~100 (110 @ +10%), but live is 60 → ~67% divergence.
+        syn = _synth_for_anchor(10.0, 110, 110, 110, ticker="TRIP")
+        expected_return = 999.0   # sentinel that must be withheld
+        status = None
+        try:
+            ac = check_anchor(syn, 60.0, threshold=0.15)   # ARMED
+            expected_return, status = ac.computed_er, ac.status
+        except AnchorPriceDivergence:
+            expected_return, status = None, "anchor_divergence"
+        assert status == "anchor_divergence"
+        save_evaluation("TRIP", "standard", _high_pillars(), syn,
+                        expected_return=expected_return, status=status, db_path=db)
+        row = list_evaluations(db_path=db)[0]
+        assert row["status"] == "anchor_divergence"
+        assert row["expected_return"] is None, "laundered E(R) must be withheld"
+        assert row["synthesis_json"] is not None, "synthesis kept for audit"
