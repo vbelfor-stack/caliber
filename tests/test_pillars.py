@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from adapters.base import Prov, min_conf, missing_prov
-from adapters.yfinance_adapter import fetch_yfinance
+from adapters.fixture_adapter import fetch_fixture
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred
 from core.lens_select import select_lens
@@ -22,7 +22,7 @@ from core.pillars import (
 )
 
 FIXTURE_ROOT = Path("tests/fixtures")
-YF_FIXTURES = FIXTURE_ROOT / "yfinance"
+YF_FIXTURES = FIXTURE_ROOT / "ticker"
 EDGAR_FIXTURES = FIXTURE_ROOT / "edgar"
 FRED_FIXTURE = FIXTURE_ROOT / "fred" / "DGS10.json"
 
@@ -31,7 +31,7 @@ FRED_FIXTURE = FIXTURE_ROOT / "fred" / "DGS10.json"
 
 @pytest.fixture(scope="module")
 def mu_yf():
-    return fetch_yfinance("MU", fixture_path=YF_FIXTURES / "MU.json")
+    return fetch_fixture("MU", fixture_path=YF_FIXTURES / "MU.json")
 
 @pytest.fixture(scope="module")
 def mu_edgar():
@@ -39,11 +39,11 @@ def mu_edgar():
 
 @pytest.fixture(scope="module")
 def goog_yf():
-    return fetch_yfinance("GOOG", fixture_path=YF_FIXTURES / "GOOG.json")
+    return fetch_fixture("GOOG", fixture_path=YF_FIXTURES / "GOOG.json")
 
 @pytest.fixture(scope="module")
 def v_yf():
-    return fetch_yfinance("V", fixture_path=YF_FIXTURES / "V.json")
+    return fetch_fixture("V", fixture_path=YF_FIXTURES / "V.json")
 
 @pytest.fixture(scope="module")
 def fred():
@@ -127,9 +127,9 @@ def test_pillar_confidence_never_exceeds_inputs(mu_yf, mu_edgar, fred, mu_lens):
 
 
 def test_all_medium_inputs_give_medium_pillar(mu_yf, mu_edgar, fred, mu_lens):
-    """Single-source (yfinance only, no Tiingo) → all fields are medium → pillar must be medium."""
+    """Single-source (one feed, no Tiingo) → all fields are medium → pillar must be medium."""
     result = score_business_quality(mu_yf, mu_lens)
-    # All yfinance fields are medium (single source, no Tiingo cross-check)
+    # All fields are medium (single source, no Tiingo cross-check)
     assert result.confidence in ("medium", "low"), (
         f"Single-source pillar must be medium or lower, got {result.confidence}"
     )

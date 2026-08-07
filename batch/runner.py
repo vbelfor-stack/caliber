@@ -4,7 +4,7 @@ CALIBER v3 — batch runner.
 Runs the full evaluation pipeline for a list of tickers with per-name isolation:
   - One ticker failing never kills the batch.
   - Failures are persisted to SQLite as status='failed' with diagnosis.
-  - Live API calls: yfinance, EDGAR, FRED, Anthropic (synthesis).
+  - Live API calls: FMP, EDGAR, FRED, Anthropic (synthesis).
 
 Usage:
   python -m batch.runner                      # reads tickers.txt
@@ -33,7 +33,7 @@ try:
 except ImportError:
     pass
 
-from adapters.yfinance_adapter import fetch_yfinance
+from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred, FredData
@@ -48,33 +48,18 @@ DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
 
 
-def _fetch_with_failover(ticker: str, log) -> TickerData:
+def _fetch(ticker: str, log) -> TickerData:
     """
-    Failover chain: FMP primary → yfinance fallback.
-    Raises RuntimeError if all feeds fail, with combined diagnostics.
+    Live data feed: FMP only (yfinance teardown 2026-08-07 — no failover leg).
+    Fails loud with a reason-stamped RuntimeError on any FMP error.
     """
-    diagnostics: list = []
-
-    # ── 1. FMP (primary) ─────────────────────────────────────────────────
     try:
         from adapters.fmp_adapter import fetch_fmp
         data = fetch_fmp(ticker)
-        log("data via FMP (primary)")
+        log("data via FMP")
         return data
     except Exception as e:
-        diagnostics.append(f"FMP: {type(e).__name__}: {e}")
-        log(f"FMP failed ({type(e).__name__}: {e}), trying yfinance...")
-
-    # ── 2. yfinance (fallback) ────────────────────────────────────────────
-    try:
-        data = fetch_yfinance(ticker)
-        log("data via yfinance (fallback)")
-        return data
-    except Exception as e:
-        diagnostics.append(f"yfinance: {type(e).__name__}: {e}")
-        log(f"yfinance failed ({type(e).__name__}: {e})")
-
-    raise RuntimeError(f"All feeds failed — {'; '.join(diagnostics)}")
+        raise RuntimeError(f"[fetch] FMP failed for {ticker}: {type(e).__name__}: {e}") from e
 
 
 def read_universe(path: Path = DEFAULT_UNIVERSE) -> List[str]:
@@ -127,10 +112,10 @@ def run_single_ticker(
 
         # ── Primary data feed ─────────────────────────────────────────────────
         if fixture_mode:
-            _log("fetching yfinance (fixture)...")
-            yf = fetch_yfinance(ticker, fixture_path=FX_ROOT / "yfinance" / f"{ticker}.json")
+            _log("loading recorded fixture...")
+            yf = fetch_fixture(ticker, fixture_path=FX_ROOT / "ticker" / f"{ticker}.json")
         else:
-            yf = _fetch_with_failover(ticker, log=_log)
+            yf = _fetch(ticker, log=_log)
 
         _log("fetching EDGAR...")
         edgar = fetch_edgar(ticker, fixture_path=ed_fx)

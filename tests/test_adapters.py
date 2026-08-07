@@ -5,114 +5,114 @@ All tests run against recorded fixtures — no live network calls.
 from pathlib import Path
 import pytest
 
-from adapters.yfinance_adapter import fetch_yfinance
+from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar, EdgarData
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.fmp_adapter import fetch_fmp
 
 FIXTURE_ROOT = Path("tests/fixtures")
-YF = FIXTURE_ROOT / "yfinance"
+YF = FIXTURE_ROOT / "ticker"
 EDGAR = FIXTURE_ROOT / "edgar"
 FRED_FX = FIXTURE_ROOT / "fred" / "DGS10.json"
 FMP = FIXTURE_ROOT / "fmp"
 
 
-# ── yfinance adapter ──────────────────────────────────────────────────────────
+# ── fixture adapter ──────────────────────────────────────────────────────────
 
-class TestYFinanceAdapter:
+class TestFixtureAdapter:
     def test_mu_loads_from_fixture(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf, TickerData)
         assert yf.ticker == "MU"
 
     def test_mu_sector_is_technology(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert yf.sector == "Technology"
 
     def test_mu_industry_semiconductors(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert yf.industry == "Semiconductors"
 
     def test_mu_gross_margin_is_prov(self):
         from adapters.base import Prov
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.gross_margin, Prov)
         assert not yf.gross_margin.is_missing()
 
     def test_mu_gross_margin_source(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert yf.gross_margin.source == "yfinance"
 
     def test_mu_gross_margin_confidence_medium(self):
         """Single source → medium (no secondary cross-check feed wired in)."""
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert yf.gross_margin.confidence == "medium"
 
     def test_mu_gross_margin_range(self):
         """MU gross margin is high at cycle peak (>50%)."""
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         gm = yf.gross_margin.value
         assert gm is not None
         assert 0.5 < gm < 1.0, f"Expected >50%, got {gm:.2%}"
 
     def test_mu_forward_pe_positive(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         if not yf.forward_pe.is_missing():
             assert yf.forward_pe.value > 0
 
     def test_mu_revenue_growth_positive(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         if not yf.revenue_growth.is_missing():
             # MU had massive recovery; value should be positive
             assert yf.revenue_growth.value > 0
 
     def test_mu_fcf_yield_computed(self):
         """FCF yield is derived: free_cashflow / market_cap."""
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         if not yf.free_cashflow.is_missing() and not yf.market_cap.is_missing():
             if yf.market_cap.value and yf.market_cap.value > 0:
                 assert not yf.fcf_yield.is_missing()
 
     def test_goog_loads(self):
-        yf = fetch_yfinance("GOOG", fixture_path=YF / "GOOG.json")
+        yf = fetch_fixture("GOOG", fixture_path=YF / "GOOG.json")
         assert yf.ticker == "GOOG"
         assert yf.sector == "Communication Services"
 
     def test_goog_industry(self):
-        yf = fetch_yfinance("GOOG", fixture_path=YF / "GOOG.json")
+        yf = fetch_fixture("GOOG", fixture_path=YF / "GOOG.json")
         assert yf.industry == "Internet Content & Information"
 
     def test_v_loads(self):
-        yf = fetch_yfinance("V", fixture_path=YF / "V.json")
+        yf = fetch_fixture("V", fixture_path=YF / "V.json")
         assert yf.ticker == "V"
         assert yf.sector == "Financial Services"
 
     def test_v_industry_credit_services(self):
-        yf = fetch_yfinance("V", fixture_path=YF / "V.json")
+        yf = fetch_fixture("V", fixture_path=YF / "V.json")
         assert yf.industry == "Credit Services"
 
     def test_nan_coerced_to_none(self):
         """NaN fields must become None Provs (not crash)."""
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         # Any field that happens to be None must still be a Prov
         from adapters.base import Prov
         assert isinstance(yf.beta, Prov)
 
     def test_missing_fixture_raises_runtime_error(self):
         with pytest.raises(RuntimeError, match="fixture not found"):
-            fetch_yfinance("FAKE", fixture_path=Path("nonexistent.json"))
+            fetch_fixture("FAKE", fixture_path=Path("nonexistent.json"))
 
     def test_earnings_history_is_list(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.earnings_history, list)
 
     def test_insider_transactions_is_list(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.insider_transactions, list)
 
     def test_price_history_is_list(self):
-        yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.price_history, list)
 
 
@@ -326,38 +326,26 @@ class TestFmpAdapter:
             assert p.source == "fmp", f"Expected source=fmp, got {p.source}"
 
 
-class TestFmpFailover:
-    """Verify that FMP failure triggers yfinance fallback in the batch runner."""
+class TestFmpOnlyFetch:
+    """Live fetch is FMP-only (yfinance teardown 2026-08-07) — fail loud, no fallback."""
 
-    def test_fmp_exception_triggers_yfinance(self):
-        """If fetch_fmp raises, _fetch_with_failover falls back to yfinance fixture."""
-        import sys
-        from unittest.mock import patch, MagicMock
-        from batch.runner import _fetch_with_failover
+    def test_fmp_success_returns_data(self):
+        from unittest.mock import patch
+        from batch.runner import _fetch
 
-        def boom(ticker, fixture_path=None):
-            raise RuntimeError("FMP deliberately borked")
-
-        yf_result = fetch_yfinance("MU", fixture_path=YF / "MU.json")
-
-        with patch("adapters.fmp_adapter.fetch_fmp", side_effect=boom):
-            with patch("batch.runner.fetch_yfinance", return_value=yf_result):
-                result = _fetch_with_failover("MU", log=lambda msg: None)
+        fake = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        with patch("adapters.fmp_adapter.fetch_fmp", return_value=fake):
+            result = _fetch("MU", log=lambda msg: None)
 
         assert isinstance(result, TickerData)
         assert result.ticker == "MU"
 
-    def test_both_feeds_failing_raises(self):
-        """If both FMP and yfinance fail, a RuntimeError with diagnostics is raised."""
-        from batch.runner import _fetch_with_failover
+    def test_fmp_failure_raises_loud(self):
+        """No fallback: an FMP error surfaces as a reason-stamped RuntimeError."""
+        from unittest.mock import patch
+        from batch.runner import _fetch
 
-        with pytest.raises(RuntimeError, match="All feeds failed"):
-            with __import__("unittest.mock", fromlist=["patch"]).patch(
-                "adapters.fmp_adapter.fetch_fmp",
-                side_effect=RuntimeError("FMP down"),
-            ):
-                with __import__("unittest.mock", fromlist=["patch"]).patch(
-                    "batch.runner.fetch_yfinance",
-                    side_effect=RuntimeError("YF down"),
-                ):
-                    _fetch_with_failover("MU", log=lambda msg: None)
+        with pytest.raises(RuntimeError, match="FMP failed"):
+            with patch("adapters.fmp_adapter.fetch_fmp",
+                       side_effect=RuntimeError("FMP down")):
+                _fetch("MU", log=lambda msg: None)

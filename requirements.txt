@@ -2,7 +2,6 @@
 # Python 3.11+
 
 # Data feeds
-yfinance==0.2.54
 requests==2.32.3
 
 # FRED (optional — degrades gracefully if absent)

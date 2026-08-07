@@ -84,11 +84,11 @@ def _chk_store() -> None:
 # ── 2. Adapters (fixture) ─────────────────────────────────────────────────────
 
 def _chk_adapters() -> None:
-    from adapters.yfinance_adapter import fetch_yfinance
+    from adapters.fixture_adapter import fetch_fixture
     from adapters.edgar_adapter import fetch_edgar
     from adapters.fred_adapter import fetch_fred
 
-    yf = fetch_yfinance("MU", fixture_path=_FX / "yfinance" / "MU.json")
+    yf = fetch_fixture("MU", fixture_path=_FX / "ticker" / "MU.json")
     assert yf.ticker == "MU"
     assert not yf.current_price.is_missing(), "MU current_price missing from fixture"
 
@@ -134,13 +134,13 @@ def _chk_lens() -> None:
 # ── 5. Pillars (fixture data, no network) ────────────────────────────────────
 
 def _chk_pillars() -> None:
-    from adapters.yfinance_adapter import fetch_yfinance
+    from adapters.fixture_adapter import fetch_fixture
     from adapters.edgar_adapter import fetch_edgar
     from adapters.fred_adapter import fetch_fred
     from core.lens_select import select_lens
     from core.pillars import score_all
 
-    yf = fetch_yfinance("MU", fixture_path=_FX / "yfinance" / "MU.json")
+    yf = fetch_fixture("MU", fixture_path=_FX / "ticker" / "MU.json")
     ed = fetch_edgar("MU", fixture_path=_FX / "edgar" / "MU.json")
     fr = fetch_fred(fixture_path=_FX / "fred" / "DGS10.json")
     yf.sic = ed.sic
@@ -300,7 +300,7 @@ def main() -> None:
     print("=" * _WIDTH)
 
     _check("1/9  Store: init / save / list / grades", _chk_store)
-    _check("2/9  Adapters: fixture load (yfinance/edgar/fred)", _chk_adapters)
+    _check("2/9  Adapters: fixture load (ticker/edgar/fred)", _chk_adapters)
     _check("3/9  Cross-check: agree->high / conflict->low", _chk_cross_check)
     _check("4/9  Lens selector: MU cyclical / V compounder / GOOG compounder", _chk_lens)
     _check("5/9  Pillars: score_all on MU fixture (no network)", _chk_pillars)

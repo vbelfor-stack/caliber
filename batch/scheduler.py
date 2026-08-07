@@ -50,7 +50,7 @@ def dry_run(
         f"[scheduler] mode      live (fixture_mode=False)",
         f"[scheduler] synthesis enabled",
         f"[scheduler] pipeline per ticker:",
-        f"[scheduler]   1. yfinance (primary)",
+        f"[scheduler]   1. FMP (primary)",
         f"[scheduler]   2. EDGAR",
         f"[scheduler]   3. FRED 10Y rate",
         f"[scheduler]   4. lens selection + five pillars",

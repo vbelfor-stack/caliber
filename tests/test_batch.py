@@ -158,14 +158,14 @@ class TestSchedulerDryRun:
         assert tickers == ["MU", "GOOG", "V"]
 
     def test_dry_run_makes_no_api_calls(self, tmp_path, monkeypatch):
-        """dry_run must not touch any live adapter."""
-        import adapters.yfinance_adapter as yf_mod
+        """dry_run must not touch the live FMP feed."""
+        import adapters.fmp_adapter as fmp_mod
         called = []
-        monkeypatch.setattr(yf_mod, "fetch_yfinance", lambda *a, **kw: called.append(1))
+        monkeypatch.setattr(fmp_mod, "fetch_fmp", lambda *a, **kw: called.append(1))
         f = tmp_path / "tickers.txt"
         f.write_text("MU\n")
         dry_run(f, verbose=False)
-        assert called == [], "dry_run must not call fetch_yfinance"
+        assert called == [], "dry_run must not call the live FMP feed"
 
     def test_dry_run_logs_all_tickers(self, tmp_path, capsys):
         f = tmp_path / "tickers.txt"
