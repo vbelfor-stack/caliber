@@ -91,7 +91,7 @@ def read_universe(path: Path = DEFAULT_UNIVERSE) -> List[str]:
 @dataclass
 class TickerResult:
     ticker: str
-    status: str                       # "ok" | "failed"
+    status: str                       # runner outcome: "ok" | "failed"
     eval_id: Optional[int] = None
     error: Optional[str] = None
     duration_s: float = 0.0
@@ -99,6 +99,11 @@ class TickerResult:
     verdict_confidence: Optional[str] = None
     expected_return: Optional[float] = None
     lens: Optional[str] = None
+    # Persisted DB eval status, mirroring the evaluations.status enum
+    # (ok | no_synthesis | anchor_unverified | anchor_divergence | failed).
+    # Distinct from `status` above, which stays the binary runner outcome so the
+    # batch summary buckets are unchanged.
+    eval_status: Optional[str] = None
 
 
 def run_single_ticker(
@@ -215,6 +220,9 @@ def run_single_ticker(
             ticker, lens, pillars, synthesis,
             expected_return=expected_return, status=anchor_status,
         )
+        # Mirror the status save_evaluation actually persisted (anchor verdict
+        # wins; else B-1 derivation from synthesis presence).
+        eval_status = anchor_status or ("ok" if synthesis is not None else "no_synthesis")
         _log(f"saved  id={eval_id}")
 
         return TickerResult(
@@ -226,6 +234,7 @@ def run_single_ticker(
             verdict_confidence=synthesis.verdictConfidence if synthesis else overall_conf,
             expected_return=expected_return,
             lens=lens,
+            eval_status=eval_status,
         )
 
     except Exception as exc:
@@ -241,6 +250,7 @@ def run_single_ticker(
             eval_id=eval_id,
             error=err,
             duration_s=time.monotonic() - t0,
+            eval_status="failed",
         )
 
 

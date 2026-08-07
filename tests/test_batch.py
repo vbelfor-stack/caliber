@@ -58,6 +58,15 @@ class TestRunSingleTicker:
         assert result.avg_score is not None
         assert 1.0 <= result.avg_score <= 5.0
         assert result.lens is not None
+        # R-3: runner outcome stays binary 'ok'; eval_status carries the DB enum.
+        # No synthesis here → persisted as 'no_synthesis'.
+        assert result.eval_status == "no_synthesis"
+
+    def test_eval_status_failed_mirrors_db(self):
+        result = run_single_ticker("XXXXNOTREAL9999", fixture_mode=False,
+                                   run_synthesis=False, verbose=False)
+        assert result.status == "failed"
+        assert result.eval_status == "failed"
 
     def test_goog_fixture_mode_succeeds(self):
         result = run_single_ticker("GOOG", fixture_mode=True, run_synthesis=False, verbose=False)
