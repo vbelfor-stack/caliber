@@ -281,6 +281,10 @@ class TestStore:
         eval_id = save_evaluation("NOSYNTH", "cyclical", _high_pillars(), None, db_path=db)
         rows = list_evaluations(db_path=db)
         assert rows[0]["synthesis_json"] is None
+        # status='ok' must mean a COMPLETE eval: a missing synthesis is degraded,
+        # recorded honestly as 'no_synthesis', never masked as 'ok'.
+        assert rows[0]["status"] == "no_synthesis"
+        assert rows[0]["expected_return"] is None
 
     def test_save_failed_evaluation(self, tmp_path):
         from store.models import save_failed_evaluation, list_evaluations
@@ -308,3 +312,75 @@ class TestStore:
         assert len(rows) == 2
         # Most recent first
         assert rows[0]["run_at"] >= rows[1]["run_at"]
+
+
+class TestNoSynthesisBackfill:
+    """B-1 migration: relabel legacy status='ok'-without-synthesis rows."""
+
+    def _seed_legacy_false_complete(self, db, ticker="LEGACY", run_at="2020-01-01T00:00:00+00:00"):
+        """Insert a row mimicking the pre-fix bug: status='ok' but synthesis NULL.
+
+        Uses raw SQL because save_evaluation can no longer produce this state.
+        """
+        import sqlite3
+        from store.models import init_db
+        init_db(db)
+        with sqlite3.connect(db) as conn:
+            conn.execute(
+                "INSERT INTO evaluations (ticker, run_at, lens, status, pillars_json, "
+                "synthesis_json, avg_score, overall_conf, verdict_conf, expected_return) "
+                "VALUES (?, ?, 'standard', 'ok', '[]', NULL, 3.0, 'medium', NULL, NULL)",
+                (ticker, run_at),
+            )
+
+    def test_backfill_relabels_only_legacy_rows(self, tmp_path):
+        from store.models import (
+            save_evaluation, list_evaluations, backfill_no_synthesis_status,
+        )
+        db = tmp_path / "bf.db"
+        # 1 legacy false-complete row, 1 honest ok row (synthesis present), 1 honest degraded.
+        self._seed_legacy_false_complete(db, "LEGACY")
+        synthesis = parse_synthesis(_valid_synthesis_json(), _high_pillars(), "GOODOK")
+        save_evaluation("GOODOK", "standard", _high_pillars(), synthesis, db_path=db)
+        save_evaluation("DEGRADED", "standard", _high_pillars(), None, db_path=db)
+
+        n = backfill_no_synthesis_status(db_path=db)
+        assert n == 1, "only the legacy false-complete row should be relabeled"
+
+        by_ticker = {r["ticker"]: r["status"] for r in list_evaluations(db_path=db)}
+        assert by_ticker["LEGACY"] == "no_synthesis"
+        assert by_ticker["GOODOK"] == "ok"
+        assert by_ticker["DEGRADED"] == "no_synthesis"
+
+    def test_backfill_idempotent(self, tmp_path):
+        from store.models import backfill_no_synthesis_status
+        db = tmp_path / "bf2.db"
+        self._seed_legacy_false_complete(db)
+        assert backfill_no_synthesis_status(db_path=db) == 1
+        assert backfill_no_synthesis_status(db_path=db) == 0, "re-run must be a no-op"
+
+    def test_backfill_does_not_change_grading_eligibility(self, tmp_path):
+        """The relabeled rows were already excluded (NULL E(R)); eligibility is invariant."""
+        from store.models import (
+            save_evaluation, get_ungradeable_evals, backfill_no_synthesis_status,
+        )
+        db = tmp_path / "bf3.db"
+        # An old legacy false-complete row (NULL E(R)) — excluded by the E(R) clause either way.
+        self._seed_legacy_false_complete(db, "LEGACY", run_at="2020-01-01T00:00:00+00:00")
+        # An old, complete, gradeable eval — must remain eligible across the backfill.
+        synthesis = parse_synthesis(_valid_synthesis_json(), _high_pillars(), "GRADEME")
+        save_evaluation("GRADEME", "standard", _high_pillars(), synthesis,
+                        expected_return=12.0, db_path=db)
+        import sqlite3
+        with sqlite3.connect(db) as conn:
+            conn.execute("UPDATE evaluations SET run_at='2020-01-01T00:00:00+00:00' "
+                         "WHERE ticker='GRADEME'")
+
+        before = {r["ticker"] for r in get_ungradeable_evals(min_age_days=90, db_path=db)}
+        n = backfill_no_synthesis_status(db_path=db)
+        after = {r["ticker"] for r in get_ungradeable_evals(min_age_days=90, db_path=db)}
+
+        assert n == 1
+        assert before == after, "backfill must not change the grading-eligible set"
+        assert "GRADEME" in after
+        assert "LEGACY" not in after

@@ -44,7 +44,7 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 ticker      TEXT    NOT NULL,
                 run_at      TEXT    NOT NULL,
                 lens        TEXT,
-                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | failed
+                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | no_synthesis | failed
                 error_msg   TEXT,
                 pillars_json    TEXT,   -- JSON list of PillarResult dicts
                 synthesis_json  TEXT,   -- JSON SynthesisOutput (raw dict)
@@ -163,6 +163,10 @@ def save_evaluation(
 
     pillars_json = json.dumps([_pillar_to_dict(p) for p in pillars])
     synthesis_json = json.dumps(synthesis.rawJson) if synthesis else None
+    # status='ok' must mean a COMPLETE eval. A missing synthesis is a real,
+    # auditable degraded state — record it honestly rather than masking as 'ok'.
+    # (Pillars are still valid, so we keep the row instead of failing it.)
+    status = "ok" if synthesis is not None else "no_synthesis"
     verdict_conf = synthesis.verdictConfidence if synthesis else None
     # Use caller-computed E(R) (computed downstream from scenario targets, per spec).
     # Fall back to LLM-provided value only if no computed value was passed.
@@ -175,10 +179,10 @@ def save_evaluation(
             INSERT INTO evaluations
               (ticker, run_at, lens, status, pillars_json, synthesis_json,
                avg_score, overall_conf, verdict_conf, expected_return)
-            VALUES (?, ?, ?, 'ok', ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                ticker, _utc_now(), lens,
+                ticker, _utc_now(), lens, status,
                 pillars_json, synthesis_json,
                 avg_score, overall_conf, verdict_conf, expected_return,
             ),
@@ -205,6 +209,26 @@ def save_evaluation(
             )
 
     return eval_id
+
+
+def backfill_no_synthesis_status(db_path: Path = _DEFAULT_DB) -> int:
+    """One-shot, idempotent migration: relabel legacy false-complete rows.
+
+    Rows written status='ok' despite having no synthesis (synthesis_json IS NULL)
+    predate the status-semantics fix. Relabel them to 'no_synthesis' so 'ok' means
+    a COMPLETE eval. Non-destructive (only the status label changes) and idempotent
+    (after the first run, no status='ok' row has NULL synthesis_json, so re-runs
+    match 0 rows). Returns the number of rows relabeled. Does NOT change grading
+    eligibility — get_ungradeable_evals already excludes these via its
+    expected_return IS NOT NULL clause.
+    """
+    init_db(db_path)
+    with _conn(db_path) as conn:
+        cur = conn.execute(
+            "UPDATE evaluations SET status='no_synthesis' "
+            "WHERE status='ok' AND synthesis_json IS NULL"
+        )
+        return cur.rowcount
 
 
 def save_failed_evaluation(
