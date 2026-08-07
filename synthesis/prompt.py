@@ -9,7 +9,6 @@ import json
 from typing import List
 
 from adapters.base import PillarResult
-from adapters.yfinance_adapter import YFinanceData
 from core.technicals import TechnicalOverlay
 
 SYSTEM_PROMPT = """\

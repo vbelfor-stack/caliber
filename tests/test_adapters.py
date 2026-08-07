@@ -5,7 +5,8 @@ All tests run against recorded fixtures — no live network calls.
 from pathlib import Path
 import pytest
 
-from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
+from adapters.yfinance_adapter import fetch_yfinance
+from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar, EdgarData
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.fmp_adapter import fetch_fmp
@@ -22,7 +23,7 @@ FMP = FIXTURE_ROOT / "fmp"
 class TestYFinanceAdapter:
     def test_mu_loads_from_fixture(self):
         yf = fetch_yfinance("MU", fixture_path=YF / "MU.json")
-        assert isinstance(yf, YFinanceData)
+        assert isinstance(yf, TickerData)
         assert yf.ticker == "MU"
 
     def test_mu_sector_is_technology(self):
@@ -208,7 +209,7 @@ class TestFredAdapter:
 class TestFmpAdapter:
     def test_mu_loads_from_fixture(self):
         yf = fetch_fmp("MU", fixture_path=FMP / "MU.json")
-        assert isinstance(yf, YFinanceData)
+        assert isinstance(yf, TickerData)
         assert yf.ticker == "MU"
 
     def test_mu_name_is_micron(self):
@@ -343,7 +344,7 @@ class TestFmpFailover:
             with patch("batch.runner.fetch_yfinance", return_value=yf_result):
                 result = _fetch_with_failover("MU", log=lambda msg: None)
 
-        assert isinstance(result, YFinanceData)
+        assert isinstance(result, TickerData)
         assert result.ticker == "MU"
 
     def test_both_feeds_failing_raises(self):

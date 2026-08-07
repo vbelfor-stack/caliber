@@ -19,7 +19,6 @@ except ImportError:
     pass
 
 from adapters.base import PillarResult
-from adapters.yfinance_adapter import YFinanceData
 from core.technicals import TechnicalOverlay
 from synthesis.prompt import SYSTEM_PROMPT, build_user_message
 from synthesis.schema import SynthesisOutput, parse_synthesis

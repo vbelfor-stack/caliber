@@ -268,15 +268,15 @@ def test_mu_trajectory_cycle_position_references_trajectory(mu_yf, fred, mu_lens
 _TODAY_STR = __import__("datetime").date.today().isoformat()
 
 
-def _make_minimal_yf(revenue_growth_val=None, fcf_yield_val=None) -> "YFinanceData":
-    """Build a minimal YFinanceData for isolated _valuation_compounder tests."""
-    from adapters.yfinance_adapter import YFinanceData
+def _make_minimal_yf(revenue_growth_val=None, fcf_yield_val=None) -> "TickerData":
+    """Build a minimal TickerData for isolated _valuation_compounder tests."""
+    from core.datatypes import TickerData
     m = missing_prov("test", _TODAY_STR)
     rg = (Prov(value=revenue_growth_val, source="test", as_of=_TODAY_STR, confidence="medium")
           if revenue_growth_val is not None else m)
     fy = (Prov(value=fcf_yield_val, source="test", as_of=_TODAY_STR, confidence="medium")
           if fcf_yield_val is not None else m)
-    return YFinanceData(
+    return TickerData(
         ticker="TEST", name="Test Co", sector="Financial Services",
         industry="Credit Services", sic=None,
         gross_margin=m, operating_margin=m, profit_margin=m, roe=m, roa=m,

@@ -33,7 +33,8 @@ try:
 except ImportError:
     pass
 
-from adapters.yfinance_adapter import fetch_yfinance, YFinanceData
+from adapters.yfinance_adapter import fetch_yfinance
+from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
@@ -47,7 +48,7 @@ DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
 
 
-def _fetch_with_failover(ticker: str, log) -> YFinanceData:
+def _fetch_with_failover(ticker: str, log) -> TickerData:
     """
     Failover chain: FMP primary → yfinance fallback.
     Raises RuntimeError if all feeds fail, with combined diagnostics.

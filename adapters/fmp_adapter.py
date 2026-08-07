@@ -1,6 +1,6 @@
 """
 FMP (Financial Modeling Prep) adapter — primary data feed.
-Returns YFinanceData populated from FMP stable API.
+Returns TickerData populated from FMP stable API.
 Source tag: "fmp". Default confidence: medium.
 
 Endpoints used (all under https://financialmodelingprep.com/stable/):
@@ -38,7 +38,7 @@ from adapters.base import (
     Confidence, Prov, TrajectoryPoint, coerce, min_conf, missing_prov,
     derive_trajectory_tag,
 )
-from adapters.yfinance_adapter import YFinanceData
+from core.datatypes import TickerData
 
 TODAY_STR: str  # set at import from caller; module-level default below
 from datetime import date as _date
@@ -96,13 +96,13 @@ def _quarterly_to_map(income_q: List[Dict]) -> Dict[str, Dict[str, Optional[floa
 
 
 def _build_gm_trajectory(ttm_gm: Optional[float], income_q: List[Dict]) -> Optional[TrajectoryPoint]:
-    from adapters.yfinance_adapter import _build_gross_margin_trajectory
+    from core.datatypes import _build_gross_margin_trajectory
     qdata = _quarterly_to_map(income_q)
     return _build_gross_margin_trajectory(ttm_gm, qdata)
 
 
 def _build_rg_trajectory(ttm_rg: Optional[float], income_q: List[Dict]) -> Optional[TrajectoryPoint]:
-    from adapters.yfinance_adapter import _build_revenue_growth_trajectory
+    from core.datatypes import _build_revenue_growth_trajectory
     qdata = _quarterly_to_map(income_q)
     return _build_revenue_growth_trajectory(ttm_rg, qdata)
 
@@ -165,7 +165,7 @@ def _build(
     analyst_est: List[Dict],
     price_target: Dict,
     shares_float: Dict,
-) -> YFinanceData:
+) -> TickerData:
 
     as_of = TODAY_STR
 
@@ -231,7 +231,7 @@ def _build(
     gm_traj = _build_gm_trajectory(gross_margin.value, income_q)
     rg_traj = _build_rg_trajectory(revenue_growth_val, income_q)
 
-    return YFinanceData(
+    return TickerData(
         ticker=ticker,
         name=profile.get("companyName"),
         sector=profile.get("sector"),
@@ -270,7 +270,7 @@ def _build(
     )
 
 
-def fetch_fmp(ticker: str, fixture_path: Optional[Path] = None) -> YFinanceData:
+def fetch_fmp(ticker: str, fixture_path: Optional[Path] = None) -> TickerData:
     """
     Fetch FMP data for ticker.
     fixture_path → offline unit-test mode (loads from JSON file).
@@ -281,7 +281,7 @@ def fetch_fmp(ticker: str, fixture_path: Optional[Path] = None) -> YFinanceData:
     return _from_live(ticker)
 
 
-def _from_live(ticker: str) -> YFinanceData:
+def _from_live(ticker: str) -> TickerData:
     key = os.environ.get("FMP_API_KEY", "")
     if not key:
         raise RuntimeError(f"[fmp] FMP_API_KEY not set — cannot fetch {ticker}")
@@ -319,7 +319,7 @@ def _from_live(ticker: str) -> YFinanceData:
     )
 
 
-def _from_fixture(ticker: str, path: Path) -> YFinanceData:
+def _from_fixture(ticker: str, path: Path) -> TickerData:
     if not path.exists():
         raise RuntimeError(f"[fmp] fixture not found: {path}")
     try:

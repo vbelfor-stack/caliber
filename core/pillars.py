@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple
 from adapters.base import Confidence, Prov, PillarResult, min_conf, missing_prov
 from adapters.edgar_adapter import EdgarData
 from adapters.fred_adapter import FredData
-from adapters.yfinance_adapter import YFinanceData
+from core.datatypes import TickerData
 
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
@@ -120,7 +120,7 @@ def _analyze_insiders(transactions: List[Dict]) -> str:
 
 # ── Pillar 1: Business Quality ────────────────────────────────────────────────
 
-def score_business_quality(yf: YFinanceData, lens: str) -> PillarResult:
+def score_business_quality(yf: TickerData, lens: str) -> PillarResult:
     flags: List[str] = []
     pts = 0
     max_pts = 0
@@ -190,7 +190,7 @@ def score_business_quality(yf: YFinanceData, lens: str) -> PillarResult:
 
 # ── Pillar 2: Financial Health ─────────────────────────────────────────────────
 
-def score_financial_health(yf: YFinanceData, lens: str) -> PillarResult:
+def score_financial_health(yf: TickerData, lens: str) -> PillarResult:
     flags: List[str] = []
     pts = 0
     max_pts = 0
@@ -265,7 +265,7 @@ def score_financial_health(yf: YFinanceData, lens: str) -> PillarResult:
 
 # ── Pillar 3: Management & Capital Allocation ──────────────────────────────────
 
-def score_management(yf: YFinanceData, lens: str) -> PillarResult:
+def score_management(yf: TickerData, lens: str) -> PillarResult:
     flags: List[str] = []
     pts = 0
     max_pts = 0
@@ -340,7 +340,7 @@ def score_management(yf: YFinanceData, lens: str) -> PillarResult:
 
 # ── Pillar 4: Growth / Forward ────────────────────────────────────────────────
 
-def score_growth(yf: YFinanceData, edgar: EdgarData, lens: str) -> PillarResult:
+def score_growth(yf: TickerData, edgar: EdgarData, lens: str) -> PillarResult:
     """
     Load-bearing for value-trap logic in synthesis:
       - Low growth here + cheap valuation + solvent health → synthesis should construct value-trap thesis.
@@ -428,7 +428,7 @@ def score_growth(yf: YFinanceData, edgar: EdgarData, lens: str) -> PillarResult:
 
 # ── Pillar 5: Valuation ───────────────────────────────────────────────────────
 
-def score_valuation(yf: YFinanceData, fred: FredData, lens: str) -> PillarResult:
+def score_valuation(yf: TickerData, fred: FredData, lens: str) -> PillarResult:
     """Dispatch to lens-specific valuation scorer."""
     if lens == "cyclical":
         return _valuation_cyclical(yf, fred)
@@ -447,7 +447,7 @@ def _rate_note(fred: FredData) -> str:
     return f"10Y rate {fred.rate_10y.value:.2f}%."
 
 
-def _cycle_position_from_trajectory(yf: YFinanceData) -> tuple:
+def _cycle_position_from_trajectory(yf: TickerData) -> tuple:
     """
     Derive (cycle_pos: str, warn_type: str|None) from gross margin trajectory tag.
     Falls back to TTM absolute level if trajectory unavailable.
@@ -486,7 +486,7 @@ def _cycle_position_from_trajectory(yf: YFinanceData) -> tuple:
         return ("unknown", None)
 
 
-def _valuation_cyclical(yf: YFinanceData, fred: FredData) -> PillarResult:
+def _valuation_cyclical(yf: TickerData, fred: FredData) -> PillarResult:
     """
     Cyclical lens: normalize to mid-cycle earnings.
     Cycle position derived from trajectory tag, NOT TTM level alone (per spec).
@@ -551,7 +551,7 @@ def _valuation_cyclical(yf: YFinanceData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_compounder(yf: YFinanceData, fred: FredData) -> PillarResult:
+def _valuation_compounder(yf: TickerData, fred: FredData) -> PillarResult:
     """
     Quality compounder lens (Visa, payments, exchanges, GOOG).
     NOT P/TBV — book value is meaningless for asset-light networks.
@@ -629,7 +629,7 @@ def _valuation_compounder(yf: YFinanceData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_bank(yf: YFinanceData, fred: FredData) -> PillarResult:
+def _valuation_bank(yf: TickerData, fred: FredData) -> PillarResult:
     """Bank / insurer / REIT lens: P/TBV, P/FFO."""
     flags: List[str] = []
     inputs: List[Prov] = [yf.price_to_book, fred.rate_10y]
@@ -664,7 +664,7 @@ def _valuation_bank(yf: YFinanceData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_growth(yf: YFinanceData, fred: FredData) -> PillarResult:
+def _valuation_growth(yf: TickerData, fred: FredData) -> PillarResult:
     """Growth / SaaS lens: EV/Revenue vs growth, Rule of 40."""
     flags: List[str] = []
     inputs: List[Prov] = [yf.ev_to_revenue, yf.revenue_growth, yf.operating_margin, fred.rate_10y]
@@ -710,7 +710,7 @@ def _valuation_growth(yf: YFinanceData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_standard(yf: YFinanceData, fred: FredData) -> PillarResult:
+def _valuation_standard(yf: TickerData, fred: FredData) -> PillarResult:
     """Standard lens: EV/EBITDA, P/E, FCF yield."""
     flags: List[str] = []
     inputs: List[Prov] = [yf.ev_to_ebitda, yf.trailing_pe, yf.fcf_yield, fred.rate_10y]
@@ -769,7 +769,7 @@ def _valuation_standard(yf: YFinanceData, fred: FredData) -> PillarResult:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def score_all(
-    yf: YFinanceData,
+    yf: TickerData,
     edgar: EdgarData,
     fred: FredData,
     lens: str,
