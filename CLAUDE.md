@@ -12,15 +12,26 @@
 - LOUD FAILURE BEATS SILENT DEGRADATION. Failures raise a typed signal — never swallowed,
   never masked as success. (yfinance fallback was removed for this reason.)
 - Hard stops — must raise typed signals, never pass silently:
-  - anchor_price divergence
+  - anchor_price divergence   # NOT YET IMPLEMENTED — stated invariant, no code guard (see open thread #4)
   - PE basis computed on negative forward EPS  (LCID is the negative-forward-PE test fixture)
 - status='ok' must mean a COMPLETE eval (see open thread #2).
 - Golden-ticker regression harness: MU, GOOG, V, NOW, WU. Behavior on these must not change
   silently across sessions.   (confirmed current 2026-08-07)
 
 ## Stack & repo map
-- Python / SQLite / FMP API on Replit. FMP is the sole source (AlphaVantage cross-check
-  removed 2026-07-19; single-source, no confidence upgrades — see teardown note below).
+- Python / SQLite on Replit. Feed reality (corrected 2026-08-07): "FMP sole source" is
+  INACCURATE as previously written. Actual state:
+  - FMP — batch-primary (batch/runner._fetch_with_failover) and the grader's price feed.
+  - yfinance — batch-FALLBACK leg (fires when FMP raises) AND interactive-primary
+    (evaluate.py fetches yfinance directly, no FMP). Rate-limited/IP-blocked on Replit,
+    so the live yfinance paths are dead-on-arrival here (fail loud, ~6.6s, no hang) — but
+    still wired. AlphaVantage cross-check removed 2026-07-19; single-source, no confidence
+    upgrades (see teardown note below).
+  - YFinanceData (in adapters/yfinance_adapter.py) is the pipeline's CANONICAL data type,
+    imported by core/pillars, synthesis/client, synthesis/prompt, batch/runner, AND
+    adapters/fmp_adapter itself — FMP cannot run without the yfinance_adapter module.
+    A true "sole source" state requires the teardown (Phase 1 = rehome this type to a
+    neutral core module). Sequencing: Phase B → teardown Phases 1–3 → EDGAR → Phase D.
 - core/grading.py — assign_grade(), grade_evaluation(), run_grading(), _fetch_price_at_date(), PriceUnavailable
 - store/models.py — save_grade(), list_grades(), get_ungradeable_evals(), init_db
 - tests/test_grading.py
@@ -47,15 +58,28 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 2. Those 51 were written status='ok' despite NO synthesis. status='ok' should mean a complete
    eval — latent schema question in the evaluate/synthesis path.
 3. "0 eligible / nothing graded" exits clean — make it distinguishable from "something broke."
+   DONE 2026-08-07 (run_grading now emits an explicit "CLEAN EMPTY" line + early return).
+4. anchor_price divergence hard stop (listed under Core disciplines) is NOT implemented —
+   grep for anchor/divergence returns zero code hits. E(R) is computed downstream from
+   scenario targets against a fresh current_price (correct), but nothing guards the LLM's
+   targets being anchored to a stale price (the MU failure mode). Design = Phase B / B-2.
 
 ## Roadmap
 - Phase A — NTM forward PE fix. DONE.
-- Phase B — synthesis engine schema overhaul (fix stale price-target anchoring, e.g. MU). # TODO Vic: current status?
+- Phase B — synthesis engine schema overhaul (fix stale price-target anchoring, e.g. MU).
+  Status (2026-08-07): PARTIAL. E(R)-computed-downstream-from-targets is in place; the
+  anchor-divergence hard stop is unimplemented (open thread #4) and the status='ok'-without-
+  synthesis bug still reproduces (open thread #2). IN PROGRESS: B-1 (status schema fix),
+  B-2 (anchor-divergence guard — design stage). Finishing Phase B is the current priority.
 - Phase C — KILLED. AlphaVantage cross-check torn out 2026-07-19 (see teardown note below).
-- Phase D — # TODO Vic: scope
+- Phase D — HOLD until teardown Phase 1 done. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging.
-- EDGAR — # TODO Vic: scope (SEC filings integration?)
+- EDGAR — HOLD until teardown Phase 1 done (no point wiring a 2nd source into a type system
+  about to be rehomed). # TODO Vic: scope (SEC filings integration?)
+- Teardown (yfinance) — follows Phase B. Phase 1 rehome YFinanceData + trajectory builders
+  to neutral core module; Phase 2 migrate evaluate.py to FMP; Phase 3 remove fallback leg +
+  requirements pin. Blast radius logged in session 2026-08-07.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
