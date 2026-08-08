@@ -118,15 +118,57 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Teardown (yfinance) — DONE 2026-08-07 (Phases 1–3, commits 7e154cf/369ad8d/64f57e5). FMP is
   the sole live feed; TickerData rehomed to core/datatypes; yfinance package + adapter removed.
   See feed-reality section above (incl. the tracked provenance-relabel follow-up).
-- EDGAR — NEXT (unblocked by teardown). Scope: SEC filings integration; unlocks "high"
+- EDGAR — IN PROGRESS (unblocked by teardown). SEC filings integration; unlocks "high"
   confidence (the wired secondary source that makes the anti-launder NOTE reachable again).
-  # TODO Vic: confirm scope.
+  E-1 DONE (XBRL extraction, commit 6977a72). E-2 DONE (field resolution, commit 25b40c5;
+  see EDGAR section below). E-3 NEXT — cross-check orchestration, DARK on arrival.
 - Phase D — after EDGAR. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
   investigation (the ~$881 price was correct). Stays behind EDGAR.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
+
+## EDGAR — E-1/E-2 DONE (2026-08-08), E-3 dark-launch next
+Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again and
+restores the anti-launder NOTE, which has been unfirable since the AV teardown.
+- E-1 (6977a72): XBRL companyfacts extraction — raw us-gaap/dei concept facts, form-filtered
+  (10-K/10-Q family), numeric-coerced, most-recent-first. Fixtures for MU/GOOG/V.
+- E-2 (25b40c5): canonical field resolution — 16 fields in adapters/edgar_adapter.py.
+  - Extraction depth 40, DE-DUPLICATED FIRST. companyfacts repeats an unchanged fact in
+    every filing referencing it (~half of records); identical (start,end,unit,value) tuples
+    collapse (newest accession wins) BEFORE the cap, else duplicates crowd out the older
+    periods TTM needs. 15 de-duped records cover 10 distinct period-ends worst-case → 40 is
+    ~2.5x margin.
+  - Synonym table (FIELD_SPECS): explicit ordered chains, NO heuristics. Issuers migrate tags
+    and abandon the old one; no golden CIK files two competing tags concurrently. Mapped
+    migrations: equity (V uses ...IncludingNoncontrollingInterest; its StockholdersEquity
+    stopped 2011), current debt (GOOG/V LongTermDebtCurrent vs MU DebtCurrent), long-term debt
+    (GOOG/V LongTermDebtNoncurrent vs MU LongTermDebt), shares (dei absent for GOOG / frozen
+    2010 for V, both multi-class → us-gaap CommonStockSharesOutstanding fallback), revenue
+    (Revenues <-> RevenueFromContractWithCustomerExcludingAssessedTax), gross profit (GOOG/V
+    untagged → derived revenue - cost_of_revenue, same period + same method only).
+  - STALE GATE 450d (one fiscal year + a quarter): a concept whose newest period-end lags the
+    entity's latest filed period is skipped and the chain falls through; an all-stale chain
+    WITHHOLDS the value. Rationale — a stale figure passed downstream wearing a fresh label
+    could land inside cross-check tolerance and launder to high. Caught live: V equity
+    2011→2026-03-31, GOOG current-debt 2018→2026-06-30, V current-debt 2017→2026-03-31.
+  - TTM, three methods, each STAMPED on the field: ttm_annual (newest fact already spans a
+    full FY — exact), ttm_summed (4 contiguous QTD ~365d), ttm_reconstructed (prior FY +
+    current YTD − prior-year YTD; required by all three golden CIKs, none report Q4
+    standalone). Never a partial sum → REASON_TTM_UNAVAILABLE. ttm_summed has SYNTHETIC-ONLY
+    coverage; no golden CIK exercises it live.
+  - Typed reasons on every withheld field (no_tag, stale_tag, synonym_conflict,
+    ambiguous_period, ttm_unavailable, derive_incomplete) + per-synonym trail. These are the
+    queryable tag-migration map for onboarding new tickers.
+  - Coverage: MU 16/16, GOOG 16/16, V 12/16. V's 4 gaps are ACCEPTED DATA LIMITS: no
+    cost-of-revenue or capex concept filed (no_tag x2), gross profit therefore underivable
+    (derive_incomplete), share count stale with no fallback (stale_tag). Consequence: V gets
+    no gross-margin and no FCF cross-check. Zero synonym conflicts on the golden CIKs.
+- E-3 FRESHNESS RULING (locked 2026-08-08, before build): freshness is PER-FIELD, from that
+  field's OWN period-end — never per-ticker. MU long_term_debt lags 182d while its siblings
+  sit at the latest quarter; it stays capped at medium while they may upgrade. The dark-launch
+  delta table must surface that case explicitly so the per-field gate is visibly working.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
