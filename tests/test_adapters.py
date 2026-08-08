@@ -523,6 +523,56 @@ class TestEdgarFieldResolution:
         assert fin.fields["equity"].value == 100.0
         assert fin.fields["equity"].concept == "StockholdersEquity"
 
+    def test_distinct_measures_skip_the_conflict_gate(self):
+        """Revenues (total) and the ASC 606 contract-revenue tag legitimately differ for
+        issuers with non-contract income (WU). Priority order decides; withholding here
+        would cascade into every margin built on revenue."""
+        fin = resolve_financials({
+            "Revenues": [_fact("2026-06-30", 1995.9, start="2025-07-01")],
+            "RevenueFromContractWithCustomerExcludingAssessedTax":
+                [_fact("2026-06-30", 1920.6, start="2025-07-01")],
+        }, "2026-06-30")
+        rev = fin.fields["revenue"]
+        assert rev.is_resolved(), f"withheld: {rev.reason}"
+        assert rev.concept == "Revenues"
+        assert rev.value == pytest.approx(1995.9)
+
+    def test_conflict_gate_still_armed_for_ambiguous_chains(self):
+        """Disabling the gate for distinct measures must not disable it everywhere."""
+        fin = resolve_financials({
+            "StockholdersEquity": [_fact("2026-03-31", 100)],
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest":
+                [_fact("2026-03-31", 140)],
+        }, "2026-03-31")
+        assert fin.fields["equity"].reason == REASON_SYNONYM_CONFLICT
+
+    def test_current_debt_falls_through_to_short_term_borrowings(self):
+        """NOW abandoned LongTermDebtCurrent in 2022 and files ShortTermBorrowings."""
+        fin = resolve_financials({
+            "LongTermDebtCurrent": [_fact("2022-12-31", 0)],
+            "ShortTermBorrowings": [_fact("2026-06-30", 2082)],
+            "CommercialPaper": [_fact("2026-06-30", 2100)],
+        }, "2026-06-30")
+        cd = fin.fields["current_debt"]
+        assert cd.is_resolved()
+        assert cd.concept == "ShortTermBorrowings"   # aggregate preferred over component
+        assert any("LongTermDebtCurrent:stale(" in t for t in cd.trail)
+
+    @pytest.mark.parametrize("ticker,concept", [
+        ("MU", "AvailableForSaleSecuritiesDebtSecuritiesCurrent"),
+        ("GOOG", "MarketableSecuritiesCurrent"),
+    ])
+    def test_short_term_investments_resolve(self, ticker, concept):
+        sti = _fields(ticker)["short_term_investments"]
+        assert sti.is_resolved()
+        assert sti.concept == concept
+
+    def test_short_term_investments_absent_is_typed(self):
+        """V stopped filing an ST-investment tag in 2020 — withheld, not zero-filled."""
+        sti = _fields("V")["short_term_investments"]
+        assert sti.value is None
+        assert sti.reason == REASON_STALE_TAG
+
     def test_ambiguous_period_withholds(self):
         """One filing reporting two values for a period (dimensions stripped by the
         companyfacts API) cannot be disambiguated here."""

@@ -4110,6 +4110,430 @@
           "accession": "0001403161-17-000037"
         }
       ],
+      "AvailableForSaleSecuritiesDebtSecuritiesCurrent": [
+        {
+          "value": 3604000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-09-30",
+          "fy": 2020,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-20-000070"
+        },
+        {
+          "value": 4110000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-09-30",
+          "fy": 2020,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-20-000070"
+        },
+        {
+          "value": 3434000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-09-30",
+          "fy": 2019,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-19-000050"
+        }
+      ],
+      "AvailableForSaleSecuritiesCurrent": [
+        {
+          "value": 3449000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-09-30",
+          "fy": 2018,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-18-000055"
+        },
+        {
+          "value": 3302000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-06-30",
+          "fy": 2018,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-18-000034"
+        },
+        {
+          "value": 3483000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-03-31",
+          "fy": 2018,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-18-000020"
+        },
+        {
+          "value": 3307000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-12-31",
+          "fy": 2018,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-18-000009"
+        },
+        {
+          "value": 3482000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-09-30",
+          "fy": 2018,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-18-000055"
+        },
+        {
+          "value": 2674000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-06-30",
+          "fy": 2017,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-17-000037"
+        },
+        {
+          "value": 1417000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-03-31",
+          "fy": 2017,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-17-000028"
+        },
+        {
+          "value": 3615000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-12-31",
+          "fy": 2017,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-17-000011"
+        },
+        {
+          "value": 3248000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-09-30",
+          "fy": 2017,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-17-000044"
+        },
+        {
+          "value": 2796000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-06-30",
+          "fy": 2016,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-16-000039"
+        },
+        {
+          "value": 3885000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-03-31",
+          "fy": 2016,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-16-000022"
+        },
+        {
+          "value": 8428000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2015-12-31",
+          "fy": 2016,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-16-000015"
+        },
+        {
+          "value": 2431000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2015-09-30",
+          "fy": 2016,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-16-000058"
+        },
+        {
+          "value": 2504000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2015-06-30",
+          "fy": 2015,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-15-000010"
+        },
+        {
+          "value": 2496000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2015-03-31",
+          "fy": 2015,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-15-000007"
+        },
+        {
+          "value": 2417000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2014-12-31",
+          "fy": 2015,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-15-000003"
+        },
+        {
+          "value": 1910000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2014-09-30",
+          "fy": 2015,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-15-000013"
+        },
+        {
+          "value": 1920000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2014-06-30",
+          "fy": 2014,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-14-000012"
+        },
+        {
+          "value": 1592000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2014-03-31",
+          "fy": 2014,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-14-000008"
+        },
+        {
+          "value": 1880000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2013-12-31",
+          "fy": 2014,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-14-000005"
+        },
+        {
+          "value": 1994000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2013-09-30",
+          "fy": 2014,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-14-000017"
+        },
+        {
+          "value": 1822000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2013-06-30",
+          "fy": 2013,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-13-000007"
+        },
+        {
+          "value": 1270000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2013-03-31",
+          "fy": 2013,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-13-000004"
+        },
+        {
+          "value": 1377000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2012-12-31",
+          "fy": 2013,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001384108-13-000004"
+        },
+        {
+          "value": 677000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2012-09-30",
+          "fy": 2013,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-13-000011"
+        },
+        {
+          "value": 682000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2012-06-30",
+          "fy": 2012,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001384108-12-000008"
+        },
+        {
+          "value": 849000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2012-03-31",
+          "fy": 2012,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001384108-12-000004"
+        },
+        {
+          "value": 734000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2011-12-31",
+          "fy": 2012,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001445305-12-000234"
+        },
+        {
+          "value": 1214000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2011-09-30",
+          "fy": 2012,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001445305-12-000234"
+        },
+        {
+          "value": 155000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2011-06-30",
+          "fy": 2011,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001193125-11-202235"
+        },
+        {
+          "value": 131000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2011-03-31",
+          "fy": 2011,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001193125-11-128562"
+        },
+        {
+          "value": 132000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2010-12-31",
+          "fy": 2011,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001193125-11-021871"
+        },
+        {
+          "value": 124000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2010-09-30",
+          "fy": 2011,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001193125-11-315956"
+        },
+        {
+          "value": 29000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2010-06-30",
+          "fy": 2010,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001193125-10-172477"
+        },
+        {
+          "value": 22000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2010-03-31",
+          "fy": 2010,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001193125-10-102602"
+        },
+        {
+          "value": 25000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2009-12-31",
+          "fy": 2010,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001193125-10-020834"
+        },
+        {
+          "value": 56000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2009-09-30",
+          "fy": 2010,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001193125-10-265236"
+        },
+        {
+          "value": 47000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2009-06-30",
+          "fy": 2009,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001193125-09-159678"
+        },
+        {
+          "value": 355000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2008-09-30",
+          "fy": 2009,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001193125-09-239249"
+        }
+      ],
       "LongTermDebtNoncurrent": [
         {
           "value": 22417000000.0,
@@ -5186,6 +5610,70 @@
           "fp": "Q3",
           "form": "10-Q",
           "accession": "0001403161-17-000037"
+        }
+      ],
+      "ShortTermBorrowings": [
+        {
+          "value": 1750000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-06-30",
+          "fy": 2017,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-17-000037"
+        },
+        {
+          "value": 1750000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-03-31",
+          "fy": 2017,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-17-000028"
+        },
+        {
+          "value": 2317000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-12-31",
+          "fy": 2017,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-17-000011"
+        },
+        {
+          "value": 0.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-09-30",
+          "fy": 2017,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-17-000037"
+        }
+      ],
+      "CommercialPaper": [
+        {
+          "value": 0.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-06-30",
+          "fy": 2020,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-20-000048"
+        },
+        {
+          "value": 0.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-09-30",
+          "fy": 2020,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-20-000048"
         }
       ],
       "StockholdersEquity": [

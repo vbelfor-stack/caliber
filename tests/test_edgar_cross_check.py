@@ -99,6 +99,43 @@ class TestComparisons:
             assert not d.would_change
             assert d.note
 
+    def test_total_cash_includes_short_term_investments(self):
+        """FMP's total_cash is cashAndShortTermInvestments; the EDGAR side must measure
+        the same thing rather than cash alone."""
+        edgar, yf = _pair("MU")
+        by_field = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}
+        fields = edgar.financials.fields
+        assert by_field["total_cash"].edgar_value == pytest.approx(
+            fields["cash"].value + fields["short_term_investments"].value)
+
+    def test_missing_optional_input_downgrades_to_advisory(self):
+        """V files no ST-investment tag, so its cash-only value faces a broader FMP
+        measure — advisory, never a conflict."""
+        edgar, yf = _pair("V")
+        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["total_cash"]
+        assert delta.verdict == VERDICT_BASIS_MISMATCH
+        assert not delta.would_change
+        assert "short_term_investments" in delta.note
+
+    def test_roe_uses_average_equity(self):
+        """FMP computes ROE on average equity; against period-end equity the gap tracks
+        equity growth (MU 29%, GOOG 25%). Averaging aligns the basis."""
+        edgar, yf = _pair("MU")
+        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["roe"]
+        assert "avg w/ prior yr" in delta.edgar_inputs
+        fields = edgar.financials.fields
+        end_only = fields["net_income"].value / fields["equity"].value
+        assert delta.edgar_value != pytest.approx(end_only)
+        assert delta.divergence_pct < 10.0   # was 29.0 on the period-end basis
+
+    def test_average_equity_follows_the_migrated_tag(self):
+        """V's equity resolves via the incl-NCI variant; the prior-year lookup must use
+        that same tag, not the abandoned one."""
+        edgar, yf = _pair("V")
+        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["roe"]
+        assert "IncludingPortionAttributableToNoncontrollingInterest" in delta.edgar_inputs
+        assert "avg w/ prior yr" in delta.edgar_inputs
+
     def test_agreement_and_conflict_both_occur(self):
         edgar, yf = _pair("MU")
         verdicts = {d.verdict for d in compute_cross_check(edgar, yf).deltas}

@@ -58,6 +58,21 @@ class Comparison:
     inputs: Tuple[str, ...]                     # EDGAR canonical fields required
     compute: Callable[[Dict[str, float]], Optional[float]]
     basis_note: str = ""                        # non-empty ⇒ known basis mismatch
+    optional: Tuple[str, ...] = ()
+    """Inputs that improve basis alignment but are not filed by every issuer.
+
+    Missing ones do not block the comparison; they downgrade it to advisory, because the
+    remaining value measures something narrower than the FMP field it faces.
+    """
+    optional_missing_note: str = ""
+    average_inputs: Tuple[str, ...] = ()
+    """Inputs averaged with their prior-year value ((begin + end) / 2).
+
+    FMP's returnOnEquityTTM is computed on average equity. Measured against period-end
+    equity the gap tracks equity growth exactly — 29.0% on MU and 25.0% on GOOG, the two
+    fastest compounders, versus ~2-3% on the rest. Averaging is basis alignment, not a
+    fudge factor.
+    """
 
 
 def _ratio(num: str, den: str) -> Callable[[Dict[str, float]], Optional[float]]:
@@ -76,11 +91,22 @@ COMPARISONS: Tuple[Comparison, ...] = (
                _ratio("operating_income", "revenue")),
     Comparison("profit_margin", ("net_income", "revenue"),
                _ratio("net_income", "revenue")),
-    Comparison("roe", ("net_income", "equity"), _ratio("net_income", "equity")),
+    Comparison("roe", ("net_income", "equity"), _ratio("net_income", "equity"),
+               average_inputs=("equity",),
+               optional_missing_note="no prior-year equity filed; period-end basis"),
     Comparison("roa", ("net_income", "total_assets"), _ratio("net_income", "total_assets")),
     Comparison("current_ratio", ("current_assets", "current_liabilities"),
                _ratio("current_assets", "current_liabilities")),
-    Comparison("total_cash", ("cash",), lambda v: v["cash"]),
+    # FMP maps cashAndShortTermInvestments off the ANNUAL balance sheet. Adding the
+    # investment leg makes the measures identical: verified to 0.0% against FMP at the
+    # matching fiscal year-end for MU, GOOG and NOW. The residual gap here is purely
+    # as-of (FMP annual vs our MRQ), same as total_debt.
+    Comparison("total_cash", ("cash",),
+               lambda v: v["cash"] + v.get("short_term_investments", 0.0),
+               optional=("short_term_investments",),
+               optional_missing_note="no ST-investment tag filed; cash-only vs FMP "
+                                     "cash+ST-investments",
+               basis_note="FMP total_cash is annual balance-sheet; EDGAR is MRQ"),
     Comparison("shares_outstanding", ("shares_outstanding",),
                lambda v: v["shares_outstanding"]),
     Comparison("total_debt", ("long_term_debt", "current_debt"),
@@ -204,30 +230,74 @@ def filing_freshness_flags(
     return flags
 
 
+PRIOR_YEAR_WINDOW_DAYS = (300, 430)
+
+
+def _prior_year_instant(
+    concepts: Dict[str, List[Dict[str, Any]]], rf: ResolvedField
+) -> Optional[float]:
+    """Same concept's value roughly one year before rf's period-end.
+
+    Looks up the tag the field actually resolved from, so an issuer on a migrated tag
+    (V's equity) is followed rather than lost.
+    """
+    if not rf.concept or not rf.period_end:
+        return None
+    best_end, best_value = None, None
+    for rec in concepts.get(rf.concept, []):
+        end = rec.get("end")
+        if rec.get("start") or not end or end >= rf.period_end:
+            continue
+        gap = _age_days(end, rf.period_end)
+        if gap is None or not (PRIOR_YEAR_WINDOW_DAYS[0] <= gap <= PRIOR_YEAR_WINDOW_DAYS[1]):
+            continue
+        if best_end is None or end > best_end:
+            best_end, best_value = end, float(rec["value"])
+    return best_value
+
+
 def _gather_inputs(
-    comparison: Comparison, fields: Dict[str, ResolvedField]
-) -> Tuple[Optional[Dict[str, float]], Optional[str], str, str]:
+    comparison: Comparison,
+    fields: Dict[str, ResolvedField],
+    concepts: Dict[str, List[Dict[str, Any]]],
+) -> Tuple[Optional[Dict[str, float]], Optional[str], str, str, List[str]]:
     """Collect a comparison's EDGAR inputs.
 
-    Returns (values, oldest_period_end, trail, missing_reason). values is None when any
-    input is unresolved — a comparison is never run on a partial input set.
+    Returns (values, oldest_period_end, trail, missing_required, missing_optional).
+    values is None when a REQUIRED input is unresolved — a comparison is never run on a
+    partial required set. Missing optional inputs are reported, not fatal.
     """
     values: Dict[str, float] = {}
     oldest: Optional[str] = None
     trail_parts: List[str] = []
     missing: List[str] = []
-    for name in comparison.inputs:
+    missing_optional: List[str] = []
+
+    for name in comparison.inputs + comparison.optional:
+        required = name in comparison.inputs
         rf = fields.get(name)
         if rf is None or not rf.is_resolved():
-            missing.append(f"{name}({rf.reason if rf else 'absent'})")
+            (missing if required else missing_optional).append(
+                f"{name}({rf.reason if rf else 'absent'})")
             continue
-        values[name] = float(rf.value)          # type: ignore[arg-type]
-        trail_parts.append(f"{name}={rf.concept}/{rf.method}@{rf.period_end}")
+        value = float(rf.value)                 # type: ignore[arg-type]
+        label = f"{name}={rf.concept}/{rf.method}@{rf.period_end}"
+        if name in comparison.average_inputs:
+            prior = _prior_year_instant(concepts, rf)
+            if prior is None:
+                missing_optional.append(f"{name}_prior_year(absent)")
+            else:
+                value = (value + prior) / 2.0
+                label += "(avg w/ prior yr)"
+        values[name] = value
+        trail_parts.append(label)
         if rf.period_end and (oldest is None or rf.period_end < oldest):
             oldest = rf.period_end
+
+    trail = "; ".join(trail_parts)
     if missing:
-        return None, oldest, "; ".join(trail_parts), ", ".join(missing)
-    return values, oldest, "; ".join(trail_parts), ""
+        return None, oldest, trail, ", ".join(missing), missing_optional
+    return values, oldest, trail, "", missing_optional
 
 
 def compute_cross_check(
@@ -257,7 +327,8 @@ def compute_cross_check(
     for comp in COMPARISONS:
         fmp_prov: Optional[Prov] = getattr(ticker_data, comp.fmp_field, None)
         current = fmp_prov.confidence if fmp_prov is not None else None
-        values, oldest, trail, missing = _gather_inputs(comp, fields)
+        values, oldest, trail, missing, missing_opt = _gather_inputs(
+            comp, fields, edgar.financials.concepts)
 
         if values is None:
             report.deltas.append(FieldDelta(
@@ -288,15 +359,20 @@ def compute_cross_check(
         except (TypeError, ValueError):
             divergence = None
 
-        if comp.basis_note:
-            # Known non-comparable basis: measured and shown, but never allowed to move
-            # confidence in either direction.
+        # Known non-comparable basis — declared, or created by an absent optional input
+        # that would have aligned the measures. Measured and shown, but never allowed to
+        # move confidence in either direction.
+        advisory = comp.basis_note
+        if missing_opt and comp.optional_missing_note:
+            advisory = "; ".join(filter(None, [
+                advisory, f"{comp.optional_missing_note} [{', '.join(missing_opt)}]"]))
+        if advisory:
             report.deltas.append(FieldDelta(
                 fmp_field=comp.fmp_field, verdict=VERDICT_BASIS_MISMATCH,
                 fmp_value=fmp_prov.value, edgar_value=edgar_value,
                 divergence_pct=divergence, period_end=oldest, age_days=age,
                 current_confidence=current, would_be_confidence=current,
-                edgar_inputs=trail, note=comp.basis_note,
+                edgar_inputs=trail, note=advisory,
             ))
             continue
 

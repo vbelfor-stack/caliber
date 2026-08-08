@@ -56,14 +56,28 @@ class FieldSpec:
     kind: str                              # "instant" (balance sheet) | "flow" (TTM)
     synonyms: Tuple[Tuple[str, str], ...]  # ((concept, namespace), ...) priority order
     derive: Optional[Tuple[str, str]] = None   # (minuend_field, subtrahend_field)
+    conflict_check: bool = True
+    """Whether two fresh tags in this chain disagreeing means non-comparable.
+
+    True for genuinely ambiguous synonyms. False where the chain holds DISTINCT measures
+    that are merely substitutable in priority order — e.g. total Revenues vs the ASC 606
+    contract-revenue subset, or ShortTermBorrowings vs the CommercialPaper component of
+    it. Those are expected to differ; the priority order already says which we want, and
+    flagging them as conflicts would withhold good data (and cascade into every ratio
+    built on it).
+    """
 
 
 FIELD_SPECS: Tuple[FieldSpec, ...] = (
     # Flows — TTM-assembled
+    # Revenues (total) is the FMP-comparable measure; the ASC 606 tag covers only revenue
+    # from customer contracts and legitimately differs where a company books investment or
+    # other non-contract income (WU: 1,995.9M vs 1,920.6M for the same period). Distinct
+    # measures, not ambiguous synonyms — priority order decides, no conflict gate.
     FieldSpec("revenue", "flow", (
         ("Revenues", "us-gaap"),
         ("RevenueFromContractWithCustomerExcludingAssessedTax", "us-gaap"),
-    )),
+    ), conflict_check=False),
     FieldSpec("cost_of_revenue", "flow", (
         ("CostOfRevenue", "us-gaap"),
         ("CostOfGoodsAndServicesSold", "us-gaap"),
@@ -91,14 +105,29 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     FieldSpec("total_liabilities", "instant", (("Liabilities", "us-gaap"),)),
     FieldSpec("current_liabilities", "instant", (("LiabilitiesCurrent", "us-gaap"),)),
     FieldSpec("cash", "instant", (("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),)),
+    # FMP's total_cash is cashAndShortTermInvestments, so the EDGAR side needs the
+    # investment leg to be the same measure. Chain runs broadest-first; the entries are
+    # distinct measures (AFS debt securities are a subset of marketable securities), so
+    # priority order decides rather than a conflict gate.
+    FieldSpec("short_term_investments", "instant", (
+        ("MarketableSecuritiesCurrent", "us-gaap"),
+        ("AvailableForSaleSecuritiesDebtSecuritiesCurrent", "us-gaap"),
+        ("ShortTermInvestments", "us-gaap"),
+        ("AvailableForSaleSecuritiesCurrent", "us-gaap"),
+        ("OtherShortTermInvestments", "us-gaap"),
+    ), conflict_check=False),
     FieldSpec("long_term_debt", "instant", (
         ("LongTermDebtNoncurrent", "us-gaap"),   # GOOG/V current tag
         ("LongTermDebt", "us-gaap"),             # MU current tag
     )),
+    # ShortTermBorrowings is the aggregate; CommercialPaper is a component of it (NOW
+    # files both: 2,082M vs 2,100M). Distinct measures — priority order, no conflict gate.
     FieldSpec("current_debt", "instant", (
         ("LongTermDebtCurrent", "us-gaap"),      # GOOG/V current tag
         ("DebtCurrent", "us-gaap"),              # MU current tag
-    )),
+        ("ShortTermBorrowings", "us-gaap"),      # NOW current tag
+        ("CommercialPaper", "us-gaap"),
+    ), conflict_check=False),
     FieldSpec("equity", "instant", (
         ("StockholdersEquity", "us-gaap"),
         ("StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "us-gaap"),
@@ -403,8 +432,9 @@ def _resolve_one(
     if resolved:
         winner = resolved[0]
         # Two fresh tags covering the same period must agree, else the field is
-        # non-comparable and is withheld rather than arbitrated.
-        for other in resolved[1:]:
+        # non-comparable and is withheld rather than arbitrated. Chains declared as
+        # distinct measures skip this — see FieldSpec.conflict_check.
+        for other in (resolved[1:] if spec.conflict_check else []):
             if other.period_end != winner.period_end or winner.value == 0:
                 continue
             diff_pct = abs(other.value - winner.value) / abs(winner.value) * 100.0
