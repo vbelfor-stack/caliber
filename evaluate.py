@@ -159,7 +159,9 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
 
     # E-3 DARK LAUNCH: log what an EDGAR cross-check WOULD do to each field's
     # confidence. Applies nothing — no Prov is mutated, no score/E(R)/grade can move.
-    run_dark_cross_check(edgar, yf)
+    xcheck = run_dark_cross_check(edgar, yf)
+    if xcheck and xcheck.watch:
+        print(f"\n  {xcheck.watch}")
 
     # ── Lens selection ────────────────────────────────────────────────────────
     lens = select_lens(yf.sector, yf.industry, edgar.sic)

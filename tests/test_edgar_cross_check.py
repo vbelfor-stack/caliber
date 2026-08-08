@@ -16,7 +16,8 @@ from core.edgar_cross_check import (
     COMPARISONS, DIVERGENCE_TOLERANCE_PCT, FRESHNESS_THRESHOLD_DAYS,
     VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
     VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED, compute_cross_check,
-    filing_freshness_flags, newest_filed_period, render_report, run_dark_cross_check,
+    filing_freshness_flags, freshness_watch, issuer_filing_lag, issuer_period_cadence,
+    newest_filed_period, render_report, run_dark_cross_check,
 )
 
 FIXTURES = Path("tests/fixtures")
@@ -242,6 +243,77 @@ class TestSymmetricStaleGating:
         by_field = {d.fmp_field: d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
+
+
+class TestFreshnessWatch:
+    """R-NEW: informational staleness notice with a predicted next-data date."""
+
+    def test_fires_past_sixty_days_with_a_prediction(self):
+        edgar, _ = _pair("MU")                       # 72d at the pinned date
+        line = freshness_watch(edgar, edgar.financials.latest_period_end, "2026-08-08")
+        assert line.startswith("[FRESHNESS-WATCH] MU: EDGAR data 72d old")
+        assert "expected ~2026-" in line
+
+    def test_silent_inside_the_window(self):
+        edgar, _ = _pair("GOOG")                     # 39d
+        assert freshness_watch(edgar, edgar.financials.latest_period_end,
+                               "2026-08-08") is None
+
+    @pytest.mark.parametrize("today,fires", [("2026-07-27", False), ("2026-07-29", True)])
+    def test_threshold_boundary(self, today, fires):
+        """60d exactly is inside the window; 61d trips it."""
+        edgar, _ = _pair("MU")                       # period-end 2026-05-28
+        line = freshness_watch(edgar, edgar.financials.latest_period_end, today)
+        assert (line is not None) == fires
+
+    def test_xbrl_lag_reports_extraction_pending_not_a_prediction(self):
+        """The filing already landed. Predicting a filing date here would be predicting
+        something that has already happened."""
+        edgar, _ = _pair("V")
+        edgar.recent_10q = [FilingRef(form="10-Q", date="2026-07-29", accession="x",
+                                      primary_doc="d.htm", report_date="2026-06-30")]
+        line = freshness_watch(edgar, "2026-03-31", "2026-08-08")
+        assert line == ("[FRESHNESS-WATCH] V: EDGAR data 130d old; June-Q filed "
+                        "2026-07-29, extraction pending (XBRL-LAG); fresher data "
+                        "expected imminently")
+        assert "expected ~" not in line
+
+    def test_cadence_is_anchored_to_a_core_concept(self):
+        """Pooling every concept's instants poisons the median with dei cover-page
+        dates, which sit between period-ends — that read MU's quarters as 77d."""
+        edgar, _ = _pair("MU")
+        assert issuer_period_cadence(edgar) == 91
+
+    def test_prediction_uses_issuer_history_and_says_when_it_cannot(self):
+        """Fixtures record filings without a report_date, so the issuer's own lag is
+        unknowable there and the line must admit the fallback rather than imply
+        issuer-specific precision."""
+        edgar, _ = _pair("MU")
+        assert issuer_filing_lag(edgar) is None
+        assert "p90 lag — issuer filing history unavailable" in freshness_watch(
+            edgar, edgar.financials.latest_period_end, "2026-08-08")
+
+        edgar.recent_10q = [
+            FilingRef("10-Q", "2026-06-25", "a", "d.htm", report_date="2026-05-28"),
+            FilingRef("10-Q", "2026-04-02", "b", "d.htm", report_date="2026-02-26"),
+        ]
+        assert issuer_filing_lag(edgar) == 31       # even count: mean of 28 and 35
+        assert "p90 lag" not in freshness_watch(
+            edgar, edgar.financials.latest_period_end, "2026-08-08")
+
+    def test_watch_is_informational_only(self):
+        """It must not gate anything: MU is past the 60d watch but inside the 150d
+        backstop, so its agreements still upgrade."""
+        edgar, yf = _pair("MU")
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        assert report.watch
+        assert any(d.verdict == VERDICT_AGREE and d.would_be_confidence == "high"
+                   for d in report.deltas)
+
+    def test_report_carries_and_renders_the_watch(self):
+        edgar, yf = _pair("MU")
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        assert report.watch in render_report(report)
 
 
 class TestFilingFreshnessFlags:

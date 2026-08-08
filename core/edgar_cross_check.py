@@ -22,7 +22,7 @@ must stay capped while they upgrade.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from adapters.base import Confidence, Prov
@@ -165,6 +165,7 @@ class CrossCheckReport:
     latest_period_end: Optional[str]
     deltas: List[FieldDelta] = field(default_factory=list)
     flags: List[str] = field(default_factory=list)
+    watch: Optional[str] = None      # FRESHNESS-WATCH line; informational only
 
     def counts(self) -> Dict[str, int]:
         out: Dict[str, int] = {}
@@ -232,6 +233,134 @@ def filing_freshness_flags(
             f"p90 lag {FILING_LAG_P90_DAYS}d)"
         )
     return flags
+
+
+# ── FRESHNESS-WATCH (R-NEW, 2026-08-08) ──────────────────────────────────────
+# Informational only — it never touches confidence. Its job is to answer the question a
+# stale-looking figure always raises: when does better data arrive? The prediction is
+# built from the ISSUER'S OWN history (its period cadence and its median filing lag), not
+# from a global constant, because filing behaviour differs materially across the golden
+# five (lags run 21-51d).
+FRESHNESS_WATCH_DAYS = 60
+_CADENCE_RANGE = (60, 130)   # plausible gap between consecutive fiscal period-ends
+
+
+def _median(xs: List[int]) -> Optional[int]:
+    if not xs:
+        return None
+    s = sorted(xs)
+    mid = len(s) // 2
+    return s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) // 2
+
+
+def _all_filings(edgar: EdgarData) -> List[Any]:
+    return list(edgar.recent_10k) + list(edgar.recent_10q)
+
+
+def issuer_filing_lag(edgar: EdgarData) -> Optional[int]:
+    """Median (filing date - period covered) over this issuer's recent filings.
+
+    None when no filing carries a report_date — the fixture path, which records filings
+    without one. Callers fall back to the golden-five p90 and say that they did.
+    """
+    return _median([
+        d for d in (_age_days(ref.report_date, ref.date) for ref in _all_filings(edgar))
+        if d is not None and d >= 0
+    ])
+
+
+_CADENCE_ANCHOR_FIELDS = ("total_assets", "equity", "cash")
+
+
+def issuer_period_cadence(edgar: EdgarData) -> Optional[int]:
+    """Median gap between this issuer's consecutive fiscal period-ends.
+
+    Taken from the XBRL instants rather than the submissions index so it works offline,
+    and so a 52/53-week filer's real cadence is measured instead of assumed to be 91d
+    (MU reports 91d quarters with a 98d catch-up quarter in each 53-week year).
+
+    Measured on ONE core balance-sheet concept, following the tag the issuer actually
+    resolved to. Pooling every concept's instants poisons the median with dei cover-page
+    dates, which sit between period-ends and halved MU's cadence to 77d.
+    """
+    concept = next(
+        (rf.concept for name in _CADENCE_ANCHOR_FIELDS
+         for rf in [edgar.financials.fields.get(name)]
+         if rf is not None and rf.concept and not rf.concept.startswith("derived:")),
+        None,
+    )
+    ends = sorted({
+        r["end"] for r in edgar.financials.concepts.get(concept or "", [])
+        if r.get("end") and not r.get("start")
+    })
+    gaps = [
+        d for d in (_age_days(a, b) for a, b in zip(ends, ends[1:]))
+        if d is not None and _CADENCE_RANGE[0] <= d <= _CADENCE_RANGE[1]
+    ]
+    return _median(gaps)
+
+
+def _period_label(period_end: str, form: str) -> str:
+    """'June-Q' / 'September-FY' — how a human refers to the period, per Vic's format."""
+    try:
+        month = date.fromisoformat(period_end[:10]).strftime("%B")
+    except ValueError:
+        return period_end
+    return f"{month}-{'FY' if form.startswith('10-K') else 'Q'}"
+
+
+def _next_form(edgar: EdgarData, next_period_end: str) -> str:
+    """10-K if the next period-end lands on the issuer's fiscal year-end, else 10-Q."""
+    fye = (edgar.fiscal_year_end or "").strip()      # 'MMDD' from the submissions index
+    if len(fye) != 4 or not fye.isdigit():
+        return "10-Q"
+    try:
+        end = date.fromisoformat(next_period_end[:10])
+    except ValueError:
+        return "10-Q"
+    # 52/53-week filers drift a few days year to year, so match on proximity not equality.
+    try:
+        anchor = date(end.year, int(fye[:2]), int(fye[2:]))
+    except ValueError:
+        return "10-Q"
+    return "10-K" if abs((end - anchor).days) <= 7 else "10-Q"
+
+
+def freshness_watch(
+    edgar: EdgarData, latest_period_end: Optional[str], today: str
+) -> Optional[str]:
+    """One informational line when EDGAR data is over FRESHNESS_WATCH_DAYS old.
+
+    Two shapes, because a prediction is only honest when the data is genuinely absent:
+      XBRL-LAG active — the filing already landed and extraction is pending. Predicting a
+        filing date here would be predicting something that has already happened.
+      otherwise — next expected period-end (issuer cadence) + issuer median filing lag.
+    """
+    age = _age_days(latest_period_end, today)
+    if age is None or age <= FRESHNESS_WATCH_DAYS:
+        return None
+    head = f"[FRESHNESS-WATCH] {edgar.ticker}: EDGAR data {age}d old"
+
+    filed = newest_filed_period(edgar)
+    if filed and latest_period_end and filed > latest_period_end:
+        ref = next((r for r in _all_filings(edgar) if r.report_date == filed), None)
+        label = _period_label(filed, getattr(ref, "form", "10-Q"))
+        when = f" filed {ref.date}" if ref is not None else ""
+        return (f"{head}; {label}{when}, extraction pending (XBRL-LAG); "
+                f"fresher data expected imminently")
+
+    cadence = issuer_period_cadence(edgar) or QUARTER_DAYS
+    lag = issuer_filing_lag(edgar)
+    basis = "" if lag is not None else " (p90 lag — issuer filing history unavailable)"
+    lag = lag if lag is not None else FILING_LAG_P90_DAYS
+    try:
+        end = date.fromisoformat(latest_period_end[:10])          # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        return head
+    next_end = end + timedelta(days=cadence)
+    expected = next_end + timedelta(days=lag)
+    form = _next_form(edgar, next_end.isoformat())
+    return f"{head}; next {form} expected ~{expected.isoformat()}{basis}"
 
 
 PRIOR_YEAR_WINDOW_DAYS = (300, 430)
@@ -323,6 +452,7 @@ def compute_cross_check(
     latest = edgar.financials.latest_period_end
     report = CrossCheckReport(ticker=edgar.ticker, as_of=today, latest_period_end=latest)
     report.flags.extend(filing_freshness_flags(edgar, latest, today))
+    report.watch = freshness_watch(edgar, latest, today)
 
     filed = newest_filed_period(edgar)
     behind = filed if (lag_aware and filed and latest and filed > latest) else None
@@ -450,6 +580,8 @@ def render_report(report: CrossCheckReport) -> str:
         )
     for f in report.flags:
         lines.append(f"  FLAG {f}")
+    if report.watch:
+        lines.append(f"  {report.watch}")
     counts = ", ".join(f"{k}={v}" for k, v in sorted(report.counts().items()))
     changes = sum(1 for d in report.deltas if d.would_change)
     lines.append(f"  totals: {counts} | would-change {changes}/{len(report.deltas)} "

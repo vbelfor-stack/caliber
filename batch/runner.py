@@ -91,6 +91,9 @@ class TickerResult:
     # Distinct from `status` above, which stays the binary runner outcome so the
     # batch summary buckets are unchanged.
     eval_status: Optional[str] = None
+    # Informational EDGAR staleness notice + predicted next-data date; no confidence
+    # effect. Surfaced in the batch summary so a stale run says when it self-heals.
+    freshness_watch: Optional[str] = None
 
 
 def run_single_ticker(
@@ -129,7 +132,8 @@ def run_single_ticker(
             fred = FredData(rate_10y=missing_prov("FRED", None))
 
         # E-3 DARK LAUNCH: log would-be cross-check deltas; applies nothing.
-        run_dark_cross_check(edgar, yf, log=_log)
+        xcheck = run_dark_cross_check(edgar, yf, log=_log)
+        freshness = xcheck.watch if xcheck else None
 
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
@@ -225,6 +229,7 @@ def run_single_ticker(
             expected_return=expected_return,
             lens=lens,
             eval_status=eval_status,
+            freshness_watch=freshness,
         )
 
     except Exception as exc:
@@ -290,6 +295,11 @@ def run_batch(
         print(f"  {r.ticker:<8}  {status_s:<8}  {score_s:>6}  {conf_s:<8}  {er_s:>8}  {id_s:>6}")
     print(f"  {'-'*56}")
     print(f"  {len(ok)} succeeded  {len(failed)} failed  {total_s:.1f}s total")
+    watches = [r.freshness_watch for r in results if r.freshness_watch]
+    if watches:
+        print()
+        for w in watches:
+            print(f"  {w}")
     if failed:
         print(f"\n  Failed tickers (stored as failed-with-diagnosis):")
         for r in failed:
