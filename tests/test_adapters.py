@@ -420,7 +420,7 @@ class TestEdgarXbrlExtraction:
 
 # ── E-2: canonical field resolution ──────────────────────────────────────────
 
-GOLDEN_CIKS = ("MU", "GOOG", "V")
+GOLDEN_CIKS = ("MU", "GOOG", "V", "NOW", "WU")
 _REASONS = {
     REASON_NO_TAG, REASON_STALE_TAG, REASON_SYNONYM_CONFLICT,
     REASON_AMBIGUOUS_PERIOD, REASON_TTM_UNAVAILABLE, REASON_DERIVE_INCOMPLETE,
@@ -525,17 +525,17 @@ class TestEdgarFieldResolution:
 
     def test_distinct_measures_skip_the_conflict_gate(self):
         """Revenues (total) and the ASC 606 contract-revenue tag legitimately differ for
-        issuers with non-contract income (WU). Priority order decides; withholding here
-        would cascade into every margin built on revenue."""
-        fin = resolve_financials({
-            "Revenues": [_fact("2026-06-30", 1995.9, start="2025-07-01")],
-            "RevenueFromContractWithCustomerExcludingAssessedTax":
-                [_fact("2026-06-30", 1920.6, start="2025-07-01")],
-        }, "2026-06-30")
-        rev = fin.fields["revenue"]
+        issuers with non-contract income. WU files both for the same period (H1-26:
+        1,995.9M vs 1,920.6M), so priority order must decide — withholding here would
+        cascade into gross profit and every margin built on revenue."""
+        fields = _fields("WU")
+        rev = fields["revenue"]
         assert rev.is_resolved(), f"withheld: {rev.reason}"
         assert rev.concept == "Revenues"
-        assert rev.value == pytest.approx(1995.9)
+        assert any("RevenueFromContractWithCustomer" in t for t in rev.trail)
+        # the un-cascade: the fields downstream of revenue survive with it
+        assert fields["gross_profit"].is_resolved()
+        assert fields["gross_profit"].concept == "derived:revenue-cost_of_revenue"
 
     def test_conflict_gate_still_armed_for_ambiguous_chains(self):
         """Disabling the gate for distinct measures must not disable it everywhere."""
@@ -547,29 +547,39 @@ class TestEdgarFieldResolution:
         assert fin.fields["equity"].reason == REASON_SYNONYM_CONFLICT
 
     def test_current_debt_falls_through_to_short_term_borrowings(self):
-        """NOW abandoned LongTermDebtCurrent in 2022 and files ShortTermBorrowings."""
-        fin = resolve_financials({
-            "LongTermDebtCurrent": [_fact("2022-12-31", 0)],
-            "ShortTermBorrowings": [_fact("2026-06-30", 2082)],
-            "CommercialPaper": [_fact("2026-06-30", 2100)],
-        }, "2026-06-30")
-        cd = fin.fields["current_debt"]
+        """NOW abandoned LongTermDebtCurrent in 2022 and files ShortTermBorrowings
+        (2,082M) alongside its CommercialPaper component (2,100M). The stale leading tag
+        is skipped and the aggregate wins over the component."""
+        cd = _fields("NOW")["current_debt"]
         assert cd.is_resolved()
-        assert cd.concept == "ShortTermBorrowings"   # aggregate preferred over component
+        assert cd.concept == "ShortTermBorrowings"
+        assert cd.value == pytest.approx(2_082_000_000)
         assert any("LongTermDebtCurrent:stale(" in t for t in cd.trail)
+
+    def test_unclassified_balance_sheet_is_typed_not_zero_filled(self):
+        """WU files no classified current section (its balance sheet is unclassified —
+        only SettlementAssetsCurrent, which is float, not working capital). An absent
+        section must read as no_tag, never as zero."""
+        fields = _fields("WU")
+        for name in ("current_assets", "current_liabilities"):
+            assert fields[name].value is None
+            assert fields[name].reason == REASON_NO_TAG
 
     @pytest.mark.parametrize("ticker,concept", [
         ("MU", "AvailableForSaleSecuritiesDebtSecuritiesCurrent"),
         ("GOOG", "MarketableSecuritiesCurrent"),
+        ("NOW", "AvailableForSaleSecuritiesDebtSecuritiesCurrent"),
     ])
     def test_short_term_investments_resolve(self, ticker, concept):
         sti = _fields(ticker)["short_term_investments"]
         assert sti.is_resolved()
         assert sti.concept == concept
 
-    def test_short_term_investments_absent_is_typed(self):
-        """V stopped filing an ST-investment tag in 2020 — withheld, not zero-filled."""
-        sti = _fields("V")["short_term_investments"]
+    @pytest.mark.parametrize("ticker", ("V", "WU"))
+    def test_short_term_investments_absent_is_typed(self, ticker):
+        """V stopped filing an ST-investment tag in 2020, WU in 2015 — withheld, not
+        zero-filled. Both fall to the cash-only advisory path in the cross-check."""
+        sti = _fields(ticker)["short_term_investments"]
         assert sti.value is None
         assert sti.reason == REASON_STALE_TAG
 
