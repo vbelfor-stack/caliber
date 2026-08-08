@@ -13,7 +13,8 @@ from adapters.base import Prov
 from adapters.edgar_adapter import FilingRef, fetch_edgar
 from adapters.fixture_adapter import fetch_fixture
 from core.edgar_cross_check import (
-    COMPARISONS, FRESHNESS_THRESHOLD_DAYS, VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
+    COMPARISONS, DIVERGENCE_TOLERANCE_PCT, FRESHNESS_THRESHOLD_DAYS,
+    VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
     VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED, compute_cross_check,
     filing_freshness_flags, newest_filed_period, render_report, run_dark_cross_check,
 )
@@ -179,6 +180,68 @@ class TestPerFieldFreshness:
         for d in report.deltas:
             assert d.would_be_confidence != "high", f"{d.fmp_field} upgraded while stale"
         assert any(d.verdict == VERDICT_STALE_CAPPED for d in report.deltas)
+
+
+class TestSymmetricStaleGating:
+    """R1 (ruling 2026-08-08): a source too stale to upgrade is too stale to downgrade.
+
+    The staleness engine caps only 'high', so before R1 a conflict measured on stale or
+    lagged data still downgraded the field to low — confidence moving on data the same
+    report declared untrustworthy.
+    """
+
+    def test_stale_data_moves_nothing_in_either_direction(self):
+        """The property, asserted directly: with everything stale, no delta moves."""
+        edgar, yf = _pair("MU")
+        report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
+        assert any(d.divergence_pct and d.divergence_pct > 5.0 for d in report.deltas), \
+            "fixture must contain a conflict-sized divergence for this to prove anything"
+        for d in report.deltas:
+            assert not d.would_change, f"{d.fmp_field} moved while stale"
+            assert d.would_be_confidence == d.current_confidence
+
+    def test_conflict_on_stale_data_renders_stale_capped_with_divergence_kept(self):
+        edgar, yf = _pair("MU")
+        by_field = {d.fmp_field: d for d in
+                    compute_cross_check(edgar, yf, today="2026-08-08",
+                                        threshold_days=10).deltas}
+        om = by_field["operating_margin"]          # 18.3% — a conflict when fresh
+        assert om.verdict == VERDICT_STALE_CAPPED
+        assert om.would_be_confidence == om.current_confidence
+        assert om.divergence_pct > DIVERGENCE_TOLERANCE_PCT   # measured, not discarded
+        assert "conflict suppressed" in om.note
+
+    def test_the_gate_is_what_suppressed_it_not_the_tolerance(self):
+        """Same field, same data, fresh: it does downgrade. Proves the test above is
+        exercising the gate rather than a comparison that never conflicted."""
+        edgar, yf = _pair("MU")
+        by_field = {d.fmp_field: d for d in
+                    compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
+        assert by_field["operating_margin"].would_be_confidence == "low"
+
+    def test_lagged_conflict_is_suppressed_too(self):
+        """The lag half of the gate, on the ticker that prompted the ruling: V's
+        companyfacts is a full quarter behind its own filings. (Live it was
+        current_ratio at 10.4%; against the recorded FMP fixture the conflicting field
+        is operating_margin — the gate is field-agnostic.)"""
+        edgar, yf = _pair("V")
+        edgar.recent_10q = [FilingRef(form="10-Q", date="2026-07-29", accession="x",
+                                      primary_doc="d.htm", report_date="2026-06-30")]
+        by_field = {d.fmp_field: d for d in
+                    compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        om = by_field["operating_margin"]
+        assert om.verdict == VERDICT_STALE_CAPPED
+        assert om.would_be_confidence == om.current_confidence
+        assert "conflict suppressed" in om.note and "XBRL behind submissions" in om.note
+
+    def test_lag_suppression_needs_the_lag(self):
+        """Without the submissions cross-reference V is only 130d old — inside the 150d
+        backstop — so the same conflict is live. The lag is doing the work."""
+        edgar, yf = _pair("V")
+        by_field = {d.fmp_field: d for d in
+                    compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
 
 
 class TestFilingFreshnessFlags:

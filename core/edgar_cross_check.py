@@ -131,7 +131,7 @@ COMPARISONS: Tuple[Comparison, ...] = (
 # Verdicts
 VERDICT_AGREE = "agree"                  # would upgrade → high
 VERDICT_CONFLICT = "conflict"            # would downgrade → low
-VERDICT_STALE_CAPPED = "stale_capped"    # agrees, but too old to upgrade → medium
+VERDICT_STALE_CAPPED = "stale_capped"    # too old/lagged to move confidence EITHER way
 VERDICT_NO_EDGAR = "no_edgar"            # EDGAR could not resolve the inputs
 VERDICT_NO_FMP = "no_fmp"                # FMP has no value to corroborate
 VERDICT_BASIS_MISMATCH = "basis_mismatch"  # not comparable; advisory only
@@ -388,28 +388,41 @@ def compute_cross_check(
         stale_by_lag = bool(behind and (oldest or "") < behind)
         if stale_by_lag:
             days_for_gate = max(days_for_gate, threshold_days + 1)
-        aged = apply_staleness_penalty(
-            checked, days_for_gate, stale_threshold=threshold_days
+
+        # R1 — SYMMETRIC GATING (ruling 2026-08-08). A source too stale to RAISE
+        # confidence is equally too stale to LOWER it. apply_staleness_penalty only caps
+        # 'high', so the gate is probed with the upgrade case and its answer suppresses
+        # BOTH directions: a conflict measured on stale or lagged data renders
+        # stale_capped, keeps its divergence in the log, and moves nothing.
+        probe = apply_staleness_penalty(
+            Prov(value=checked.value, source=checked.source,
+                 as_of=checked.as_of, confidence="high"),
+            days_for_gate, stale_threshold=threshold_days,
         )
-        if checked.confidence == "high" and aged.confidence != "high":
+        is_stale = probe.confidence != "high"
+
+        note = ""
+        if is_stale:
             verdict = VERDICT_STALE_CAPPED
-        elif aged.confidence == "high":
-            verdict = VERDICT_AGREE
-        elif aged.confidence == "low":
-            verdict = VERDICT_CONFLICT
+            would_be = current                       # neither direction moves
+            suppressed = {"high": "agreement", "low": "conflict"}.get(
+                checked.confidence, "no signal")
+            note = f"{suppressed} suppressed — " + (
+                f"XBRL behind submissions (newer period {behind} filed)" if stale_by_lag
+                else f"age {age}d > {threshold_days}d threshold")
+        elif checked.confidence == "high":
+            verdict, would_be = VERDICT_AGREE, checked.confidence
+        elif checked.confidence == "low":
+            verdict, would_be = VERDICT_CONFLICT, checked.confidence
         else:
-            verdict = VERDICT_STALE_CAPPED
+            verdict, would_be = VERDICT_STALE_CAPPED, current
 
         report.deltas.append(FieldDelta(
             fmp_field=comp.fmp_field, verdict=verdict,
             fmp_value=fmp_prov.value, edgar_value=edgar_value,
             divergence_pct=divergence, period_end=oldest, age_days=age,
-            current_confidence=current, would_be_confidence=aged.confidence,
-            edgar_inputs=trail,
-            note=("XBRL behind submissions (newer period %s filed)" % behind
-                  if verdict == VERDICT_STALE_CAPPED and stale_by_lag
-                  else f"age {age}d > {threshold_days}d threshold"
-                  if verdict == VERDICT_STALE_CAPPED else ""),
+            current_confidence=current, would_be_confidence=would_be,
+            edgar_inputs=trail, note=note,
         ))
 
     return report
