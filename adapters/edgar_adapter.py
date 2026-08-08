@@ -40,48 +40,170 @@ class FilingRef:
     primary_doc: str     # e.g. mu-20250828.htm
 
 
-# XBRL us-gaap / dei concepts extracted for FMP cross-check (E-1). This is the
-# concept-pull list; synonym → canonical-field resolution + TTM alignment is E-2.
-# (concept, namespace)
+# ── E-2: canonical field resolution ──────────────────────────────────────────
+# Issuers migrate XBRL tags over time and ABANDON the old one (verified on the golden
+# CIKs: MU tags StockholdersEquity, V only the including-NCI variant, GOOG only the
+# plain one — no issuer files both concurrently). So each canonical field carries an
+# EXPLICIT ordered synonym chain, no heuristics: the first chain entry that is present
+# AND not stale wins. A stale leading tag (V's StockholdersEquity stopped in 2011) is
+# skipped, never used.
+
+@dataclass(frozen=True)
+class FieldSpec:
+    """One canonical field and the ordered XBRL tags that may supply it."""
+    name: str
+    kind: str                              # "instant" (balance sheet) | "flow" (TTM)
+    synonyms: Tuple[Tuple[str, str], ...]  # ((concept, namespace), ...) priority order
+    derive: Optional[Tuple[str, str]] = None   # (minuend_field, subtrahend_field)
+
+
+FIELD_SPECS: Tuple[FieldSpec, ...] = (
+    # Flows — TTM-assembled
+    FieldSpec("revenue", "flow", (
+        ("Revenues", "us-gaap"),
+        ("RevenueFromContractWithCustomerExcludingAssessedTax", "us-gaap"),
+    )),
+    FieldSpec("cost_of_revenue", "flow", (
+        ("CostOfRevenue", "us-gaap"),
+        ("CostOfGoodsAndServicesSold", "us-gaap"),
+    )),
+    # GrossProfit is untagged by GOOG and V; derive it when both components resolve.
+    FieldSpec("gross_profit", "flow", (
+        ("GrossProfit", "us-gaap"),
+    ), derive=("revenue", "cost_of_revenue")),
+    FieldSpec("operating_income", "flow", (
+        ("OperatingIncomeLoss", "us-gaap"),
+    )),
+    FieldSpec("net_income", "flow", (
+        ("NetIncomeLoss", "us-gaap"),
+    )),
+    FieldSpec("operating_cashflow", "flow", (
+        ("NetCashProvidedByUsedInOperatingActivities", "us-gaap"),
+        ("NetCashProvidedByUsedInOperatingActivitiesContinuingOperations", "us-gaap"),
+    )),
+    FieldSpec("capex", "flow", (
+        ("PaymentsToAcquirePropertyPlantAndEquipment", "us-gaap"),
+    )),
+    # Instants — most recent period-end
+    FieldSpec("total_assets", "instant", (("Assets", "us-gaap"),)),
+    FieldSpec("current_assets", "instant", (("AssetsCurrent", "us-gaap"),)),
+    FieldSpec("total_liabilities", "instant", (("Liabilities", "us-gaap"),)),
+    FieldSpec("current_liabilities", "instant", (("LiabilitiesCurrent", "us-gaap"),)),
+    FieldSpec("cash", "instant", (("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),)),
+    FieldSpec("long_term_debt", "instant", (
+        ("LongTermDebtNoncurrent", "us-gaap"),   # GOOG/V current tag
+        ("LongTermDebt", "us-gaap"),             # MU current tag
+    )),
+    FieldSpec("current_debt", "instant", (
+        ("LongTermDebtCurrent", "us-gaap"),      # GOOG/V current tag
+        ("DebtCurrent", "us-gaap"),              # MU current tag
+    )),
+    FieldSpec("equity", "instant", (
+        ("StockholdersEquity", "us-gaap"),
+        ("StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "us-gaap"),
+    )),
+    # dei cover-page count is absent for GOOG and frozen at 2010 for V (both multi-class);
+    # us-gaap CommonStockSharesOutstanding is the fallback.
+    FieldSpec("shares_outstanding", "instant", (
+        ("EntityCommonStockSharesOutstanding", "dei"),
+        ("CommonStockSharesOutstanding", "us-gaap"),
+    )),
+)
+
+# The concept-pull list is derived from the spec table — one place to add a tag.
 XBRL_CONCEPTS: List[Tuple[str, str]] = [
-    ("Revenues", "us-gaap"),
-    ("RevenueFromContractWithCustomerExcludingAssessedTax", "us-gaap"),
-    ("GrossProfit", "us-gaap"),
-    ("OperatingIncomeLoss", "us-gaap"),
-    ("NetIncomeLoss", "us-gaap"),
-    ("Assets", "us-gaap"),
-    ("AssetsCurrent", "us-gaap"),
-    ("Liabilities", "us-gaap"),
-    ("LiabilitiesCurrent", "us-gaap"),
-    ("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),
-    ("LongTermDebt", "us-gaap"),
-    ("LongTermDebtNoncurrent", "us-gaap"),
-    ("DebtCurrent", "us-gaap"),
-    ("StockholdersEquity", "us-gaap"),
-    ("NetCashProvidedByUsedInOperatingActivities", "us-gaap"),
-    ("PaymentsToAcquirePropertyPlantAndEquipment", "us-gaap"),
-    ("EntityCommonStockSharesOutstanding", "dei"),
+    syn for spec in FIELD_SPECS for syn in spec.synonyms
 ]
 _XBRL_VALID_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
+
+# Per-concept staleness gate: a concept whose newest period-end lags the entity's latest
+# filed period by more than this resolves to None. One fiscal year + a quarter of margin —
+# MU legitimately tags LongTermDebt only in some quarters (182d lag observed).
+STALE_TAG_DAYS = 450
+
+# Typed reason codes. Recorded on every unresolved field; queryable as the tag-migration
+# diagnostic map when onboarding new tickers.
+REASON_NO_TAG = "no_tag"                      # no synonym present at all
+REASON_STALE_TAG = "stale_tag"                # present but abandoned > STALE_TAG_DAYS ago
+REASON_SYNONYM_CONFLICT = "synonym_conflict"  # two fresh synonyms disagree for one period
+REASON_AMBIGUOUS_PERIOD = "ambiguous_period"  # one filing reports two values for a period
+REASON_TTM_UNAVAILABLE = "ttm_unavailable"    # neither TTM path satisfiable
+REASON_DERIVE_INCOMPLETE = "derive_incomplete"  # derivation components unresolved
+
+# TTM assembly windows (days)
+_QTD_RANGE = (80, 100)
+_FY_RANGE = (350, 380)
+_SYNONYM_TOLERANCE_PCT = 0.5   # fresh synonyms within this agree; beyond it, conflict
+
+PER_CONCEPT_DEPTH = 40
+"""Records kept per concept after de-duplication.
+
+Depth is set by the TTM reconstruction path, which needs a full prior fiscal year plus
+the current and prior-year year-to-date facts — i.e. ~2 fiscal years of period-ends, each
+carrying several duration variants (QTD/YTD/FY). Measured on the golden CIKs, 15 de-duped
+records cover 10 distinct period-ends worst-case; 40 leaves ~2.5x margin without bloating
+the fixtures.
+"""
+
+
+@dataclass
+class ResolvedField:
+    """One canonical field after synonym resolution, staleness gating and TTM assembly.
+
+    value is None whenever reason is set — a stale or ambiguous figure is withheld, never
+    passed downstream wearing a fresh label (it could otherwise agree with FMP inside the
+    cross-check tolerance and launder to high confidence).
+    """
+    name: str
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    concept: Optional[str] = None    # tag that supplied it, or "derived:a-b"
+    method: Optional[str] = None     # instant | ttm_summed | ttm_reconstructed | ttm_annual | derived
+    reason: Optional[str] = None     # typed code; None when resolved
+    detail: Optional[str] = None     # human-readable amplification of reason
+    trail: List[str] = field(default_factory=list)  # per-synonym outcome, in priority order
+
+    def is_resolved(self) -> bool:
+        return self.value is not None and self.reason is None
 
 
 @dataclass
 class EdgarFinancials:
-    """Raw XBRL facts extracted from companyfacts (E-1: extraction only).
+    """XBRL facts from companyfacts, plus canonical fields resolved from them.
 
     concepts: {concept_name: [ {value, unit, start, end, fy, fp, form, accession}, ... ]}
-    each list is most-recent-first, capped. E-2 maps synonyms → canonical fields and
-    assembles TTM; E-3 cross-checks against FMP.
+      most-recent-first, de-duplicated, capped at PER_CONCEPT_DEPTH (raw extraction, E-1).
+    fields:   {canonical_name: ResolvedField} — synonym-resolved, staleness-gated, TTM
+      assembled (E-2). E-3 cross-checks these against FMP.
     """
     concepts: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
     latest_period_end: Optional[str] = None   # max period-end across concepts (E-3 staleness)
+    fields: Dict[str, ResolvedField] = field(default_factory=dict)
 
 
-def _extract_xbrl_facts(facts_json: Dict, per_concept: int = 8) -> EdgarFinancials:
-    """Pull the mapped concepts' recent facts from a companyfacts JSON.
+def _days_between(earlier: Optional[str], later: Optional[str]) -> Optional[int]:
+    """Whole days from earlier to later ISO date, or None if either is unparseable."""
+    if not earlier or not later:
+        return None
+    try:
+        return (date.fromisoformat(later[:10]) - date.fromisoformat(earlier[:10])).days
+    except ValueError:
+        return None
 
-    Extraction only: numeric coercion + latest-period-first ordering + form filter
-    (10-K/10-Q family). No synonym resolution or TTM assembly (that is E-2).
+
+def _extract_xbrl_facts(
+    facts_json: Dict, per_concept: int = PER_CONCEPT_DEPTH
+) -> EdgarFinancials:
+    """Pull the mapped concepts' recent facts from a companyfacts JSON, then resolve
+    canonical fields from them.
+
+    Extraction: numeric coercion, form filter (10-K/10-Q family), de-duplication, and
+    latest-period-first ordering. Companyfacts repeats an unchanged fact in every filing
+    that references it, so identical (start, end, unit, value) tuples are collapsed —
+    keeping the newest accession — before the depth cap, or duplicates would crowd out
+    the older periods TTM reconstruction needs.
     """
     facts = facts_json.get("facts", {}) if facts_json else {}
     ns_blocks = {"us-gaap": facts.get("us-gaap", {}), "dei": facts.get("dei", {})}
@@ -92,7 +214,7 @@ def _extract_xbrl_facts(facts_json: Dict, per_concept: int = 8) -> EdgarFinancia
         block = ns_blocks.get(ns, {}).get(concept)
         if not block:
             continue
-        recs: List[Dict[str, Any]] = []
+        deduped: Dict[Tuple[Any, Any, str, float], Dict[str, Any]] = {}
         for unit, entries in block.get("units", {}).items():
             for e in entries:
                 if e.get("form") not in _XBRL_VALID_FORMS:
@@ -101,24 +223,270 @@ def _extract_xbrl_facts(facts_json: Dict, per_concept: int = 8) -> EdgarFinancia
                     val = float(e["val"])
                 except (KeyError, TypeError, ValueError):
                     continue
-                recs.append({
+                rec = {
                     "value": val, "unit": unit,
                     "start": e.get("start"), "end": e.get("end"),
                     "fy": e.get("fy"), "fp": e.get("fp"),
                     "form": e.get("form"), "accession": e.get("accn"),
-                })
+                }
+                key = (rec["start"], rec["end"], unit, val)
+                prior = deduped.get(key)
+                if prior is None or (rec["accession"] or "") > (prior["accession"] or ""):
+                    deduped[key] = rec
+        recs = list(deduped.values())
         if not recs:
             continue
-        recs.sort(key=lambda r: (r["end"] or ""), reverse=True)
+        recs.sort(key=lambda r: (r["end"] or "", r["accession"] or ""), reverse=True)
         out[concept] = recs[:per_concept]
-        # Staleness clock (E-3) tracks fiscal PERIOD-END from us-gaap financials only —
+        # Staleness clock tracks fiscal PERIOD-END from us-gaap financials only —
         # dei cover-page dates (e.g. shares-outstanding as-of) are not period ends.
         if ns == "us-gaap":
             top = out[concept][0]["end"]
             if top and (latest_end is None or top > latest_end):
                 latest_end = top
 
-    return EdgarFinancials(concepts=out, latest_period_end=latest_end)
+    return resolve_financials(out, latest_end)
+
+
+def _pick_instant(recs: List[Dict[str, Any]], name: str, concept: str) -> ResolvedField:
+    """Balance-sheet value: the most recent period-end.
+
+    A period restated across filings is resolved to the newest accession. Two different
+    values for the same period inside ONE filing cannot be told apart here (companyfacts
+    strips the dimensions that separate them), so the field is withheld.
+    """
+    top_end = max(r["end"] for r in recs if r.get("end"))
+    same_period = [r for r in recs if r["end"] == top_end]
+    newest_accn = max((r["accession"] or "") for r in same_period)
+    from_newest = [r for r in same_period if (r["accession"] or "") == newest_accn]
+    values = {r["value"] for r in from_newest}
+    if len(values) > 1:
+        return ResolvedField(
+            name=name, concept=concept, reason=REASON_AMBIGUOUS_PERIOD,
+            detail=(f"{concept}: {len(values)} distinct values for period {top_end} in "
+                    f"accession {newest_accn or '?'} ({sorted(values)[:3]})"),
+        )
+    rec = from_newest[0]
+    return ResolvedField(
+        name=name, value=rec["value"], unit=rec["unit"], period_end=rec["end"],
+        concept=concept, method="instant",
+    )
+
+
+def _in_range(days: Optional[int], bounds: Tuple[int, int]) -> bool:
+    return days is not None and bounds[0] <= days <= bounds[1]
+
+
+def _assemble_ttm(recs: List[Dict[str, Any]], name: str, concept: str) -> ResolvedField:
+    """Trailing-twelve-month value for a flow concept.
+
+    Duration facts for one concept mix QTD, year-to-date and full-year windows, so a naive
+    sum double-counts. Three paths, in order:
+      1. ttm_annual       — the newest fact already spans a full fiscal year.
+      2. ttm_summed       — four contiguous QTD facts covering ~365 days.
+      3. ttm_reconstructed— prior FY + current YTD - prior-year YTD. Required for issuers
+         that never report Q4 standalone (all three golden CIKs).
+    Returns a partial sum under no circumstances: if no path is satisfiable the value is
+    withheld with REASON_TTM_UNAVAILABLE.
+    """
+    by_period: Dict[Tuple[Any, Any], Dict[str, Any]] = {}
+    for r in sorted(recs, key=lambda r: (r["accession"] or "")):
+        if not r.get("start") or not r.get("end"):
+            continue
+        by_period[(r["start"], r["end"])] = r   # ascending accession → newest wins
+    facts = []
+    for r in by_period.values():
+        days = _days_between(r["start"], r["end"])
+        if days is None or days <= 0:
+            continue
+        facts.append({**r, "days": days})
+    if not facts:
+        return ResolvedField(
+            name=name, concept=concept, reason=REASON_TTM_UNAVAILABLE,
+            detail=f"{concept}: no duration facts (instant-only concept?)",
+        )
+
+    latest_end = max(f["end"] for f in facts)
+    at_latest = [f for f in facts if f["end"] == latest_end]
+    current = max(at_latest, key=lambda f: f["days"])   # YTD spans further than QTD
+
+    # 1. The newest fact is itself a full year.
+    if _in_range(current["days"], _FY_RANGE):
+        return ResolvedField(
+            name=name, value=current["value"], unit=current["unit"],
+            period_start=current["start"], period_end=current["end"],
+            concept=concept, method="ttm_annual",
+        )
+
+    # 2. Four contiguous quarters.
+    quarters, seen_ends = [], set()
+    for f in sorted(facts, key=lambda f: f["end"], reverse=True):
+        if _in_range(f["days"], _QTD_RANGE) and f["end"] not in seen_ends:
+            seen_ends.add(f["end"])
+            quarters.append(f)
+        if len(quarters) == 4:
+            break
+    if len(quarters) == 4:
+        ordered = sorted(quarters, key=lambda f: f["start"])
+        contiguous = all(
+            (_days_between(ordered[i]["end"], ordered[i + 1]["start"]) or 99) <= 3
+            for i in range(3)
+        )
+        span = _days_between(ordered[0]["start"], ordered[-1]["end"])
+        if contiguous and _in_range(span, _FY_RANGE):
+            return ResolvedField(
+                name=name, value=sum(f["value"] for f in quarters),
+                unit=quarters[0]["unit"], period_start=ordered[0]["start"],
+                period_end=ordered[-1]["end"], concept=concept, method="ttm_summed",
+            )
+
+    # 3. Reconstruct: prior FY + current YTD - prior-year YTD.
+    prior_fy = next(
+        (f for f in facts
+         if _in_range(f["days"], _FY_RANGE)
+         and abs(_days_between(f["end"], current["start"]) or 99) <= 5),
+        None,
+    )
+    prior_ytd = next(
+        (f for f in facts
+         if abs((_days_between(f["end"], current["end"]) or 0) - 365) <= 10
+         and abs(f["days"] - current["days"]) <= 10),
+        None,
+    )
+    if prior_fy and prior_ytd:
+        return ResolvedField(
+            name=name,
+            value=prior_fy["value"] + current["value"] - prior_ytd["value"],
+            unit=current["unit"], period_start=prior_ytd["end"],
+            period_end=current["end"], concept=concept, method="ttm_reconstructed",
+        )
+
+    missing = "prior FY" if not prior_fy else "prior-year YTD"
+    return ResolvedField(
+        name=name, concept=concept, reason=REASON_TTM_UNAVAILABLE,
+        detail=(f"{concept}: no clean 4-quarter set and {missing} missing for the "
+                f"{current['days']}d window ending {current['end']}"),
+    )
+
+
+def _resolve_one(
+    spec: FieldSpec,
+    concepts: Dict[str, List[Dict[str, Any]]],
+    latest_period_end: Optional[str],
+    stale_days: int,
+) -> ResolvedField:
+    """Walk a field's synonym chain in priority order, gating each on staleness."""
+    trail: List[str] = []
+    candidates: List[ResolvedField] = []
+
+    for concept, _ns in spec.synonyms:
+        recs = concepts.get(concept)
+        if not recs:
+            trail.append(f"{concept}:absent")
+            continue
+        newest_end = max((r["end"] for r in recs if r.get("end")), default=None)
+        lag = _days_between(newest_end, latest_period_end)
+        if lag is not None and lag > stale_days:
+            trail.append(f"{concept}:stale({lag}d)")
+            continue
+        rf = (_pick_instant(recs, spec.name, concept) if spec.kind == "instant"
+              else _assemble_ttm(recs, spec.name, concept))
+        if rf.is_resolved():
+            trail.append(f"{concept}:{'used' if not candidates else 'agrees'}")
+            candidates.append(rf)
+        else:
+            trail.append(f"{concept}:{rf.reason}")
+            candidates.append(rf)
+
+    resolved = [c for c in candidates if c.is_resolved()]
+    if resolved:
+        winner = resolved[0]
+        # Two fresh tags covering the same period must agree, else the field is
+        # non-comparable and is withheld rather than arbitrated.
+        for other in resolved[1:]:
+            if other.period_end != winner.period_end or winner.value == 0:
+                continue
+            diff_pct = abs(other.value - winner.value) / abs(winner.value) * 100.0
+            if diff_pct > _SYNONYM_TOLERANCE_PCT:
+                return ResolvedField(
+                    name=spec.name, reason=REASON_SYNONYM_CONFLICT, trail=trail,
+                    detail=(f"{winner.concept}={winner.value:.6g} vs "
+                            f"{other.concept}={other.value:.6g} for period "
+                            f"{winner.period_end} ({diff_pct:.1f}% apart)"),
+                )
+        winner.trail = trail
+        return winner
+
+    # Nothing resolved — report the most specific reason seen along the chain.
+    unresolved = [c for c in candidates if c.reason]
+    if unresolved:
+        first = unresolved[0]
+        return ResolvedField(name=spec.name, reason=first.reason,
+                             detail=first.detail, trail=trail)
+    stale_tags = [t for t in trail if ":stale(" in t]
+    if stale_tags:
+        return ResolvedField(
+            name=spec.name, reason=REASON_STALE_TAG, trail=trail,
+            detail=f"all tags abandoned: {', '.join(stale_tags)}",
+        )
+    return ResolvedField(
+        name=spec.name, reason=REASON_NO_TAG, trail=trail,
+        detail=f"no tag filed: {', '.join(t.split(':')[0] for t in trail) or 'none mapped'}",
+    )
+
+
+def _apply_derivation(spec: FieldSpec, fields: Dict[str, ResolvedField]) -> ResolvedField:
+    """Derive a field from two others (gross_profit = revenue - cost_of_revenue).
+
+    Only fires when both components resolved over the SAME period by the SAME method —
+    subtracting a TTM from an annual figure would be arithmetic nonsense. No guessing:
+    if either component is unresolved the field stays None with a reason naming it.
+    """
+    minuend_name, subtrahend_name = spec.derive          # type: ignore[misc]
+    a, b = fields.get(minuend_name), fields.get(subtrahend_name)
+    if a is None or b is None or not a.is_resolved() or not b.is_resolved():
+        missing = [
+            n for n, f in ((minuend_name, a), (subtrahend_name, b))
+            if f is None or not f.is_resolved()
+        ]
+        detail = "; ".join(
+            f"{n} unresolved ({fields[n].reason})" if n in fields else f"{n} unresolved"
+            for n in missing
+        )
+        return ResolvedField(name=spec.name, reason=REASON_DERIVE_INCOMPLETE, detail=detail)
+    if a.period_end != b.period_end or a.method != b.method:
+        return ResolvedField(
+            name=spec.name, reason=REASON_DERIVE_INCOMPLETE,
+            detail=(f"{minuend_name} ({a.method}@{a.period_end}) and {subtrahend_name} "
+                    f"({b.method}@{b.period_end}) cover different periods"),
+        )
+    return ResolvedField(
+        name=spec.name, value=a.value - b.value, unit=a.unit,
+        period_start=a.period_start, period_end=a.period_end,
+        concept=f"derived:{minuend_name}-{subtrahend_name}", method=a.method,
+    )
+
+
+def resolve_financials(
+    concepts: Dict[str, List[Dict[str, Any]]],
+    latest_period_end: Optional[str],
+    stale_days: int = STALE_TAG_DAYS,
+) -> EdgarFinancials:
+    """Resolve every canonical field from extracted concept facts (E-2).
+
+    Runs on both the live and fixture paths so recorded data exercises the same code.
+    """
+    fields: Dict[str, ResolvedField] = {}
+    for spec in FIELD_SPECS:
+        rf = _resolve_one(spec, concepts, latest_period_end, stale_days)
+        if not rf.is_resolved() and spec.derive:
+            derived = _apply_derivation(spec, fields)
+            derived.trail = rf.trail
+            rf = derived
+        fields[spec.name] = rf
+    return EdgarFinancials(
+        concepts=concepts, latest_period_end=latest_period_end, fields=fields
+    )
 
 
 @dataclass
@@ -355,9 +723,10 @@ def _from_fixture(ticker: str, path: Path) -> EdgarData:
     )
 
     xf = raw.get("xbrl_facts", {})
-    financials = EdgarFinancials(
-        concepts=xf.get("concepts", {}),
-        latest_period_end=xf.get("latest_period_end"),
+    # Fixtures record the extracted concept facts; field resolution runs here so the
+    # recorded path exercises exactly the same E-2 code as the live path.
+    financials = resolve_financials(
+        xf.get("concepts", {}), xf.get("latest_period_end")
     )
 
     return EdgarData(

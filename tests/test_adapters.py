@@ -7,7 +7,11 @@ import pytest
 
 from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
-from adapters.edgar_adapter import fetch_edgar, EdgarData
+from adapters.edgar_adapter import (
+    fetch_edgar, EdgarData, FIELD_SPECS, resolve_financials,
+    REASON_NO_TAG, REASON_STALE_TAG, REASON_SYNONYM_CONFLICT,
+    REASON_AMBIGUOUS_PERIOD, REASON_TTM_UNAVAILABLE, REASON_DERIVE_INCOMPLETE,
+)
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.fmp_adapter import fetch_fmp
 
@@ -404,3 +408,245 @@ class TestEdgarXbrlExtraction:
         usgaap_ends = [r["end"] for name, recs in fin.concepts.items()
                        if name != "EntityCommonStockSharesOutstanding" for r in recs]
         assert fin.latest_period_end == max(usgaap_ends)
+
+    def test_duplicate_facts_deduped(self):
+        """Companyfacts repeats unchanged facts across filings; extraction collapses them
+        so duplicates cannot crowd out the older periods TTM reconstruction needs."""
+        ed = fetch_edgar("MU", fixture_path=EDGAR / "MU.json")
+        for concept, recs in ed.financials.concepts.items():
+            keys = [(r["start"], r["end"], r["unit"], r["value"]) for r in recs]
+            assert len(keys) == len(set(keys)), f"duplicate facts kept for {concept}"
+
+
+# ── E-2: canonical field resolution ──────────────────────────────────────────
+
+GOLDEN_CIKS = ("MU", "GOOG", "V")
+_REASONS = {
+    REASON_NO_TAG, REASON_STALE_TAG, REASON_SYNONYM_CONFLICT,
+    REASON_AMBIGUOUS_PERIOD, REASON_TTM_UNAVAILABLE, REASON_DERIVE_INCOMPLETE,
+}
+
+
+def _fields(ticker: str):
+    return fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json").financials.fields
+
+
+def _fact(end, value, start=None, unit="USD", accn="0000000000-26-000001", form="10-Q"):
+    return {"value": float(value), "unit": unit, "start": start, "end": end,
+            "fy": None, "fp": None, "form": form, "accession": accn}
+
+
+class TestEdgarFieldResolution:
+    """E-2: explicit synonym table, per-concept staleness gate, TTM assembly."""
+
+    def test_every_spec_yields_a_field(self):
+        fields = _fields("MU")
+        assert set(fields) == {s.name for s in FIELD_SPECS}
+
+    @pytest.mark.parametrize("ticker", GOLDEN_CIKS)
+    def test_resolved_xor_reason(self, ticker):
+        """The core invariant: a field carries a value or a typed reason, never both,
+        never neither. A withheld field is never a partial or fabricated figure."""
+        for name, rf in _fields(ticker).items():
+            if rf.is_resolved():
+                assert rf.reason is None and rf.value is not None
+                assert rf.period_end and rf.method, f"{ticker}/{name} missing stamps"
+            else:
+                assert rf.value is None, f"{ticker}/{name} withheld but carries a value"
+                assert rf.reason in _REASONS, f"{ticker}/{name} untyped reason {rf.reason}"
+
+    @pytest.mark.parametrize("ticker", GOLDEN_CIKS)
+    def test_core_fields_resolve(self, ticker):
+        fields = _fields(ticker)
+        for name in ("revenue", "net_income", "equity", "total_assets", "cash"):
+            assert fields[name].is_resolved(), f"{ticker}/{name}: {fields[name].reason}"
+
+    # ── staleness gate ───────────────────────────────────────────────────────
+
+    def test_v_equity_skips_abandoned_tag(self):
+        """V stopped tagging StockholdersEquity in 2011. The gate must skip it and take
+        the including-NCI variant — the pre-E-2 extractor returned the 2011 figure."""
+        eq = _fields("V")["equity"]
+        assert eq.is_resolved()
+        assert eq.concept == (
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest")
+        assert eq.period_end >= "2026-01-01"
+        assert any("StockholdersEquity:stale(" in t for t in eq.trail)
+
+    def test_stale_only_chain_withholds_value(self):
+        """V's dei share count froze in 2010 and it files no us-gaap fallback."""
+        shares = _fields("V")["shares_outstanding"]
+        assert shares.value is None
+        assert shares.reason == REASON_STALE_TAG
+
+    def test_stale_gate_threshold(self):
+        """A concept lagging the entity's latest period by > STALE_TAG_DAYS is withheld."""
+        concepts = {"Assets": [_fact("2024-12-31", 1_000)]}
+        fresh = resolve_financials(concepts, "2026-01-31")   # 396d lag
+        stale = resolve_financials(concepts, "2026-06-30")   # 546d lag
+        assert fresh.fields["total_assets"].value == 1_000
+        assert stale.fields["total_assets"].value is None
+        assert stale.fields["total_assets"].reason == REASON_STALE_TAG
+
+    def test_debt_tags_differ_by_issuer(self):
+        """MU and GOOG migrated in opposite directions; the table handles both."""
+        assert _fields("MU")["current_debt"].concept == "DebtCurrent"
+        assert _fields("GOOG")["current_debt"].concept == "LongTermDebtCurrent"
+        assert _fields("MU")["long_term_debt"].concept == "LongTermDebt"
+        assert _fields("GOOG")["long_term_debt"].concept == "LongTermDebtNoncurrent"
+
+    def test_shares_falls_back_to_usgaap(self):
+        """GOOG files no dei cover-page count (multi-class); fallback supplies it."""
+        shares = _fields("GOOG")["shares_outstanding"]
+        assert shares.is_resolved()
+        assert shares.concept == "CommonStockSharesOutstanding"
+
+    # ── conflicts ────────────────────────────────────────────────────────────
+
+    def test_synonym_conflict_withholds(self):
+        """Two fresh tags disagreeing for one period is non-comparable, not arbitrable."""
+        fin = resolve_financials({
+            "StockholdersEquity": [_fact("2026-03-31", 100)],
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest":
+                [_fact("2026-03-31", 140)],
+        }, "2026-03-31")
+        eq = fin.fields["equity"]
+        assert eq.value is None
+        assert eq.reason == REASON_SYNONYM_CONFLICT
+
+    def test_synonym_agreement_uses_priority_tag(self):
+        fin = resolve_financials({
+            "StockholdersEquity": [_fact("2026-03-31", 100.0)],
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest":
+                [_fact("2026-03-31", 100.2)],
+        }, "2026-03-31")
+        assert fin.fields["equity"].value == 100.0
+        assert fin.fields["equity"].concept == "StockholdersEquity"
+
+    def test_ambiguous_period_withholds(self):
+        """One filing reporting two values for a period (dimensions stripped by the
+        companyfacts API) cannot be disambiguated here."""
+        fin = resolve_financials({"Assets": [
+            _fact("2026-03-31", 100, accn="0000000000-26-000009"),
+            _fact("2026-03-31", 250, accn="0000000000-26-000009"),
+        ]}, "2026-03-31")
+        assert fin.fields["total_assets"].value is None
+        assert fin.fields["total_assets"].reason == REASON_AMBIGUOUS_PERIOD
+
+    def test_restatement_prefers_newest_accession(self):
+        fin = resolve_financials({"Assets": [
+            _fact("2026-03-31", 250, accn="0000000000-26-000042"),
+            _fact("2026-03-31", 100, accn="0000000000-26-000009"),
+        ]}, "2026-03-31")
+        assert fin.fields["total_assets"].value == 250
+
+    # ── TTM assembly ─────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("ticker", GOLDEN_CIKS)
+    def test_flows_are_ttm_stamped(self, ticker):
+        for name in ("revenue", "net_income", "operating_income"):
+            rf = _fields(ticker)[name]
+            if rf.is_resolved():
+                assert rf.method.startswith("ttm_"), f"{ticker}/{name} method={rf.method}"
+
+    def test_reconstruction_arithmetic(self):
+        """MU never reports Q4 standalone, so TTM = prior FY + YTD - prior-year YTD."""
+        ed = fetch_edgar("MU", fixture_path=EDGAR / "MU.json")
+        rev = ed.financials.fields["revenue"]
+        assert rev.method == "ttm_reconstructed"
+        facts = {(r["start"], r["end"]): r["value"]
+                 for r in ed.financials.concepts[rev.concept] if r.get("start")}
+        fy = facts[("2024-08-30", "2025-08-28")]
+        ytd = facts[("2025-08-29", "2026-05-28")]
+        prior_ytd = facts[("2024-08-30", "2025-05-29")]
+        assert rev.value == pytest.approx(fy + ytd - prior_ytd)
+        assert rev.period_end == "2026-05-28"
+
+    def test_four_contiguous_quarters_sum(self):
+        fin = resolve_financials({"NetIncomeLoss": [
+            _fact("2026-06-30", 40, start="2026-04-01"),
+            _fact("2026-03-31", 30, start="2026-01-01"),
+            _fact("2025-12-31", 20, start="2025-10-01"),
+            _fact("2025-09-30", 10, start="2025-07-01"),
+        ]}, "2026-06-30")
+        ni = fin.fields["net_income"]
+        assert ni.value == 100
+        assert ni.method == "ttm_summed"
+        assert ni.period_start == "2025-07-01" and ni.period_end == "2026-06-30"
+
+    def test_quarter_gap_is_not_summed(self):
+        """A missing quarter must never be summed as if the window were complete."""
+        fin = resolve_financials({"NetIncomeLoss": [
+            _fact("2026-06-30", 40, start="2026-04-01"),
+            _fact("2026-03-31", 30, start="2026-01-01"),
+            _fact("2025-09-30", 10, start="2025-07-01"),
+            _fact("2025-06-30", 10, start="2025-04-01"),
+        ]}, "2026-06-30")
+        ni = fin.fields["net_income"]
+        assert ni.value is None
+        assert ni.reason == REASON_TTM_UNAVAILABLE
+
+    def test_full_year_fact_is_ttm_annual(self):
+        fin = resolve_financials({"NetIncomeLoss": [
+            _fact("2025-12-31", 500, start="2025-01-01", form="10-K"),
+        ]}, "2025-12-31")
+        assert fin.fields["net_income"].value == 500
+        assert fin.fields["net_income"].method == "ttm_annual"
+
+    def test_ttm_unavailable_when_prior_year_missing(self):
+        fin = resolve_financials({"NetIncomeLoss": [
+            _fact("2026-06-30", 90, start="2026-01-01"),
+            _fact("2025-12-31", 200, start="2025-01-01", form="10-K"),
+        ]}, "2026-06-30")
+        ni = fin.fields["net_income"]
+        assert ni.value is None
+        assert ni.reason == REASON_TTM_UNAVAILABLE
+
+    # ── derivation ───────────────────────────────────────────────────────────
+
+    def test_gross_profit_derived_when_untagged(self):
+        """GOOG does not tag GrossProfit; it is derived from revenue - cost_of_revenue."""
+        fields = _fields("GOOG")
+        gp = fields["gross_profit"]
+        assert gp.is_resolved()
+        assert gp.concept == "derived:revenue-cost_of_revenue"
+        assert gp.value == pytest.approx(
+            fields["revenue"].value - fields["cost_of_revenue"].value)
+
+    def test_tagged_gross_profit_matches_derivation(self):
+        """MU tags GrossProfit AND both components — they agree, which independently
+        validates the TTM assembly."""
+        fields = _fields("MU")
+        assert fields["gross_profit"].concept == "GrossProfit"
+        assert fields["gross_profit"].value == pytest.approx(
+            fields["revenue"].value - fields["cost_of_revenue"].value, rel=1e-6)
+
+    def test_no_derivation_guessing(self):
+        """V tags neither GrossProfit nor any cost concept — withheld, not guessed."""
+        fields = _fields("V")
+        assert fields["cost_of_revenue"].reason == REASON_NO_TAG
+        gp = fields["gross_profit"]
+        assert gp.value is None
+        assert gp.reason == REASON_DERIVE_INCOMPLETE
+        assert "cost_of_revenue" in (gp.detail or "")
+
+    def test_derivation_requires_matching_periods(self):
+        fin = resolve_financials({
+            "Revenues": [_fact("2026-06-30", 900, start="2025-07-01")],
+            "CostOfRevenue": [_fact("2025-12-31", 400, start="2025-01-01", form="10-K")],
+        }, "2026-06-30")
+        gp = fin.fields["gross_profit"]
+        assert gp.value is None
+        assert gp.reason == REASON_DERIVE_INCOMPLETE
+
+    # ── diagnostics ──────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("ticker", GOLDEN_CIKS)
+    def test_trail_records_every_synonym(self, ticker):
+        """The trail is the tag-migration map used when onboarding new tickers."""
+        fields = _fields(ticker)
+        for spec in FIELD_SPECS:
+            rf = fields[spec.name]
+            if spec.derive and rf.concept and rf.concept.startswith("derived:"):
+                continue
+            assert len(rf.trail) == len(spec.synonyms), f"{ticker}/{spec.name}"
