@@ -149,6 +149,7 @@ class FieldDelta:
     age_days: Optional[int] = None         # today - period_end (per-field freshness)
     current_confidence: Optional[Confidence] = None
     would_be_confidence: Optional[Confidence] = None
+    would_be_source: Optional[str] = None  # engine's corroborated/CONFLICT source string
     edgar_inputs: str = ""                 # concept/method trail of the inputs used
     note: str = ""
 
@@ -532,6 +533,7 @@ def compute_cross_check(
         is_stale = probe.confidence != "high"
 
         note = ""
+        would_be_source = None
         if is_stale:
             verdict = VERDICT_STALE_CAPPED
             would_be = current                       # neither direction moves
@@ -542,8 +544,10 @@ def compute_cross_check(
                 else f"age {age}d > {threshold_days}d threshold")
         elif checked.confidence == "high":
             verdict, would_be = VERDICT_AGREE, checked.confidence
+            would_be_source = checked.source
         elif checked.confidence == "low":
             verdict, would_be = VERDICT_CONFLICT, checked.confidence
+            would_be_source = checked.source
         else:
             verdict, would_be = VERDICT_STALE_CAPPED, current
 
@@ -552,17 +556,25 @@ def compute_cross_check(
             fmp_value=fmp_prov.value, edgar_value=edgar_value,
             divergence_pct=divergence, period_end=oldest, age_days=age,
             current_confidence=current, would_be_confidence=would_be,
-            edgar_inputs=trail, note=note,
+            would_be_source=would_be_source, edgar_inputs=trail, note=note,
         ))
 
     return report
 
 
-def render_report(report: CrossCheckReport) -> str:
-    """Human-readable delta table (used by the dark log and the calibration report)."""
+def render_report(report: CrossCheckReport, applied: Optional[List[str]] = None) -> str:
+    """Human-readable delta table.
+
+    Permanent verdict logging: this renders on EVERY evaluation, armed or dark, so the
+    calibration record continues after arming. `applied` is the list of fields actually
+    written back — None means the report was computed but not applied (dark).
+    """
+    mode = "dark" if applied is None else "ARMED"
+    head = ("APPLIED=NOTHING" if applied is None
+            else f"APPLIED={len(applied)} field(s)")
     lines = [
-        f"[EDGAR-XCHECK dark] {report.ticker}  as_of={report.as_of}  "
-        f"latest_period_end={report.latest_period_end}  APPLIED=NOTHING",
+        f"[EDGAR-XCHECK {mode}] {report.ticker}  as_of={report.as_of}  "
+        f"latest_period_end={report.latest_period_end}  {head}",
         f"  {'field':20s} {'FMP':>16s} {'EDGAR':>16s} {'div%':>8s} "
         f"{'period_end':>12s} {'age':>5s}  {'conf→would-be':16s} verdict",
     ]
@@ -584,26 +596,76 @@ def render_report(report: CrossCheckReport) -> str:
         lines.append(f"  {report.watch}")
     counts = ", ".join(f"{k}={v}" for k, v in sorted(report.counts().items()))
     changes = sum(1 for d in report.deltas if d.would_change)
+    tail = ("(none applied — dark)" if applied is None
+            else f"applied {len(applied)}: {', '.join(applied)}" if applied
+            else "(nothing to apply)")
     lines.append(f"  totals: {counts} | would-change {changes}/{len(report.deltas)} "
-                 f"(none applied — dark)")
+                 f"{tail}")
     return "\n".join(lines)
+
+
+# Only these two verdicts may move confidence. basis_mismatch, stale_capped, no_edgar and
+# no_fmp are measured and logged, and leave the field exactly as the feed delivered it.
+APPLICABLE_VERDICTS = (VERDICT_AGREE, VERDICT_CONFLICT)
+
+
+def apply_report(report: CrossCheckReport, ticker_data: Any) -> List[str]:
+    """Write the report's verdicts back onto the TickerData Provs. ARMED path.
+
+    Mutates confidence and source ONLY — the value a field carries is never touched by a
+    cross-check, exactly as the AlphaVantage engine behaved before it was torn out. The
+    source string records the corroboration ("FMP+EDGAR") or the conflict with both
+    values and as-of stamps, so a downgraded field says why on inspection.
+
+    Returns the fields actually changed, for the log.
+    """
+    applied: List[str] = []
+    for d in report.deltas:
+        if d.verdict not in APPLICABLE_VERDICTS or not d.would_change:
+            continue
+        prov: Optional[Prov] = getattr(ticker_data, d.fmp_field, None)
+        if prov is None or d.would_be_confidence is None:
+            continue
+        prov.confidence = d.would_be_confidence
+        if d.would_be_source:
+            prov.source = d.would_be_source
+        applied.append(f"{d.fmp_field}→{d.would_be_confidence}")
+    return applied
+
+
+def run_cross_check(
+    edgar: EdgarData,
+    ticker_data: Any,
+    log: Optional[Callable[[str], None]] = None,
+    apply: bool = True,
+) -> Optional[CrossCheckReport]:
+    """Compute, apply (when armed) and log. ARMED at both boundaries since 2026-08-08.
+
+    Application is all-or-nothing: the report is computed in full first, so a failure
+    mid-computation cannot leave some fields corroborated and others not.
+
+    Exceptions are still contained, and the reasoning has NOT changed with arming. What
+    this component moves is the confidence LABEL and source string; it cannot move a
+    value, a score, an E(R) or a grade. Its only reach into output is the anti-launder
+    NOTE. A failure therefore degrades to exactly the pre-EDGAR state — every field stays
+    at the feed's 'medium', which can never launder a miss into high confidence — and it
+    is reported loudly rather than silently swallowed.
+    """
+    emit = log or print
+    try:
+        report = compute_cross_check(edgar, ticker_data)
+        applied = apply_report(report, ticker_data) if apply else None
+        emit(render_report(report, applied))
+        return report
+    except Exception as e:                              # noqa: BLE001 — see docstring
+        emit(f"[EDGAR-XCHECK] FAILED for {getattr(edgar, 'ticker', '?')}: "
+             f"{type(e).__name__}: {e} — NOTHING APPLIED, all fields remain at feed "
+             f"confidence (cannot move a value, score, E(R) or grade)")
+        return None
 
 
 def run_dark_cross_check(
     edgar: EdgarData, ticker_data: Any, log: Optional[Callable[[str], None]] = None
 ) -> Optional[CrossCheckReport]:
-    """Compute and log the delta table. Returns the report; changes nothing.
-
-    Exceptions are contained deliberately. The hard-stop discipline applies to signals
-    that gate output — this component gates nothing, so a bug in it must not be able to
-    take down an evaluation it cannot influence. It reports its own failure loudly instead.
-    """
-    emit = log or print
-    try:
-        report = compute_cross_check(edgar, ticker_data)
-        emit(render_report(report))
-        return report
-    except Exception as e:                              # noqa: BLE001 — see docstring
-        emit(f"[EDGAR-XCHECK dark] FAILED for {getattr(edgar, 'ticker', '?')}: "
-             f"{type(e).__name__}: {e} (dark component; evaluation unaffected)")
-        return None
+    """Compute and log without applying — the calibration path, kept for replays."""
+    return run_cross_check(edgar, ticker_data, log=log, apply=False)

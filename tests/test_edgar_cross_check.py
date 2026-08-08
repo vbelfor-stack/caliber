@@ -13,9 +13,10 @@ from adapters.base import Prov
 from adapters.edgar_adapter import FilingRef, fetch_edgar
 from adapters.fixture_adapter import fetch_fixture
 from core.edgar_cross_check import (
-    COMPARISONS, DIVERGENCE_TOLERANCE_PCT, FRESHNESS_THRESHOLD_DAYS,
-    VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
-    VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED, compute_cross_check,
+    APPLICABLE_VERDICTS, COMPARISONS, DIVERGENCE_TOLERANCE_PCT,
+    FRESHNESS_THRESHOLD_DAYS, VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
+    VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED,
+    apply_report, compute_cross_check, run_cross_check,
     filing_freshness_flags, freshness_watch, issuer_filing_lag, issuer_period_cadence,
     newest_filed_period, render_report, run_dark_cross_check,
 )
@@ -30,13 +31,18 @@ def _pair(ticker: str):
             fetch_fixture(ticker, fixture_path=TICKER / f"{ticker}.json"))
 
 
-class TestDarkLaunchInvariant:
-    """Dark means dark."""
+class TestComputeIsPure:
+    """Computation and application are separate, and only apply_report writes.
+
+    This was the dark-launch invariant; after arming it is what keeps arming HONEST —
+    the table you read is produced without side effects, and every write is one explicit
+    call that can be withheld (replays, calibration) without touching this code path.
+    """
 
     @pytest.mark.parametrize("ticker", ["MU", "GOOG", "V"])
     def test_applies_nothing(self, ticker):
         """No Prov on the ticker data may be touched — value, source, as_of or
-        confidence. If this fails the cross-check has stopped being dark."""
+        confidence — by computing the report."""
         edgar, yf = _pair(ticker)
         before = {
             name: (p.value, p.source, p.as_of, p.confidence)
@@ -56,14 +62,94 @@ class TestDarkLaunchInvariant:
         assert edgar.financials.fields == snapshot
 
     def test_runner_never_raises(self):
-        """A dark component gates nothing, so a bug in it must not kill an evaluation."""
+        """It moves a confidence label, never a value, score, E(R) or grade — so a bug in
+        it must not kill an evaluation. It fails loudly and applies nothing."""
         lines = []
-        assert run_dark_cross_check("not-an-EdgarData", None, log=lines.append) is None
-        assert lines and "FAILED" in lines[0]
+        assert run_cross_check("not-an-EdgarData", None, log=lines.append) is None
+        assert lines and "FAILED" in lines[0] and "NOTHING APPLIED" in lines[0]
 
     def test_report_states_nothing_applied(self):
         edgar, yf = _pair("MU")
         assert "APPLIED=NOTHING" in render_report(compute_cross_check(edgar, yf))
+
+
+class TestArmedApplication:
+    """E-3 ARMED: agree→high, conflict→low, everything else leaves the field alone."""
+
+    def _armed(self, ticker):
+        edgar, yf = _pair(ticker)
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        applied = apply_report(report, yf)
+        return edgar, yf, report, applied
+
+    def test_agreement_upgrades_and_conflict_downgrades(self):
+        _, yf, report, applied = self._armed("MU")
+        by_field = {d.fmp_field: d for d in report.deltas}
+        assert by_field["gross_margin"].verdict == VERDICT_AGREE
+        assert getattr(yf, "gross_margin").confidence == "high"
+        assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
+        assert getattr(yf, "operating_margin").confidence == "low"
+        assert "gross_margin→high" in applied and "operating_margin→low" in applied
+
+    def test_source_string_records_corroboration_and_conflict(self):
+        """A field that moved must say why on inspection, not just carry a new label."""
+        _, yf, _, _ = self._armed("MU")
+        assert getattr(yf, "gross_margin").source.endswith("+EDGAR")
+        assert "CONFLICT" in getattr(yf, "operating_margin").source
+
+    @pytest.mark.parametrize("ticker", ["MU", "GOOG", "V"])
+    def test_values_are_never_touched(self, ticker):
+        """A cross-check adjudicates confidence, never data. Applying it must not move a
+        single value or as_of — that is the line between corroboration and rewriting."""
+        edgar, yf = _pair(ticker)
+        before = {name: (p.value, p.as_of) for name, p in vars(yf).items()
+                  if isinstance(p, Prov)}
+        apply_report(compute_cross_check(edgar, yf, today="2026-08-08"), yf)
+        after = {name: (p.value, p.as_of) for name, p in vars(yf).items()
+                 if isinstance(p, Prov)}
+        assert before == after
+
+    @pytest.mark.parametrize("ticker", ["MU", "GOOG", "V"])
+    def test_only_applicable_verdicts_move_anything(self, ticker):
+        """basis_mismatch, stale_capped, no_edgar and no_fmp are logged, never applied."""
+        edgar, yf = _pair(ticker)
+        before = {name: p.confidence for name, p in vars(yf).items()
+                  if isinstance(p, Prov)}
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        apply_report(report, yf)
+        for d in report.deltas:
+            now = getattr(yf, d.fmp_field).confidence
+            if d.verdict in APPLICABLE_VERDICTS:
+                assert now == d.would_be_confidence
+            else:
+                assert now == before[d.fmp_field], f"{d.fmp_field} moved on {d.verdict}"
+
+    def test_symmetric_gate_survives_arming(self):
+        """R1 is not merely a reporting nicety: with everything stale, arming writes
+        nothing at all."""
+        edgar, yf = _pair("MU")
+        before = {name: (p.confidence, p.source) for name, p in vars(yf).items()
+                  if isinstance(p, Prov)}
+        report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
+        assert apply_report(report, yf) == []
+        after = {name: (p.confidence, p.source) for name, p in vars(yf).items()
+                 if isinstance(p, Prov)}
+        assert before == after
+
+    def test_run_cross_check_applies_and_reports_what_it_applied(self):
+        lines = []
+        edgar, yf = _pair("MU")
+        run_cross_check(edgar, yf, log=lines.append)
+        assert "[EDGAR-XCHECK ARMED]" in lines[0]
+        assert "APPLIED=" in lines[0] and "APPLIED=NOTHING" not in lines[0]
+        assert getattr(yf, "gross_margin").confidence == "high"
+
+    def test_apply_can_be_withheld_for_replays(self):
+        lines = []
+        edgar, yf = _pair("MU")
+        run_cross_check(edgar, yf, log=lines.append, apply=False)
+        assert "APPLIED=NOTHING" in lines[0]
+        assert getattr(yf, "gross_margin").confidence == "medium"
 
 
 class TestComparisons:

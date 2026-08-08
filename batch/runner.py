@@ -36,7 +36,7 @@ except ImportError:
 from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
-from core.edgar_cross_check import run_dark_cross_check
+from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
@@ -131,8 +131,9 @@ def run_single_ticker(
             _log(f"FRED unavailable ({e}), continuing with missing rate")
             fred = FredData(rate_10y=missing_prov("FRED", None))
 
-        # E-3 DARK LAUNCH: log would-be cross-check deltas; applies nothing.
-        xcheck = run_dark_cross_check(edgar, yf, log=_log)
+        # E-3 ARMED (2026-08-08): apply EDGAR corroboration to field confidence.
+        # Labels + source strings only; no value, score, E(R) or grade can move.
+        xcheck = run_cross_check(edgar, yf, log=_log)
         freshness = xcheck.watch if xcheck else None
 
         # ── Scoring ───────────────────────────────────────────────────────────

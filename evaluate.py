@@ -27,7 +27,7 @@ except ImportError:
 
 from adapters.fmp_adapter import fetch_fmp
 from adapters.edgar_adapter import fetch_edgar
-from core.edgar_cross_check import run_dark_cross_check
+from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
@@ -157,9 +157,10 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     # Propagate SIC to the ticker data for lens selection
     yf.sic = edgar.sic
 
-    # E-3 DARK LAUNCH: log what an EDGAR cross-check WOULD do to each field's
-    # confidence. Applies nothing — no Prov is mutated, no score/E(R)/grade can move.
-    xcheck = run_dark_cross_check(edgar, yf)
+    # E-3 ARMED (2026-08-08): EDGAR is the wired second source. Agreement raises a field
+    # to high, conflict drops it to low; stale/lagged data moves nothing either way.
+    # Confidence labels + source strings only — values, scores, E(R) and grades untouched.
+    xcheck = run_cross_check(edgar, yf)
     if xcheck and xcheck.watch:
         print(f"\n  {xcheck.watch}")
 
