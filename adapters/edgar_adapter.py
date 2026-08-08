@@ -35,9 +35,10 @@ _TICKERS_CACHE: Optional[Dict[str, int]] = None  # ticker → cik_int
 @dataclass
 class FilingRef:
     form: str
-    date: str
+    date: str            # filing date
     accession: str       # hyphenated: 0000723125-25-000028
     primary_doc: str     # e.g. mu-20250828.htm
+    report_date: Optional[str] = None   # fiscal period covered; None from fixtures
 
 
 # ── E-2: canonical field resolution ──────────────────────────────────────────
@@ -561,6 +562,7 @@ def _parse_filings(sub: Dict) -> Tuple[List[FilingRef], List[FilingRef]]:
     dates = filings.get("filingDate", [])
     accnums = filings.get("accessionNumber", [])
     docs = filings.get("primaryDocument", [])
+    reports = filings.get("reportDate", [])
 
     tenk, tenq = [], []
     for i, f in enumerate(forms):
@@ -569,6 +571,7 @@ def _parse_filings(sub: Dict) -> Tuple[List[FilingRef], List[FilingRef]]:
             date=dates[i] if i < len(dates) else "",
             accession=accnums[i] if i < len(accnums) else "",
             primary_doc=docs[i] if i < len(docs) else "",
+            report_date=reports[i] if i < len(reports) else None,
         )
         if f in ("10-K", "10-K/A") and len(tenk) < 3:
             tenk.append(ref)
