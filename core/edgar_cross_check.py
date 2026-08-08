@@ -31,7 +31,11 @@ from core.cross_check import apply_cross_check, apply_staleness_penalty
 
 SECONDARY_SOURCE = "EDGAR"
 
-# ── Freshness threshold (PROPOSED — NOT ARMED) ───────────────────────────────
+# ── Freshness threshold (LOCKED 2026-08-08) ──────────────────────────────────
+# The 150d day-count is the BACKSTOP. The PRIMARY staleness signal is the lag-aware
+# submissions cross-reference below (newest_filed_period / filing_freshness_flags): a
+# day-count alone cannot see a companyfacts lag, as V proves at 130d and a full quarter
+# behind. Locked with the XBRL-LAG / MISSING-EXPECTED-10Q split as built.
 # Derived from the golden five's actual filing behaviour, not assumed. The quantity that
 # matters is how old the freshest available period-end legitimately gets right before new
 # data lands: (next filing date - current newest period-end). Measured over the last 9

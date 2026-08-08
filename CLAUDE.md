@@ -121,7 +121,8 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - EDGAR — IN PROGRESS (unblocked by teardown). SEC filings integration; unlocks "high"
   confidence (the wired secondary source that makes the anti-launder NOTE reachable again).
   E-1 DONE (XBRL extraction, commit 6977a72). E-2 DONE (field resolution, commit 25b40c5;
-  see EDGAR section below). E-3 NEXT — cross-check orchestration, DARK on arrival.
+  see EDGAR section below). E-3 BUILT AND DARK (0df4e6d + basis alignment 8d9bd07);
+  threshold LOCKED, second dark run done — AWAITING ARM. See EDGAR section below.
 - Phase D — after EDGAR. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
@@ -129,7 +130,7 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 
-## EDGAR — E-1/E-2 DONE (2026-08-08), E-3 dark-launch next
+## EDGAR — E-1/E-2 DONE, E-3 BUILT AND DARK (2026-08-08), awaiting arm
 Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again and
 restores the anti-launder NOTE, which has been unfirable since the AV teardown.
 - E-1 (6977a72): XBRL companyfacts extraction — raw us-gaap/dei concept facts, form-filtered
@@ -169,6 +170,31 @@ restores the anti-launder NOTE, which has been unfirable since the AV teardown.
   field's OWN period-end — never per-ticker. MU long_term_debt lags 182d while its siblings
   sit at the latest quarter; it stays capped at medium while they may upgrade. The dark-launch
   delta table must surface that case explicitly so the per-field gate is visibly working.
+  CONFIRMED in the second dark run: MU total_debt/debt_to_equity age from 2025-11-27 (254d)
+  while its income-statement siblings age from 2026-05-28 (72d), in the same report.
+- E-3 STALENESS RULING (locked 2026-08-08, post-dark-run): the 150d day-count is the
+  BACKSTOP; the lag-aware submissions cross-reference is the PRIMARY signal, with the
+  XBRL-LAG / MISSING-EXPECTED-10Q split as built. Day-count alone is provably insufficient —
+  V sits at 130d (inside any sane gate) while a full quarter behind.
+- Fixture coverage: all five golden tickers (MU/GOOG/V/NOW/WU) have EDGAR fixtures as of
+  d99e8b8. Re-record with `python -m tools.record_edgar_fixture TICKER` — deliberate manual
+  step, it moves the regression baseline. NOW 17/17 fields, WU 13/17.
+  WU accepted data limits (same class as V's): UNCLASSIFIED balance sheet, so no
+  AssetsCurrent/LiabilitiesCurrent exist at all (SettlementAssetsCurrent is float, NOT
+  working capital — deliberately not chained in) → no current_ratio; no fresh current-debt
+  tag → no total_debt; no ST-investment tag since 2015 → cash-only advisory.
+- SECOND DARK RUN (2026-08-08, live, golden five). would-change: MU 7/12, GOOG 7/12,
+  NOW 7/12, WU 6/12, V 1/12. Upgrades 6/7/7/5/0; downgrades-to-low 1/0/0/1/1.
+  - total_cash measure identity PROVEN: EDGAR cash+ST-investments equals FMP's
+    cashAndShortTermInvestments to 0.0% at the matching FY-end (GOOG 126.84B, MU 10.307B,
+    NOW 6.284B). Rows still read basis_mismatch because the comparison carries an
+    unconditional annual-vs-MRQ basis note — advisory by design, never an agree.
+  - Average-equity ROE landed: GOOG 25.0% -> 4.3% (agree). MU 29.0% -> 5.5%, which is just
+    OVER the 5.0% tolerance and therefore still a CONFLICT (would downgrade MU roe to low).
+  - OPEN, blocks arming: a conflict-derived 'low' BYPASSES the staleness/lag cap, because
+    apply_staleness_penalty only caps 'high'. V's current_ratio (10.4%) would be downgraded
+    to low on data the same run flags XBRL-LAG as a full quarter stale. Downgrades on
+    known-stale data need a ruling before arm.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
