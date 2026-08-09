@@ -113,6 +113,67 @@ class ValuationPanel:
         return min(rated, key=lambda r: r.spread) if rated else None
 
 
+# ── shared rate-anchoring helper (D-1) ───────────────────────────────────────
+# One spread→score ladder, used by the live valuation lenses. Extracted from
+# _valuation_compounder unchanged; D-3 adds the remaining lenses and the per-lens
+# ladders on top of this, so there is exactly one place the mapping lives.
+
+# Ordered high→low; the FIRST threshold a spread clears wins. Percentage points.
+# A None threshold is the floor and always matches, so the ladder is total.
+RATE_SPREAD_LADDER = (
+    (3.0, 5, None),
+    (1.0, 4, None),
+    (-1.0, 3, None),
+    (-3.0, 2, "RICH"),
+    (None, 1, "VERY-RICH"),
+)
+
+
+@dataclass
+class SpreadScore:
+    """One anchor's verdict on one metric: the spread it implies and the score it earns.
+
+    Shaped for the D-3 aggregation rule (MIN across available anchors, RULED
+    2026-08-09 permanent): `min(readings, key=lambda s: s.spread)` picks the least
+    flattering denominator directly, matching ValuationPanel.least_flattering.
+    Carrying `anchor` on the reading is what makes a narrowed panel detectable —
+    the anchor COUNT is a binding condition of the ruling, so a caller must be able
+    to see WHICH anchors produced a score, not just the winning number.
+    """
+    spread: float
+    score: int
+    anchor: str = ANCHOR_RISK_FREE
+    flags: List[str] = field(default_factory=list)
+
+
+def score_yield_spread(
+    ticker_yield_pct: Optional[float],
+    anchor_yield_pct: Optional[float],
+    *,
+    anchor: str = ANCHOR_RISK_FREE,
+    ladder: tuple = RATE_SPREAD_LADDER,
+    flag_scope: str = "RISK-FREE",
+) -> Optional[SpreadScore]:
+    """Score a yield against one anchor. None if either side is unavailable.
+
+    Both yields are in PERCENTAGE POINTS, not fractions — the caller converts. That
+    asymmetry is inherited: FMP serves fcf_yield as a fraction while FRED serves the
+    10Y as percent, and the existing lenses already multiply by 100 at the call site.
+    """
+    if ticker_yield_pct is None or anchor_yield_pct is None:
+        return None
+    spread = ticker_yield_pct - anchor_yield_pct
+    for threshold, score, flag in ladder:
+        if threshold is None or spread >= threshold:
+            return SpreadScore(
+                spread=spread,
+                score=score,
+                anchor=anchor,
+                flags=[f"{flag}-VS-{flag_scope}"] if flag else [],
+            )
+    raise AssertionError(f"ladder has no floor rung — spread {spread} unmatched")
+
+
 def _yield_from_multiple(multiple: Optional[float]) -> Optional[float]:
     """1/x as a percentage. A NEGATIVE multiple has no yield interpretation — a company
     losing money is not offering a negative earnings yield to be ranked against the 10Y,

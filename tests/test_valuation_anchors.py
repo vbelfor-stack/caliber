@@ -19,7 +19,7 @@ from core.valuation_anchors import (
     ANCHOR_OWN_HISTORY, ANCHOR_RISK_FREE, ANCHOR_SECTOR, METRIC_EARNINGS_YIELD,
     METRIC_FCF_YIELD, METRIC_FORWARD_EARNINGS_YIELD, MIN_HISTORY_POINTS,
     _yield_from_multiple, compute_panel, own_history_earnings_yields, render_panel,
-    run_dark_panel,
+    run_dark_panel, score_yield_spread,
 )
 
 FIXTURES = Path("tests/fixtures")
@@ -220,3 +220,78 @@ class TestDisagreement:
         panel = _panel("MU")
         spreads = [r.spread for r in panel.by_metric(metric) if r.spread is not None]
         assert panel.anchor_range(metric) == pytest.approx(max(spreads) - min(spreads))
+
+
+# ── D-1: shared rate-anchoring helper ────────────────────────────────────────
+# These pin the EXTRACTED ladder against the inline one it replaced in
+# _valuation_compounder. D-1 is a pure refactor: if any expectation below has to be
+# edited to make the suite pass, the extraction changed behaviour and is wrong.
+
+class TestSharedSpreadHelper:
+    # (spread, expected_score, expected_flags) — transcribed from the pre-extraction
+    # inline ladder, boundaries included on the >= side exactly as it read.
+    LADDER_CASES = [
+        (10.0, 5, []), (3.01, 5, []), (3.0, 5, []),
+        (2.99, 4, []), (1.0, 4, []),
+        (0.99, 3, []), (0.0, 3, []), (-1.0, 3, []),
+        (-1.01, 2, ["RICH-VS-RISK-FREE"]), (-3.0, 2, ["RICH-VS-RISK-FREE"]),
+        (-3.01, 1, ["VERY-RICH-VS-RISK-FREE"]), (-50.0, 1, ["VERY-RICH-VS-RISK-FREE"]),
+    ]
+
+    @pytest.mark.parametrize("spread,score,flags", LADDER_CASES)
+    def test_ladder_matches_pre_extraction_behavior(self, spread, score, flags):
+        r = score_yield_spread(4.0 + spread, 4.0)
+        assert r.score == score, f"spread {spread:+} must score {score}, got {r.score}"
+        assert r.flags == flags
+        assert r.spread == pytest.approx(spread)
+
+    def test_ladder_is_total_every_spread_scores(self):
+        """No spread may fall through — a None score would reach the pillar as a crash."""
+        for hundredths in range(-2000, 2001):
+            assert score_yield_spread(hundredths / 100.0, 0.0) is not None
+
+    def test_missing_either_side_returns_none_not_a_default(self):
+        """A missing denominator must NOT score. Defaulting it to 0 would read as a
+        4-5pp spread against a 4% yield — false cheapness, the peer-anchor failure."""
+        assert score_yield_spread(None, 4.0) is None
+        assert score_yield_spread(4.0, None) is None
+        assert score_yield_spread(None, None) is None
+
+    def test_default_anchor_is_risk_free(self):
+        assert score_yield_spread(5.0, 4.0).anchor == ANCHOR_RISK_FREE
+
+    def test_flag_scope_is_parameterised_for_d3(self):
+        """D-3 scores the same spread against sector and own-history; the flag must name
+        WHICH denominator it is rich against, or the panel's disagreement is unreadable."""
+        r = score_yield_spread(2.0, 4.0, anchor=ANCHOR_SECTOR, flag_scope="SECTOR")
+        assert r.flags == ["RICH-VS-SECTOR"] and r.anchor == ANCHOR_SECTOR
+        deep = score_yield_spread(0.0, 4.0, anchor=ANCHOR_SECTOR, flag_scope="SECTOR")
+        assert deep.flags == ["VERY-RICH-VS-SECTOR"], "both rungs must carry the scope"
+
+    def test_shaped_for_min_aggregation(self):
+        """AGGREGATION RULED 2026-08-09: MIN across available anchors, permanent.
+        The reading must support it directly — least flattering wins, and stays
+        attributable to its anchor so a narrowed panel is detectable."""
+        readings = [
+            score_yield_spread(8.0, 4.0, anchor=ANCHOR_RISK_FREE),
+            score_yield_spread(8.0, 6.0, anchor=ANCHOR_SECTOR),
+            score_yield_spread(8.0, 9.0, anchor=ANCHOR_OWN_HISTORY),
+        ]
+        worst = min(readings, key=lambda s: s.spread)
+        assert worst.anchor == ANCHOR_OWN_HISTORY, "MIN must pick the dissenting anchor"
+        assert worst.spread == pytest.approx(-1.0) and worst.score == 3
+        assert worst.score < max(r.score for r in readings), (
+            "MIN must not look cheaper than the least flattering denominator"
+        )
+
+    def test_min_is_not_median_on_the_wu_shape(self):
+        """Median was REJECTED on D-0 evidence: it discards own-history exactly when it
+        dissents, and that dissent is the discriminator. Pins the rejected behaviour."""
+        readings = [
+            score_yield_spread(12.0, 4.0, anchor=ANCHOR_RISK_FREE),
+            score_yield_spread(12.0, 5.0, anchor=ANCHOR_SECTOR),
+            score_yield_spread(12.0, 11.0, anchor=ANCHOR_OWN_HISTORY),
+        ]
+        spreads = sorted(r.spread for r in readings)
+        assert min(spreads) == pytest.approx(1.0), "MIN keeps the own-history dissent"
+        assert spreads[1] == pytest.approx(7.0), "median would discard it — rejected"

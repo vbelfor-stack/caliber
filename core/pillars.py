@@ -21,6 +21,7 @@ from adapters.base import Confidence, Prov, PillarResult, min_conf, missing_prov
 from adapters.edgar_adapter import EdgarData
 from adapters.fred_adapter import FredData
 from core.datatypes import TickerData
+from core.valuation_anchors import score_yield_spread
 
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
@@ -576,7 +577,8 @@ def _valuation_compounder(yf: TickerData, fred: FredData) -> PillarResult:
     if not yf.fcf_yield.is_missing() and not fred.rate_10y.is_missing():
         fy = yf.fcf_yield.value * 100
         r = fred.rate_10y.value
-        spread = fy - r
+        rated = score_yield_spread(fy, r)   # shared ladder — see core.valuation_anchors
+        spread = rated.spread
 
         if _growth_weak and spread >= 1:
             # High FCF yield + no growth = market pricing secular decline, not a bargain
@@ -589,18 +591,8 @@ def _valuation_compounder(yf: TickerData, fred: FredData) -> PillarResult:
         else:
             parts.append(f"FCF yield {fy:.1f}% vs 10Y {r:.2f}% (spread {spread:+.1f}%).")
 
-        if spread >= 3:
-            score = 5
-        elif spread >= 1:
-            score = 4
-        elif spread >= -1:
-            score = 3
-        elif spread >= -3:
-            score = 2
-            flags.append("RICH-VS-RISK-FREE")
-        else:
-            score = 1
-            flags.append("VERY-RICH-VS-RISK-FREE")
+        score = rated.score
+        flags.extend(rated.flags)
     elif not yf.ev_to_ebitda.is_missing():
         ev_eb = yf.ev_to_ebitda.value
         parts.append(f"EV/EBITDA {ev_eb:.1f}x.")

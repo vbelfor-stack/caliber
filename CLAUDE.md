@@ -146,21 +146,29 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
   E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
   reachability): the note is NOT revived, see the E-4 finding below. See EDGAR section.
-- Phase D — VALUATION PANEL (scoped 2026-08-09). IN PROGRESS at D-0. See Phase D section.
+- Phase D — VALUATION PANEL (scoped 2026-08-09). IN PROGRESS: D-0 DONE, D-1 DONE,
+  aggregation RULED (MIN, permanent). NEXT IS D-2. See Phase D section.
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
-  >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
-  investigation (the ~$881 price was correct). Stays behind EDGAR.
+  >5x adjacent-year EPS jump flagging. MOVED UP (ruling 2026-08-09): scope it IMMEDIATELY
+  AFTER D-4 ARMS, BEFORE any further EDGAR expansion. No longer "stays behind EDGAR".
+  WHY: MIN's value concentrates in the least-covered anchor, and own-history is absent
+  17 of 20 readings — NOW's absence is split-truncation, i.e. a Phase G defect directly
+  starving the aggregation rule that was just locked permanent. FMP price integrity stays
+  exonerated by the MU investigation (~$881 was correct); this is about series coverage,
+  not price correctness.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 - save_evaluation UNCONDITIONAL WRITE (D-0 finding, latent footgun, NOT fixed): batch/
   runner.py:224 saves outside any `if run_synthesis:` guard, so a --no-synthesis batch —
   the obvious cheap re-measurement route — writes no_synthesis rows into production
   caliber.db and recontaminates the post-purge distribution. The D-0 probe sidesteps it
-  structurally rather than fixing it. Folds into D-2 or a small standalone.
-- SECTOR ANCHOR IS EXCHANGE-SCOPED (D-0 finding, needs a D-3 ruling): the FMP snapshot is
-  published per exchange, so the same sector carries two anchors by listing venue —
-  Technology/NASDAQ 48.1x (MU) vs Technology/NYSE 41.4x (NOW). ~0.33pp of yield; small,
-  but an economically arbitrary term inside an anchor that would be armed.
+  structurally rather than fixing it. FOLDED INTO D-2 by ruling 2026-08-09 (no longer
+  "or a small standalone").
+- SECTOR ANCHOR IS EXCHANGE-SCOPED — now a D-3 AGENDA ITEM (ruling 2026-08-09): the FMP
+  snapshot is published per exchange, so the same sector carries two anchors by listing
+  venue — Technology/NASDAQ 48.1x (MU) vs Technology/NYSE 41.4x (NOW). ~0.33pp of yield;
+  small, but an economically arbitrary term inside an anchor that would be armed. Bring
+  primary-listing-convention vs cap-weighted-blend, BIAS TO SIMPLEST DEFENSIBLE; Vic rules.
 - GOOG FCF yield 1.24% vs its 5.68% earnings yield (D-0, UNVERIFIED): plausible on current
   datacenter capex, but it drives GOOG's least-flattering FCF reading — one confirmation
   pass before FCF is armed. Low priority.
@@ -337,18 +345,23 @@ same at a 1% and a 7% 10Y.
   its own history AND cheap vs semis. Three anchors said buy; only the margin-trajectory
   read caught that the E was about to halve. The anchors are independent checks and their
   DISAGREEMENT IS THE SIGNAL.
-- AGGREGATION (PROVISIONAL — D-0 data is in, VIC'S RULING PENDING; D-1 does not start
-  until it lands): MIN across available anchors — "never look cheaper than your least
-  flattering defensible denominator". Dispersion is FLAGGED as signal, never averaged away.
-  D-0 RECOMMENDATION (docs/d0-panel.md §6.5, Code's, not a ruling): KEEP MIN. On trailing
-  earnings, median would restore WU to +12.03pp and flip MU from rich to cheap; both times
-  the anchor it discards is own-history — structurally the MINORITY anchor, so a median
-  discards it precisely when it dissents, and its dissent IS the value-trap signal.
-  Two conditions proposed: (1) record anchor COUNT and treat a 2-anchor panel as narrowed
-  — own history is trailing-only, so forward/FCF/EBITDA are 2-anchor everywhere and both
-  those anchors are market-referenced, not independent; (2) keep dispersion a REPORTED FLAG
-  and not an input, since on 3 of 4 metrics it is currently just |risk_free - sector| and
-  therefore metric-invariant — "dispersion is the signal" holds on trailing earnings only.
+- AGGREGATION — RULED 2026-08-09, LOCKED PERMANENT: MIN across available anchors.
+  PRINCIPLE ON RECORD: never look cheaper than your least flattering defensible
+  denominator.
+  MEDIAN REJECTED on D-0 evidence: both times median would flip a verdict (WU, and MU on
+  trailing), it does so by discarding own-history exactly when it DISSENTS — and that
+  dissent is the discriminator. Own history is structurally the minority anchor, so a
+  median throws it away precisely when it is carrying the signal.
+  BINDING CONDITIONS (both mandatory):
+  1. ANCHOR COUNT is recorded per reading; a 2-anchor panel is flagged NARROWED. When the
+     missing anchor is own-history, the surviving pair (risk-free + sector) is TWO
+     MARKET-REFERENCED denominators — not two independent checks. D-3 ladder proposals
+     MUST include a mechanism treating independence-narrowed panels more conservatively.
+     Propose at D-3; VIC RULES. (Own history is trailing-only, so forward/FCF/EBITDA are
+     2-anchor everywhere — this is the common case, not the exception.)
+  2. DISPERSION stays a REPORTED FLAG, never an aggregation input. On 3 of 4 metrics it is
+     currently just |risk_free - sector| and therefore metric-invariant; "dispersion is the
+     signal" holds on trailing earnings only.
 - MISSING ANCHORS: the panel narrows and provenance says so — EXCEPT the rate anchor,
   which is MANDATORY. No FRED rate → the valuation pillar REFUSES TO SCORE, loudly. No
   rate-blind scoring (that is silent degradation).
@@ -378,14 +391,34 @@ same at a 1% and a 7% 10Y.
       (accepted data limit), NOW is split-truncated (Phase G dependency). Since MIN's value
       concentrates in the worst-covered anchor, Phase G is worth more than its current
       placement behind EDGAR suggests.
-  D-1 extract the compounder's spread logic into one shared helper; behaviour asserted
-      unchanged (no golden score may move).
+  D-1 DONE 2026-08-09. Shared rate-anchoring helper extracted to core/valuation_anchors:
+      RATE_SPREAD_LADDER + score_yield_spread() -> SpreadScore(spread, score, anchor,
+      flags). _valuation_compounder consumes it; the inline ladder is GONE (asserted by
+      test_d1_no_duplicate_ladder_left_in_pillars, which fails if a copy reappears).
+      Shaped for MIN: min(readings, key=lambda s: s.spread), and each reading carries its
+      ANCHOR so a NARROWED panel stays detectable per binding condition 1.
+      flag_scope is parameterised so D-3's sector/own-history rungs name their own
+      denominator (RICH-VS-SECTOR etc.) instead of all reading RISK-FREE.
+      ZERO BEHAVIOUR CHANGE, MEASURED not assumed: 180-row sweep across every ladder rung
+      and both growth branches + the golden fixtures captured BEFORE the edit and replayed
+      after — score, flags, rationale, confidence and method identical on all 186. Golden
+      values pinned permanently in test_pillars.GOLDEN_VALUATION (MU 2/2, GOOG 3@0% and
+      1@4.69%, V 5@0% and 2@4.69%). Suite 496 passed. caliber.db md5 unchanged.
+      NOT DONE HERE (deliberate, D-3's job): the other four lenses still use FIXED
+      ABSOLUTE ladders and only PRINT the rate. Only the compounder was ever spread-based;
+      extracting one helper does not make the others rate-aware.
   D-2 fix the FRED fixture (it records no value, so offline runs are rate-blind) AND make
       a missing rate a loud refusal per the ruling above.
+      ALSO IN SCOPE (folded in by ruling 2026-08-09): the save_evaluation UNCONDITIONAL
+      WRITE footgun — see the roadmap entry below.
   D-3 DARK per-lens application + per-lens ladder proposals, hard-gate vs shifted-ladder
       argued from D-0 data. Includes the BANK-LENS MECHANISM QUESTION: P/B may not fit a
       yield-spread frame; propose P/B vs ROE-minus-cost-of-equity instead. Vic rules per
       lens.
+      D-3 AGENDA, carried by ruling — bring a proposal for each, Vic rules:
+      (a) INDEPENDENCE-NARROWED mechanism (binding condition 1 above).
+      (b) EXCHANGE-SCOPED SECTOR P/E: primary-listing-convention vs cap-weighted-blend.
+          BIAS TO THE SIMPLEST DEFENSIBLE option.
   D-4 arm per lens on those rulings; golden-five re-baseline as a REVIEWED DIFF, not an
       equality assertion — unlike EDGAR, "no score moved" cannot be the success criterion.
 - BLAST RADIUS, why this is not EDGAR: this is the first change that can move a SCORE.

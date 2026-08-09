@@ -392,3 +392,63 @@ def test_all_pillar_rationales_within_limit(mu_yf, mu_edgar, fred, mu_lens):
         assert len(r.rationale) <= 220, (
             f"Pillar {r.name} rationale exceeds 220 chars: {len(r.rationale)}"
         )
+
+
+# ── D-1: golden valuation scores must not move under the helper extraction ───
+# D-1 is a pure refactor. Unlike D-3/D-4 (where a moved score is the POINT and the
+# re-baseline is a reviewed diff), here ANY movement is a regression. These values were
+# captured from the pre-extraction code and must be edited only by a ruling that
+# deliberately changes scoring.
+
+GOLDEN_VALUATION = [
+    # (ticker, lens, 10Y rate, score, flags)
+    ("MU",   "cyclical",   0.00, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"]),
+    ("MU",   "cyclical",   4.69, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"]),
+    ("GOOG", "compounder", 0.00, 3, []),
+    ("GOOG", "compounder", 4.69, 1, ["VERY-RICH-VS-RISK-FREE"]),
+    ("V",    "compounder", 0.00, 5, []),
+    ("V",    "compounder", 4.69, 2, ["RICH-VS-RISK-FREE"]),
+]
+
+
+@pytest.mark.parametrize("ticker,lens,rate,score,flags", GOLDEN_VALUATION)
+def test_d1_golden_valuation_score_unchanged(ticker, lens, rate, score, flags):
+    yf = fetch_fixture(ticker, fixture_path=YF_FIXTURES / f"{ticker}.json")
+    got_lens = select_lens(yf.sector, yf.industry, yf.sic)
+    assert got_lens == lens, f"{ticker} lens drifted: {got_lens} != {lens}"
+    result = score_valuation(yf, _make_fred(rate), got_lens)
+    assert result.score == score, (
+        f"D-1 must not move a golden score. {ticker} @10Y={rate}: "
+        f"expected {score}, got {result.score}"
+    )
+    assert sorted(result.flags) == sorted(flags), (
+        f"D-1 must not move golden flags. {ticker} @10Y={rate}: "
+        f"expected {flags}, got {result.flags}"
+    )
+
+
+def test_d1_rate_sensitivity_survives_extraction():
+    """The compounder must still be RATE-AWARE — the whole point of the spread. GOOG
+    scores 3 against a 0% 10Y and 1 against 4.69%. If extraction had frozen the rate,
+    these would collapse to one value and ethos rule 10 would be silently dead."""
+    yf = fetch_fixture("GOOG", fixture_path=YF_FIXTURES / "GOOG.json")
+    lens = select_lens(yf.sector, yf.industry)
+    at_zero = score_valuation(yf, _make_fred(0.0), lens).score
+    at_high = score_valuation(yf, _make_fred(4.69), lens).score
+    assert at_zero > at_high, (
+        f"compounder must score worse as the risk-free rises: {at_zero} vs {at_high}"
+    )
+
+
+def test_d1_no_duplicate_ladder_left_in_pillars():
+    """CLAUDE.md: never add duplicate logic. The extraction is only real if the inline
+    ladder is GONE — a surviving copy would drift from the shared one at D-3."""
+    import inspect
+    from core.pillars import _valuation_compounder
+    src = inspect.getsource(_valuation_compounder)
+    assert "score_yield_spread" in src, "compounder must consume the shared helper"
+    for literal in ('"RICH-VS-RISK-FREE"', '"VERY-RICH-VS-RISK-FREE"'):
+        assert literal not in src, (
+            f"inline ladder flag {literal} still hardcoded in _valuation_compounder — "
+            f"the ladder was copied, not extracted"
+        )
