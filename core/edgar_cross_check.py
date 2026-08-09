@@ -69,6 +69,28 @@ class Comparison:
     remaining value measures something narrower than the FMP field it faces.
     """
     optional_missing_note: str = ""
+    label: str = ""
+    """Row key when several comparisons target one FMP field. Defaults to fmp_field."""
+    input_alternatives: Tuple[Tuple[str, ...], ...] = ()
+    """Ordered alternative required-input sets; the first fully-resolved set wins.
+
+    Lets one comparison be satisfied by either a directly-reported total or its
+    components, without inventing a preference inside compute(). WU files no fresh
+    current-debt tag, so its total_debt is only reachable via the reported total.
+    """
+    period_basis: str = "mrq"
+    """'mrq' — the fields as resolved (most recent period). 'annual_fy' — every input
+    re-read at the issuer's latest FISCAL YEAR END, for FMP fields served off the annual
+    statements. Converts a permanent as-of advisory into a real like-for-like test."""
+    age_basis: str = "absolute"
+    """'absolute' — days from the input's period-end to today (the armed semantic).
+    'alignment' — days between the two SIDES' periods, which is 0 for a matched-period
+    comparison. PROPOSED, dark pending ruling: it says a correctly-labelled annual figure
+    corroborating an annual FMP field launders nothing, since neither side claims to be
+    more recent than it is."""
+    dark: bool = False
+    """Computed and logged, never applied. New comparison surface stays dark until the
+    delta table it produces has been reviewed."""
     average_inputs: Tuple[str, ...] = ()
     """Inputs averaged with their prior-year value ((begin + end) / 2).
 
@@ -77,6 +99,13 @@ class Comparison:
     fastest compounders, versus ~2-3% on the rest. Averaging is basis alignment, not a
     fudge factor.
     """
+
+
+def _sum_debt(v: Dict[str, float]) -> Optional[float]:
+    """Reported debt total where the issuer files one, else long-term + current."""
+    if "total_debt_reported" in v:
+        return v["total_debt_reported"]
+    return v["long_term_debt"] + v["current_debt"]
 
 
 def _ratio(num: str, den: str) -> Callable[[Dict[str, float]], Optional[float]]:
@@ -113,9 +142,37 @@ COMPARISONS: Tuple[Comparison, ...] = (
                basis_note="FMP total_cash is annual balance-sheet; EDGAR is MRQ"),
     Comparison("shares_outstanding", ("shares_outstanding",),
                lambda v: v["shares_outstanding"]),
+    # Components only, deliberately. The reported-total alternative (R3(a)) is confined
+    # to the dark rows below: MU files a FRESH DebtAndCapitalLeaseObligations while its
+    # component tags lag a quarter, so adopting it here would silently re-source an armed
+    # row and erase the per-field-freshness case the ruling requires the table to show.
     Comparison("total_debt", ("long_term_debt", "current_debt"),
                lambda v: v["long_term_debt"] + v["current_debt"],
                basis_note="FMP totalDebt is annual balance-sheet; EDGAR is MRQ"),
+    # R3(a) DARK: the same field satisfied by a directly-reported debt total where the
+    # issuer files one. This is the only route to a total_debt row for WU, which files no
+    # fresh current-portion tag at all.
+    Comparison("total_debt", ("total_debt_reported",), _sum_debt,
+               label="total_debt(reported)",
+               input_alternatives=(("total_debt_reported",),),
+               dark=True,
+               basis_note="FMP totalDebt is annual balance-sheet; EDGAR is MRQ"),
+    # R3(b): the same two fields read at the issuer's latest fiscal year-end, which is
+    # the basis FMP actually serves. The measures are proven identical there (EDGAR
+    # cash+ST-investments matched FMP to 0.0% for GOOG/MU/NOW), so a like-for-like test
+    # is possible where only an advisory was before. DARK pending ruling — both the
+    # comparison and its alignment-based age gate are new surface.
+    Comparison("total_cash", ("cash",),
+               lambda v: v["cash"] + v.get("short_term_investments", 0.0),
+               label="total_cash@FY", optional=("short_term_investments",),
+               optional_missing_note="no ST-investment tag filed; cash-only vs FMP "
+                                     "cash+ST-investments",
+               period_basis="annual_fy", age_basis="alignment", dark=True),
+    Comparison("total_debt", ("long_term_debt", "current_debt"), _sum_debt,
+               label="total_debt@FY",
+               input_alternatives=(("total_debt_reported",),
+                                   ("long_term_debt", "current_debt")),
+               period_basis="annual_fy", age_basis="alignment", dark=True),
     Comparison("operating_cashflow", ("operating_cashflow",),
                lambda v: v["operating_cashflow"],
                basis_note="FMP cash-flow is annual; EDGAR is TTM"),
@@ -139,9 +196,11 @@ VERDICT_BASIS_MISMATCH = "basis_mismatch"  # not comparable; advisory only
 
 @dataclass
 class FieldDelta:
-    """What the cross-check WOULD have done to one field. Nothing is applied."""
+    """One comparison's outcome for one field."""
     fmp_field: str
     verdict: str
+    label: str = ""      # row key; differs from fmp_field when a field has several rows
+    dark: bool = False   # computed and logged, never applied
     fmp_value: Optional[float] = None
     edgar_value: Optional[float] = None
     divergence_pct: Optional[float] = None
@@ -390,10 +449,73 @@ def _prior_year_instant(
     return best_value
 
 
+FY_END_TOLERANCE_DAYS = 7   # 52/53-week filers drift a few days year to year
+
+
+def latest_fiscal_year_end(edgar: EdgarData) -> Optional[str]:
+    """The issuer's most recent FISCAL YEAR END period, from its own filed instants.
+
+    Matched on proximity to the submissions index's fiscal_year_end (MMDD) rather than
+    equality, because 52/53-week filers move by a few days each year (MU's year-ends run
+    2025-08-28, 2024-08-29, 2023-08-31).
+    """
+    fye = (edgar.fiscal_year_end or "").strip()
+    if len(fye) != 4 or not fye.isdigit():
+        return None
+    concept = next(
+        (rf.concept for name in _CADENCE_ANCHOR_FIELDS
+         for rf in [edgar.financials.fields.get(name)]
+         if rf is not None and rf.concept and not rf.concept.startswith("derived:")),
+        None,
+    )
+    best: Optional[str] = None
+    for rec in edgar.financials.concepts.get(concept or "", []):
+        end = rec.get("end")
+        if not end or rec.get("start"):
+            continue
+        try:
+            d = date.fromisoformat(end[:10])
+            anchor = date(d.year, int(fye[:2]), int(fye[2:]))
+        except ValueError:
+            continue
+        if abs((d - anchor).days) <= FY_END_TOLERANCE_DAYS and (best is None or end > best):
+            best = end
+    return best
+
+
+def _instant_at(
+    concepts: Dict[str, List[Dict[str, Any]]], rf: ResolvedField, target_end: str
+) -> Optional[float]:
+    """The same concept's value at a specific period-end, or None if not filed then.
+
+    Follows the tag the field actually resolved to, so a migrated issuer is tracked
+    rather than lost — the same rule _prior_year_instant uses.
+    """
+    if not rf.concept:
+        return None
+    for rec in concepts.get(rf.concept, []):
+        if rec.get("end") == target_end and not rec.get("start"):
+            return float(rec["value"])
+    return None
+
+
+def _required_inputs(
+    comparison: Comparison, fields: Dict[str, ResolvedField]
+) -> Tuple[str, ...]:
+    """The input set this comparison will run on: the first fully-resolved alternative,
+    else its declared inputs (so an unresolved run still reports what was missing)."""
+    for alt in comparison.input_alternatives:
+        if all((rf := fields.get(n)) is not None and rf.is_resolved() for n in alt):
+            return alt
+    return comparison.input_alternatives[-1] if comparison.input_alternatives \
+        else comparison.inputs
+
+
 def _gather_inputs(
     comparison: Comparison,
     fields: Dict[str, ResolvedField],
     concepts: Dict[str, List[Dict[str, Any]]],
+    match_period: Optional[str] = None,
 ) -> Tuple[Optional[Dict[str, float]], Optional[str], str, str, List[str]]:
     """Collect a comparison's EDGAR inputs.
 
@@ -407,13 +529,29 @@ def _gather_inputs(
     missing: List[str] = []
     missing_optional: List[str] = []
 
-    for name in comparison.inputs + comparison.optional:
-        required = name in comparison.inputs
+    required_names = _required_inputs(comparison, fields)
+    for name in tuple(required_names) + comparison.optional:
+        required = name in required_names
         rf = fields.get(name)
         if rf is None or not rf.is_resolved():
             (missing if required else missing_optional).append(
                 f"{name}({rf.reason if rf else 'absent'})")
             continue
+
+        if match_period is not None:
+            # Period-matched: re-read the SAME concept at the target period-end. An input
+            # the issuer did not file then is missing, never silently the MRQ figure.
+            matched = _instant_at(concepts, rf, match_period)
+            if matched is None:
+                (missing if required else missing_optional).append(
+                    f"{name}(not filed @{match_period})")
+                continue
+            values[name] = matched
+            trail_parts.append(f"{name}={rf.concept}@{match_period}")
+            if oldest is None or match_period < oldest:
+                oldest = match_period
+            continue
+
         value = float(rf.value)                 # type: ignore[arg-type]
         label = f"{name}={rf.concept}/{rf.method}@{rf.period_end}"
         if name in comparison.average_inputs:
@@ -459,15 +597,30 @@ def compute_cross_check(
     behind = filed if (lag_aware and filed and latest and filed > latest) else None
 
     fields = edgar.financials.fields
+    fy_end = latest_fiscal_year_end(edgar)
     for comp in COMPARISONS:
+        label = comp.label or comp.fmp_field
         fmp_prov: Optional[Prov] = getattr(ticker_data, comp.fmp_field, None)
         current = fmp_prov.confidence if fmp_prov is not None else None
+
+        match_period = fy_end if comp.period_basis == "annual_fy" else None
+        if comp.period_basis == "annual_fy" and match_period is None:
+            report.deltas.append(FieldDelta(
+                fmp_field=comp.fmp_field, label=label, dark=comp.dark,
+                verdict=VERDICT_NO_EDGAR,
+                fmp_value=None if fmp_prov is None or fmp_prov.is_missing() else fmp_prov.value,
+                current_confidence=current, would_be_confidence=current,
+                note="no fiscal year-end period identifiable for this issuer",
+            ))
+            continue
+
         values, oldest, trail, missing, missing_opt = _gather_inputs(
-            comp, fields, edgar.financials.concepts)
+            comp, fields, edgar.financials.concepts, match_period)
 
         if values is None:
             report.deltas.append(FieldDelta(
-                fmp_field=comp.fmp_field, verdict=VERDICT_NO_EDGAR,
+                fmp_field=comp.fmp_field, label=label, dark=comp.dark,
+                verdict=VERDICT_NO_EDGAR,
                 fmp_value=None if fmp_prov is None or fmp_prov.is_missing() else fmp_prov.value,
                 current_confidence=current, would_be_confidence=current,
                 edgar_inputs=trail, note=f"EDGAR unresolved: {missing}",
@@ -479,7 +632,8 @@ def compute_cross_check(
 
         if fmp_prov is None or fmp_prov.is_missing() or edgar_value is None:
             report.deltas.append(FieldDelta(
-                fmp_field=comp.fmp_field, verdict=VERDICT_NO_FMP,
+                fmp_field=comp.fmp_field, label=label, dark=comp.dark,
+                verdict=VERDICT_NO_FMP,
                 edgar_value=edgar_value, period_end=oldest, age_days=age,
                 current_confidence=current, would_be_confidence=current,
                 edgar_inputs=trail,
@@ -503,7 +657,8 @@ def compute_cross_check(
                 advisory, f"{comp.optional_missing_note} [{', '.join(missing_opt)}]"]))
         if advisory:
             report.deltas.append(FieldDelta(
-                fmp_field=comp.fmp_field, verdict=VERDICT_BASIS_MISMATCH,
+                fmp_field=comp.fmp_field, label=label, dark=comp.dark,
+                verdict=VERDICT_BASIS_MISMATCH,
                 fmp_value=fmp_prov.value, edgar_value=edgar_value,
                 divergence_pct=divergence, period_end=oldest, age_days=age,
                 current_confidence=current, would_be_confidence=current,
@@ -515,8 +670,12 @@ def compute_cross_check(
             fmp_prov, edgar_value, SECONDARY_SOURCE, oldest,
             tolerance_pct=DIVERGENCE_TOLERANCE_PCT,
         )
-        days_for_gate = age if age is not None else 10**6
-        stale_by_lag = bool(behind and (oldest or "") < behind)
+        # 'alignment' gating: the two sides cover the SAME period by construction, so the
+        # gate sees a zero gap. The absolute age is still recorded in the row.
+        days_for_gate = 0 if comp.age_basis == "alignment" else (
+            age if age is not None else 10**6)
+        stale_by_lag = bool(behind and (oldest or "") < behind
+                            and comp.age_basis != "alignment")
         if stale_by_lag:
             days_for_gate = max(days_for_gate, threshold_days + 1)
 
@@ -551,8 +710,11 @@ def compute_cross_check(
         else:
             verdict, would_be = VERDICT_STALE_CAPPED, current
 
+        if comp.age_basis == "alignment" and not note:
+            note = f"matched period {oldest} (abs age {age}d); gated on alignment"
+
         report.deltas.append(FieldDelta(
-            fmp_field=comp.fmp_field, verdict=verdict,
+            fmp_field=comp.fmp_field, label=label, dark=comp.dark, verdict=verdict,
             fmp_value=fmp_prov.value, edgar_value=edgar_value,
             divergence_pct=divergence, period_end=oldest, age_days=age,
             current_confidence=current, would_be_confidence=would_be,
@@ -578,15 +740,16 @@ def render_report(report: CrossCheckReport, applied: Optional[List[str]] = None)
         f"  {'field':20s} {'FMP':>16s} {'EDGAR':>16s} {'div%':>8s} "
         f"{'period_end':>12s} {'age':>5s}  {'conf→would-be':16s} verdict",
     ]
-    for d in sorted(report.deltas, key=lambda d: d.fmp_field):
+    for d in sorted(report.deltas, key=lambda d: (d.label or d.fmp_field)):
         fmp = f"{d.fmp_value:,.4g}" if isinstance(d.fmp_value, (int, float)) else "—"
         edg = f"{d.edgar_value:,.4g}" if isinstance(d.edgar_value, (int, float)) else "—"
         div = f"{d.divergence_pct:.1f}" if d.divergence_pct is not None else "—"
         age = f"{d.age_days}d" if d.age_days is not None else "—"
         move = f"{d.current_confidence or '—'}→{d.would_be_confidence or '—'}"
-        mark = "*" if d.would_change else " "
+        # A dark row is marked 'd', never '*': it cannot change anything yet.
+        mark = "d" if d.dark else ("*" if d.would_change else " ")
         lines.append(
-            f" {mark}{d.fmp_field:20s} {fmp:>16s} {edg:>16s} {div:>8s} "
+            f" {mark}{(d.label or d.fmp_field):20s} {fmp:>16s} {edg:>16s} {div:>8s} "
             f"{(d.period_end or '—'):>12s} {age:>5s}  {move:16s} {d.verdict}"
             + (f"  [{d.note}]" if d.note else "")
         )
@@ -595,7 +758,7 @@ def render_report(report: CrossCheckReport, applied: Optional[List[str]] = None)
     if report.watch:
         lines.append(f"  {report.watch}")
     counts = ", ".join(f"{k}={v}" for k, v in sorted(report.counts().items()))
-    changes = sum(1 for d in report.deltas if d.would_change)
+    changes = sum(1 for d in report.deltas if d.would_change and not d.dark)
     tail = ("(none applied — dark)" if applied is None
             else f"applied {len(applied)}: {', '.join(applied)}" if applied
             else "(nothing to apply)")
@@ -621,7 +784,7 @@ def apply_report(report: CrossCheckReport, ticker_data: Any) -> List[str]:
     """
     applied: List[str] = []
     for d in report.deltas:
-        if d.verdict not in APPLICABLE_VERDICTS or not d.would_change:
+        if d.dark or d.verdict not in APPLICABLE_VERDICTS or not d.would_change:
             continue
         prov: Optional[Prov] = getattr(ticker_data, d.fmp_field, None)
         if prov is None or d.would_be_confidence is None:

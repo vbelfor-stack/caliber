@@ -1,5 +1,5 @@
 {
-  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "probed_at": "2026-08-09T00:08:25.701519+00:00",
   "ticker": "GOOG",
   "cik": "0001652044",
   "submissions_shape": {
@@ -40,6 +40,11 @@
     ],
     "recent_10Q": [
       [
+        "2026-07-23",
+        "0001652044-26-000071",
+        "goog-20260630.htm"
+      ],
+      [
         "2026-04-30",
         "0001652044-26-000048",
         "goog-20260331.htm"
@@ -48,27 +53,20 @@
         "2025-10-30",
         "0001652044-25-000091",
         "goog-20250930.htm"
-      ],
-      [
-        "2025-07-24",
-        "0001652044-25-000062",
-        "goog-20250630.htm"
       ]
     ]
   },
-  "filing_index_shape": {
-    "error": "404 Client Error: Not Found for url: https://www.sec.gov/Archives/edgar/data/1652044/000165204426000018/0001652044-26-000018-index.json"
-  },
+  "filing_index_shape": null,
   "risk_factors_excerpt": null,
   "mda_excerpt": null,
   "facts_shape": {
     "taxonomy_keys": [
       "dei",
-      "us-gaap",
       "ecd",
-      "ffd"
+      "ffd",
+      "us-gaap"
     ],
-    "us_gaap_concept_count": 523,
+    "us_gaap_concept_count": 543,
     "sample_concepts": [
       "AccountsPayableCurrent",
       "AccountsReceivableNetCurrent",
@@ -78,20 +76,19 @@
       "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
       "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
       "AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+      "AdjustmentsToAdditionalPaidInCapitalDividendsInExcessOfRetainedEarnings",
       "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
       "AdjustmentsToAdditionalPaidInCapitalTaxEffectFromShareBasedCompensation",
       "AllocatedShareBasedCompensationExpense",
       "AllowanceForDoubtfulAccountsReceivable",
       "AllowanceForDoubtfulAccountsReceivableCurrent",
+      "AmortizationOfIntangibleAssets",
       "Assets",
       "AssetsCurrent",
       "AssetsNoncurrent",
       "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax",
-      "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax",
-      "AvailableForSaleDebtSecuritiesAmortizedCostBasis",
-      "AvailableForSaleSecuritiesContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss"
-    ],
-    "entityName": "ALPHABET INC."
+      "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax"
+    ]
   },
   "xbrl_facts": {
     "concepts": {

@@ -556,6 +556,22 @@ class TestEdgarFieldResolution:
         assert cd.value == pytest.approx(2_082_000_000)
         assert any("LongTermDebtCurrent:stale(" in t for t in cd.trail)
 
+    def test_reported_debt_total_resolves_where_components_cannot(self):
+        """R3(a): WU files no fresh current-portion tag, so long_term + current is
+        unassemblable for it — DebtAndCapitalLeaseObligations is the only route to the
+        measure FMP's totalDebt means."""
+        fields = _fields("WU")
+        assert fields["current_debt"].reason == REASON_STALE_TAG
+        reported = fields["total_debt_reported"]
+        assert reported.is_resolved()
+        assert reported.concept == "DebtAndCapitalLeaseObligations"
+        assert reported.value == pytest.approx(2_697_200_000)
+
+    @pytest.mark.parametrize("ticker", ("GOOG", "NOW"))
+    def test_reported_debt_total_absent_is_typed(self, ticker):
+        """Most issuers file only the components; withheld, never zero-filled."""
+        assert _fields(ticker)["total_debt_reported"].reason == REASON_NO_TAG
+
     def test_unclassified_balance_sheet_is_typed_not_zero_filled(self):
         """WU files no classified current section (its balance sheet is unclassified —
         only SettlementAssetsCurrent, which is float, not working capital). An absent

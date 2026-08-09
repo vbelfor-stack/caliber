@@ -18,7 +18,7 @@ from core.edgar_cross_check import (
     VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED,
     apply_report, compute_cross_check, run_cross_check,
     filing_freshness_flags, freshness_watch, issuer_filing_lag, issuer_period_cadence,
-    newest_filed_period, render_report, run_dark_cross_check,
+    latest_fiscal_year_end, newest_filed_period, render_report, run_dark_cross_check,
 )
 
 FIXTURES = Path("tests/fixtures")
@@ -84,7 +84,7 @@ class TestArmedApplication:
 
     def test_agreement_upgrades_and_conflict_downgrades(self):
         _, yf, report, applied = self._armed("MU")
-        by_field = {d.fmp_field: d for d in report.deltas}
+        by_field = {(d.label or d.fmp_field): d for d in report.deltas}
         assert by_field["gross_margin"].verdict == VERDICT_AGREE
         assert getattr(yf, "gross_margin").confidence == "high"
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
@@ -118,6 +118,8 @@ class TestArmedApplication:
         report = compute_cross_check(edgar, yf, today="2026-08-08")
         apply_report(report, yf)
         for d in report.deltas:
+            if d.dark:
+                continue                        # covered by TestDarkComparisons
             now = getattr(yf, d.fmp_field).confidence
             if d.verdict in APPLICABLE_VERDICTS:
                 assert now == d.would_be_confidence
@@ -152,6 +154,106 @@ class TestArmedApplication:
         assert getattr(yf, "gross_margin").confidence == "medium"
 
 
+class TestDarkComparisons:
+    """R3: new comparison surface — computed, logged, applied to nothing."""
+
+    def _report(self, ticker):
+        edgar, yf = _pair(ticker)
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        return edgar, yf, report, {(d.label or d.fmp_field): d for d in report.deltas}
+
+    # NOW and WU have EDGAR fixtures but no FMP-side ticker fixture, so the comparison
+    # layer can only run offline for these three. WU's R3(a) row is covered at the
+    # resolution layer in test_adapters instead.
+    @pytest.mark.parametrize("ticker", ["MU", "GOOG", "V"])
+    def test_dark_rows_never_apply(self, ticker):
+        """The whole point of dark-first: these rows can reach an agree/conflict verdict
+        and still move nothing."""
+        edgar, yf = _pair(ticker)
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        dark = [d for d in report.deltas if d.dark]
+        assert dark, "R3 rows missing entirely"
+        before = {name: p.confidence for name, p in vars(yf).items()
+                  if isinstance(p, Prov)}
+        applied = apply_report(report, yf)
+        assert not any(d.fmp_field in a for d in dark for a in applied
+                       if d.verdict in APPLICABLE_VERDICTS and d.would_change
+                       and not any(x.fmp_field == d.fmp_field and not x.dark
+                                   and x.would_change for x in report.deltas))
+        for name, conf in before.items():
+            armed_moved = any(not d.dark and d.would_change and d.fmp_field == name
+                              for d in report.deltas)
+            if not armed_moved:
+                assert getattr(yf, name).confidence == conf
+
+    def test_dark_rows_are_marked_in_the_table(self):
+        """A dark row is marked 'd', never '*' — it cannot change anything yet."""
+        _, _, report, _ = self._report("MU")
+        rows = [ln for ln in render_report(report, applied=[]).splitlines()
+                if "total_cash@FY" in ln]
+        assert len(rows) == 1 and rows[0].startswith(" d")
+
+    @pytest.mark.parametrize("ticker,fy", [("MU", "2025-08-28"), ("GOOG", "2025-12-31")])
+    def test_matched_period_reads_the_fiscal_year_end(self, ticker, fy):
+        """52/53-week filers drift, so the FY period is matched on proximity to the
+        issuer's declared fiscal year-end, not on equality (MU lands 2025-08-28).
+
+        The EDGAR side is asserted against the fixture's own facts at that period. The
+        0.0%-vs-FMP identity this comparison exists for is a property of LIVE FMP, which
+        serves the annual balance sheet; the recorded ticker fixtures hold MRQ values, so
+        it is verified in the live dark run rather than here."""
+        edgar, _, _, by_label = self._report(ticker)
+        assert latest_fiscal_year_end(edgar) == fy
+        row = by_label["total_cash@FY"]
+        assert row.period_end == fy
+        assert row.age_days > FRESHNESS_THRESHOLD_DAYS      # yet not stale_capped:
+        assert row.verdict != VERDICT_STALE_CAPPED          # alignment gating
+        assert "gated on alignment" in row.note
+
+        def at_fy(concept):
+            return next(r["value"] for r in edgar.financials.concepts[concept]
+                        if r["end"] == fy and not r.get("start"))
+        fields = edgar.financials.fields
+        expected = at_fy(fields["cash"].concept) + at_fy(
+            fields["short_term_investments"].concept)
+        assert row.edgar_value == pytest.approx(expected)
+        assert row.edgar_value != pytest.approx(
+            fields["cash"].value + fields["short_term_investments"].value), \
+            "matched row must not be reading the MRQ figures"
+
+    def test_matched_period_input_not_filed_then_is_withheld(self):
+        """Never silently substitute the MRQ figure for a period the issuer skipped."""
+        edgar, yf = _pair("MU")
+        cash = edgar.financials.fields["cash"]
+        edgar.financials.concepts[cash.concept] = [
+            r for r in edgar.financials.concepts[cash.concept]
+            if r.get("end") != latest_fiscal_year_end(edgar)
+        ]
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        row = by_label["total_cash@FY"]
+        assert row.verdict == VERDICT_NO_EDGAR
+        assert "not filed @" in row.note
+
+    def test_reported_total_row_is_dark_and_separate(self):
+        """It sits alongside the armed components row rather than replacing it, so both
+        bases stay visible while the reported-total surface is under review."""
+        _, _, _, by_label = self._report("MU")
+        reported = by_label["total_debt(reported)"]
+        assert reported.dark and not by_label["total_debt"].dark
+        assert reported.edgar_inputs.startswith("total_debt_reported=")
+
+    def test_armed_total_debt_still_uses_components(self):
+        """R3(a) must not silently re-source the armed row: MU files a FRESH reported
+        total while its component tags lag a quarter, and the lagging-sibling case has
+        to stay visible in the table."""
+        edgar, _, _, by_label = self._report("MU")
+        fields = edgar.financials.fields
+        assert by_label["total_debt"].period_end == min(
+            fields["long_term_debt"].period_end, fields["current_debt"].period_end)
+        assert by_label["total_debt(reported)"].period_end == fields["cash"].period_end
+
+
 class TestComparisons:
     @pytest.mark.parametrize("ticker", ["MU", "GOOG", "V"])
     def test_every_comparison_yields_a_delta(self, ticker):
@@ -171,7 +273,7 @@ class TestComparisons:
     def test_v_gaps_surface_as_no_edgar(self):
         """V files no capex or cost-of-revenue concept, so those comparisons cannot run."""
         edgar, yf = _pair("V")
-        by_field = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}
+        by_field = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}
         assert by_field["free_cashflow"].verdict == VERDICT_NO_EDGAR
         assert "capex" in by_field["free_cashflow"].note
         assert by_field["gross_margin"].verdict == VERDICT_NO_EDGAR
@@ -191,7 +293,7 @@ class TestComparisons:
         """FMP's total_cash is cashAndShortTermInvestments; the EDGAR side must measure
         the same thing rather than cash alone."""
         edgar, yf = _pair("MU")
-        by_field = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}
+        by_field = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}
         fields = edgar.financials.fields
         assert by_field["total_cash"].edgar_value == pytest.approx(
             fields["cash"].value + fields["short_term_investments"].value)
@@ -200,7 +302,7 @@ class TestComparisons:
         """V files no ST-investment tag, so its cash-only value faces a broader FMP
         measure — advisory, never a conflict."""
         edgar, yf = _pair("V")
-        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["total_cash"]
+        delta = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}["total_cash"]
         assert delta.verdict == VERDICT_BASIS_MISMATCH
         assert not delta.would_change
         assert "short_term_investments" in delta.note
@@ -209,7 +311,7 @@ class TestComparisons:
         """FMP computes ROE on average equity; against period-end equity the gap tracks
         equity growth (MU 29%, GOOG 25%). Averaging aligns the basis."""
         edgar, yf = _pair("MU")
-        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["roe"]
+        delta = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}["roe"]
         assert "avg w/ prior yr" in delta.edgar_inputs
         fields = edgar.financials.fields
         end_only = fields["net_income"].value / fields["equity"].value
@@ -220,7 +322,7 @@ class TestComparisons:
         """V's equity resolves via the incl-NCI variant; the prior-year lookup must use
         that same tag, not the abandoned one."""
         edgar, yf = _pair("V")
-        delta = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}["roe"]
+        delta = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}["roe"]
         assert "IncludingPortionAttributableToNoncontrollingInterest" in delta.edgar_inputs
         assert "avg w/ prior yr" in delta.edgar_inputs
 
@@ -236,7 +338,7 @@ class TestPerFieldFreshness:
     def test_field_ages_from_its_own_period_end(self):
         edgar, yf = _pair("MU")
         report = compute_cross_check(edgar, yf, today="2026-08-08")
-        by_field = {d.fmp_field: d for d in report.deltas}
+        by_field = {(d.label or d.fmp_field): d for d in report.deltas}
         gm = by_field["gross_margin"]
         assert gm.period_end == "2026-05-28"
         assert gm.age_days == 72
@@ -250,13 +352,13 @@ class TestPerFieldFreshness:
         fields = edgar.financials.fields
         assert fields["long_term_debt"].period_end < fields["revenue"].period_end
         report = compute_cross_check(edgar, yf, today="2026-08-08")
-        by_field = {d.fmp_field: d for d in report.deltas}
+        by_field = {(d.label or d.fmp_field): d for d in report.deltas}
         assert by_field["total_debt"].age_days > by_field["gross_margin"].age_days
         assert by_field["gross_margin"].would_be_confidence == "high"
 
     def test_multi_input_field_ages_from_oldest_input(self):
         edgar, yf = _pair("MU")
-        by_field = {d.fmp_field: d for d in compute_cross_check(edgar, yf).deltas}
+        by_field = {(d.label or d.fmp_field): d for d in compute_cross_check(edgar, yf).deltas}
         fields = edgar.financials.fields
         assert by_field["total_debt"].period_end == min(
             fields["long_term_debt"].period_end, fields["current_debt"].period_end)
@@ -281,15 +383,16 @@ class TestSymmetricStaleGating:
         """The property, asserted directly: with everything stale, no delta moves."""
         edgar, yf = _pair("MU")
         report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
-        assert any(d.divergence_pct and d.divergence_pct > 5.0 for d in report.deltas), \
+        armed = [d for d in report.deltas if not d.dark]
+        assert any(d.divergence_pct and d.divergence_pct > 5.0 for d in armed), \
             "fixture must contain a conflict-sized divergence for this to prove anything"
-        for d in report.deltas:
+        for d in armed:
             assert not d.would_change, f"{d.fmp_field} moved while stale"
             assert d.would_be_confidence == d.current_confidence
 
     def test_conflict_on_stale_data_renders_stale_capped_with_divergence_kept(self):
         edgar, yf = _pair("MU")
-        by_field = {d.fmp_field: d for d in
+        by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08",
                                         threshold_days=10).deltas}
         om = by_field["operating_margin"]          # 18.3% — a conflict when fresh
@@ -302,7 +405,7 @@ class TestSymmetricStaleGating:
         """Same field, same data, fresh: it does downgrade. Proves the test above is
         exercising the gate rather than a comparison that never conflicted."""
         edgar, yf = _pair("MU")
-        by_field = {d.fmp_field: d for d in
+        by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
         assert by_field["operating_margin"].would_be_confidence == "low"
@@ -315,7 +418,7 @@ class TestSymmetricStaleGating:
         edgar, yf = _pair("V")
         edgar.recent_10q = [FilingRef(form="10-Q", date="2026-07-29", accession="x",
                                       primary_doc="d.htm", report_date="2026-06-30")]
-        by_field = {d.fmp_field: d for d in
+        by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         om = by_field["operating_margin"]
         assert om.verdict == VERDICT_STALE_CAPPED
@@ -326,7 +429,7 @@ class TestSymmetricStaleGating:
         """Without the submissions cross-reference V is only 130d old — inside the 150d
         backstop — so the same conflict is live. The lag is doing the work."""
         edgar, yf = _pair("V")
-        by_field = {d.fmp_field: d for d in
+        by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
 
@@ -436,9 +539,12 @@ class TestFilingFreshnessFlags:
         edgar, yf = _pair("V")
         edgar.recent_10q = [FilingRef(form="10-Q", date="2026-07-29", accession="x",
                                       primary_doc="d.htm", report_date="2026-06-30")]
-        aged_only = compute_cross_check(edgar, yf, today="2026-08-08", lag_aware=False)
-        lag_aware = compute_cross_check(edgar, yf, today="2026-08-08", lag_aware=True)
-        assert any(d.would_be_confidence == "high" for d in aged_only.deltas)
-        assert all(d.would_be_confidence != "high" for d in lag_aware.deltas)
+        # Armed rows only: matched-period rows are gated on alignment, not the MRQ lag.
+        aged_only = [d for d in compute_cross_check(
+            edgar, yf, today="2026-08-08", lag_aware=False).deltas if not d.dark]
+        lag_aware = [d for d in compute_cross_check(
+            edgar, yf, today="2026-08-08", lag_aware=True).deltas if not d.dark]
+        assert any(d.would_be_confidence == "high" for d in aged_only)
+        assert all(d.would_be_confidence != "high" for d in lag_aware)
         assert all(d.age_days is None or d.age_days < FRESHNESS_THRESHOLD_DAYS
-                   for d in lag_aware.deltas if d.age_days is not None)
+                   for d in lag_aware if d.age_days is not None)

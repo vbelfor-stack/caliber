@@ -1,5 +1,5 @@
 {
-  "probed_at": "2026-07-09T18:54:31.401476+00:00",
+  "probed_at": "2026-08-09T00:08:23.873951+00:00",
   "ticker": "MU",
   "cik": "0000723125",
   "submissions_shape": {
@@ -50,16 +50,14 @@
       ]
     ]
   },
-  "filing_index_shape": {
-    "error": "404 Client Error: Not Found for url: https://www.sec.gov/Archives/edgar/data/723125/000072312525000028/0000723125-25-000028-index.json"
-  },
+  "filing_index_shape": null,
   "risk_factors_excerpt": null,
   "mda_excerpt": null,
   "facts_shape": {
     "taxonomy_keys": [
       "dei",
-      "us-gaap",
-      "ffd"
+      "ffd",
+      "us-gaap"
     ],
     "us_gaap_concept_count": 629,
     "sample_concepts": [
@@ -69,6 +67,7 @@
       "AccountsPayableTradeCurrent",
       "AccountsReceivableNetCurrent",
       "AccountsReceivableRelatedPartiesCurrent",
+      "AccruedIncomeTaxesNoncurrent",
       "AccumulatedDepreciationDepletionAndAmortizationExpensePropertyPlantAndEquipmentCurrentCharge",
       "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
       "AccumulatedOtherComprehensiveIncomeLossAvailableForSaleSecuritiesAdjustmentNetOfTax",
@@ -77,14 +76,12 @@
       "AccumulatedOtherComprehensiveIncomeLossForeignCurrencyTranslationAdjustmentNetOfTax",
       "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
       "AdditionalPaidInCapitalCommonStock",
+      "AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
       "AdjustmentsToAdditionalPaidInCapitalEquityComponentOfConvertibleDebt",
       "AdjustmentsToAdditionalPaidInCapitalEquityComponentOfConvertibleDebtSubsequentAdjustments",
       "AdjustmentsToAdditionalPaidInCapitalReallocationOfMinorityInterest",
-      "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
-      "AllocatedShareBasedCompensationExpense",
-      "AllowanceForDoubtfulAccountsReceivableCurrent"
-    ],
-    "entityName": "Micron Technology, Inc."
+      "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue"
+    ]
   },
   "xbrl_facts": {
     "concepts": {
@@ -6819,6 +6816,408 @@
         },
         {
           "value": 756000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-09-01",
+          "fy": 2017,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-17-000131"
+        }
+      ],
+      "DebtAndCapitalLeaseObligations": [
+        {
+          "value": 5722000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2026-05-28",
+          "fy": 2026,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-26-000015"
+        },
+        {
+          "value": 10142000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2026-02-26",
+          "fy": 2026,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-26-000006"
+        },
+        {
+          "value": 11756000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2025-11-27",
+          "fy": 2026,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-25-000046"
+        },
+        {
+          "value": 14577000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2025-08-28",
+          "fy": 2026,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-26-000015"
+        },
+        {
+          "value": 15541000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2025-05-29",
+          "fy": 2025,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-25-000021"
+        },
+        {
+          "value": 14355000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2025-02-27",
+          "fy": 2025,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-25-000009"
+        },
+        {
+          "value": 13785000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2024-11-28",
+          "fy": 2025,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-24-000047"
+        },
+        {
+          "value": 13397000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2024-08-29",
+          "fy": 2025,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-25-000028"
+        },
+        {
+          "value": 13258000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2024-05-30",
+          "fy": 2024,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-24-000019"
+        },
+        {
+          "value": 13722000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2024-02-29",
+          "fy": 2024,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-24-000007"
+        },
+        {
+          "value": 13505000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2023-11-30",
+          "fy": 2024,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-23-000077"
+        },
+        {
+          "value": 13330000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2023-08-31",
+          "fy": 2024,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-24-000027"
+        },
+        {
+          "value": 13245000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2023-06-01",
+          "fy": 2023,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-23-000041"
+        },
+        {
+          "value": 12274000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2023-03-02",
+          "fy": 2023,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-23-000022"
+        },
+        {
+          "value": 10265000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2022-12-01",
+          "fy": 2023,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-22-000072"
+        },
+        {
+          "value": 6906000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2022-09-01",
+          "fy": 2023,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-23-000054"
+        },
+        {
+          "value": 6963000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2022-06-02",
+          "fy": 2022,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-22-000036"
+        },
+        {
+          "value": 7076000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2022-03-03",
+          "fy": 2022,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-22-000016"
+        },
+        {
+          "value": 7022000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2021-12-02",
+          "fy": 2022,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-22-000004"
+        },
+        {
+          "value": 6776000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2021-09-02",
+          "fy": 2022,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-22-000048"
+        },
+        {
+          "value": 6715000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2021-06-03",
+          "fy": 2021,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-21-000052"
+        },
+        {
+          "value": 6621000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2021-03-04",
+          "fy": 2021,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-21-000032"
+        },
+        {
+          "value": 6629000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-12-03",
+          "fy": 2021,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-21-000012"
+        },
+        {
+          "value": 6643000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-09-03",
+          "fy": 2021,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-21-000065"
+        },
+        {
+          "value": 6686000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-05-28",
+          "fy": 2020,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-20-000067"
+        },
+        {
+          "value": 5425000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-02-27",
+          "fy": 2020,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-20-000034"
+        },
+        {
+          "value": 5650000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-11-28",
+          "fy": 2020,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-19-000174"
+        },
+        {
+          "value": 5851000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-08-29",
+          "fy": 2020,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-20-000082"
+        },
+        {
+          "value": 4909000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-05-30",
+          "fy": 2019,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-19-000035"
+        },
+        {
+          "value": 6238000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-02-28",
+          "fy": 2019,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-19-000014"
+        },
+        {
+          "value": 4132000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-11-29",
+          "fy": 2019,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-18-000156"
+        },
+        {
+          "value": 4636000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-08-30",
+          "fy": 2019,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-19-000094"
+        },
+        {
+          "value": 7344000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-05-31",
+          "fy": 2018,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-18-000065"
+        },
+        {
+          "value": 9316000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2018-03-01",
+          "fy": 2018,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-18-000036"
+        },
+        {
+          "value": 9045000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-11-30",
+          "fy": 2018,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-17-000166"
+        },
+        {
+          "value": 11134000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-08-31",
+          "fy": 2018,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0000723125-18-000092"
+        },
+        {
+          "value": 11646000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-06-01",
+          "fy": 2017,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0000723125-17-000085"
+        },
+        {
+          "value": 12425000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2017-03-02",
+          "fy": 2017,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0000723125-17-000037"
+        },
+        {
+          "value": 9645000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2016-12-01",
+          "fy": 2017,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0000723125-17-000005"
+        },
+        {
+          "value": 9910000000.0,
           "unit": "USD",
           "start": null,
           "end": "2016-09-01",

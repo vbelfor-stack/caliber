@@ -128,6 +128,14 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
         ("ShortTermBorrowings", "us-gaap"),      # NOW current tag
         ("CommercialPaper", "us-gaap"),
     ), conflict_check=False),
+    # A directly-reported debt TOTAL, where the issuer files one. WU files no fresh
+    # current-portion tag at all, so long_term_debt + current_debt is unassemblable for
+    # it, but DebtAndCapitalLeaseObligations carries exactly what FMP's totalDebt means.
+    # Used as an ALTERNATIVE input set, never as a substitute for the components.
+    FieldSpec("total_debt_reported", "instant", (
+        ("DebtAndCapitalLeaseObligations", "us-gaap"),
+        ("DebtLongtermAndShorttermCombinedAmount", "us-gaap"),
+    ), conflict_check=False),
     FieldSpec("equity", "instant", (
         ("StockholdersEquity", "us-gaap"),
         ("StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "us-gaap"),
