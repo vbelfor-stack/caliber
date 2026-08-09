@@ -40,6 +40,12 @@
     #   catches EITHER a stale LLM anchor OR a bad feed price. Raises AnchorPriceDivergence;
     #   E(R) withheld; status='anchor_divergence'. See Anchor guard note below.
   - PE basis computed on negative forward EPS  (LCID is the negative-forward-PE test fixture)
+  - MISSING RISK-FREE RATE   # ARMED 2026-08-09 (D-2). The rate anchor is MANDATORY: no
+    #   FRED 10Y -> score_valuation raises RateUnavailable (core/pillars.py) and the
+    #   valuation pillar REFUSES to score. Checked ahead of the lens dispatch, so it binds
+    #   ALL FIVE lenses, not just the spread-based compounder. Boundaries: evaluate.py
+    #   exits 3 with a loud readout; batch/runner.py persists status='rate_unavailable'
+    #   and continues to the next ticker. 0.0 is a RATE (ZIRP), not a missing one.
 - status='ok' must mean a COMPLETE eval (see open thread #2).
 - Golden-ticker regression harness: MU, GOOG, V, NOW, WU. Behavior on these must not change
   silently across sessions.   (confirmed current 2026-08-07)
@@ -158,12 +164,22 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   not price correctness.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
-- save_evaluation UNCONDITIONAL WRITE (D-0 finding, latent footgun, NOT fixed): batch/
-  runner.py:224 saves outside any `if run_synthesis:` guard, so a --no-synthesis batch —
-  the obvious cheap re-measurement route — writes no_synthesis rows into production
-  caliber.db and recontaminates the post-purge distribution. The D-0 probe sidesteps it
-  structurally rather than fixing it. FOLDED INTO D-2 by ruling 2026-08-09 (no longer
-  "or a small standalone").
+- DEGRADED-RUN WRITE GUARD (was "save_evaluation UNCONDITIONAL WRITE", FIXED in D-2
+  2026-08-09): a DEGRADED run is one whose output is not a real evaluation — --fixture
+  (replays recorded data) or --no-synthesis (eval with no synthesis). Both are MEASUREMENT
+  routes and both used to land in production caliber.db as a side effect of merely being
+  run; that is how the 189 contamination rows got in.
+  THE RULE IS NOT "degraded runs may not persist" — --no-synthesis is documented as
+  "pillars + store only" and that capability is KEPT. The rule is that a degraded run must
+  NAME ITS DESTINATION: pass db_path (CLI --db-path), else DegradedRunWriteRefused.
+  Raised BEFORE any work and deliberately OUTSIDE run_single_ticker's try/except — if the
+  broad handler caught it, the refusal would persist a 'failed' row into the very database
+  it protects. run_batch guards the whole batch up front. CLI exits 3 (matching
+  evaluate.py's refusal code), not a traceback.
+  A full live+synthesis run is NOT degraded and still defaults to production — the guard
+  is not a blanket "db_path is now required".
+  VERIFIED LIVE: `--fixture --no-synthesis --db-path /tmp/scratch.db` put its no_synthesis
+  row in the scratch DB; caliber.db md5 unchanged at 54aa42e5.
 - SECTOR ANCHOR IS EXCHANGE-SCOPED — now a D-3 AGENDA ITEM (ruling 2026-08-09): the FMP
   snapshot is published per exchange, so the same sector carries two anchors by listing
   venue — Technology/NASDAQ 48.1x (MU) vs Technology/NYSE 41.4x (NOW). ~0.33pp of yield;
@@ -283,8 +299,10 @@ It did NOT revive the anti-launder NOTE — see the E-4 ceiling finding.
   total_cash/total_debt annual-vs-MRQ), Management (earnings_history, insider_transactions
   — hardcoded medium), Growth (revenue_growth, trailing/forward PE, analyst_count — price
   and estimate derived), Valuation (fcf_yield, ev_to_ebitda, revenue_growth). NOTE the
-  FRED rate reads LOW only in the offline fixture, which records no value; live it is
-  4.69 at HIGH and is not a blocker.
+  FRED rate was never a real blocker — it read LOW only in the offline fixture, which
+  recorded no value. D-2 FIXED THAT: the fixture now carries 4.69 at HIGH, matching live,
+  so the artifact is gone. Confirmed by re-running the chain after D-2 — the verdict is
+  still blocked, by the FOUR STRUCTURAL blockers above and nothing else.
   tests/test_anti_launder_revival.py walks the chain and pins the blockers; its
   test_verdict_high_is_still_blocked is EXPECTED TO FAIL when coverage expands — that
   failure is the signal the note has become firable. LEAVE IT PINNED (ruling R-D).
@@ -321,10 +339,15 @@ Known imprecision: 53-week fiscal years add a catch-up quarter a median cadence 
 predict, so MU's estimate lands ~7d early.
 
 ## EDGAR — recorders and fixtures
-- `python -m tools.record_edgar_fixture TICKER...` and `python -m tools.record_fmp_fixture
-  TICKER...`. Both reuse the ADAPTER's own live fetch path, so a fixture cannot drift from
-  what production requests (the Phase-0 probe_fmp.py did drift — it still targets the
+- `python -m tools.record_edgar_fixture TICKER...`, `python -m tools.record_fmp_fixture
+  TICKER...`, and `python -m tools.record_fred_fixture` (no args — DGS10 is the only
+  series). All three reuse the ADAPTER's own live fetch path, so a fixture cannot drift
+  from what production requests (the Phase-0 probe_fmp.py did drift — it still targets the
   retired v3 API and writes keys the adapter no longer reads; treat it as dead).
+  record_fred_fixture requires FRED_API_KEY and fails LOUD without it rather than writing
+  a rate-less fixture — under the mandatory-rate ruling that would make every offline eval
+  refuse. Re-recording the FRED fixture MOVES THE BASELINE for every valuation score, since
+  the 10Y is an input to all of them.
 - Re-recording MOVES THE REGRESSION BASELINE — deliberate manual step, never incidental.
   Prior files are backed up to *.json.bak (gitignored).
 - Three fixture sets: tests/fixtures/edgar (all five), tests/fixtures/fmp (all five, the
@@ -407,10 +430,30 @@ same at a 1% and a 7% 10Y.
       NOT DONE HERE (deliberate, D-3's job): the other four lenses still use FIXED
       ABSOLUTE ladders and only PRINT the rate. Only the compounder was ever spread-based;
       extracting one helper does not make the others rate-aware.
-  D-2 fix the FRED fixture (it records no value, so offline runs are rate-blind) AND make
-      a missing rate a loud refusal per the ruling above.
-      ALSO IN SCOPE (folded in by ruling 2026-08-09): the save_evaluation UNCONDITIONAL
-      WRITE footgun — see the roadmap entry below.
+  D-2 DONE 2026-08-09. Three items:
+      (1) FRED FIXTURE RE-RECORDED with a real rate — 4.69% as_of 2026-08-06, conf high.
+          Offline runs are no longer rate-blind. New recorder tools/record_fred_fixture.py
+          follows the FMP/EDGAR discipline: fred_adapter.fetch_payload() is now the shared
+          production fetch path (REST/Strategy B), the recorder captures it verbatim, and
+          _from_fixture parses it back through the same _parse_observations the live path
+          uses — so a fixture cannot drift from what production requests. The pre-D-2
+          probe shape (no 'observations' key) now raises a LOUD "predates D-2" error
+          instead of silently replaying a missing rate. FRED writes '.' for non-trading
+          days; that is never coerced to 0.0 (a 0% risk-free makes everything look cheap).
+      (2) MANDATORY RATE ARMED — see the hard-stop entry above. NEW STATUS
+          'rate_unavailable' added to the evaluations enum. It does NOT compose with an
+          existing one: 'failed' means operational DOA (something raised), while this is a
+          POLICY REFUSAL where the pipeline worked and declined. Filing a refusal as a
+          crash would hide the policy from the audit trail. Persisted via
+          save_failed_evaluation(status=...), whose statuses are now a closed set
+          (_NON_COMPLETING_STATUSES) — an unknown status raises rather than writing an
+          unqueryable row. TickerResult.status stays 'failed' (no pillars were produced,
+          nothing is usable); eval_status carries 'rate_unavailable'.
+      (3) save_evaluation UNCONDITIONAL WRITE — FIXED. See the DEGRADED-RUN rule below.
+      Test movement 496 -> 519 (+23, all in tests/test_d2_mandatory_rate.py). No test was
+      removed; 15 in test_batch.py were MODIFIED to name a db_path, because they were
+      exercising the exact route the new guard blocks — that file was the original
+      contamination source, so it relying on conftest's backstop was the smell.
   D-3 DARK per-lens application + per-lens ladder proposals, hard-gate vs shifted-ladder
       argued from D-0 data. Includes the BANK-LENS MECHANISM QUESTION: P/B may not fit a
       yield-spread frame; propose P/B vs ROE-minus-cost-of-equity instead. Vic rules per

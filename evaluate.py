@@ -32,7 +32,7 @@ from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
-from core.pillars import score_all
+from core.pillars import score_all, RateUnavailable
 from core.technicals import analyze_technicals, TechnicalOverlay
 from synthesis.client import run_synthesis
 from synthesis.schema import (
@@ -182,6 +182,18 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
 
     try:
         pillars = score_all(yf, edgar, fred, lens)
+    except RateUnavailable as e:
+        # Mandatory-rate ruling: refuse loudly rather than print a rate-blind scorecard.
+        # Distinct exit code (3) so a caller can tell a policy REFUSAL from a crash (1).
+        print(f"\n{_divider('=')}", file=sys.stderr)
+        print("  REFUSED TO SCORE — NO RISK-FREE ANCHOR", file=sys.stderr)
+        print(_divider("="), file=sys.stderr)
+        print(f"\n{e}\n", file=sys.stderr)
+        print("The valuation pillar will not score without a 10Y rate. Fix the feed:",
+              file=sys.stderr)
+        print("  - live:    set FRED_API_KEY (see .env.example)", file=sys.stderr)
+        print("  - offline: python -m tools.record_fred_fixture", file=sys.stderr)
+        sys.exit(3)
     except Exception as e:
         print(f"\nFATAL: pillar scoring failed: {e}", file=sys.stderr)
         raise

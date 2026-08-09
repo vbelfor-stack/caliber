@@ -22,6 +22,11 @@ from synthesis.schema import SynthesisOutput
 
 _DEFAULT_DB = Path(__file__).parent.parent / "caliber.db"
 
+# Statuses for evaluations that did not complete. Kept apart from the completing set
+# ('ok' | 'no_synthesis' | 'anchor_unverified' | 'anchor_divergence') because these
+# never carry pillars or an avg_score — there is nothing to grade.
+_NON_COMPLETING_STATUSES = ("failed", "rate_unavailable")
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -44,7 +49,7 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 ticker      TEXT    NOT NULL,
                 run_at      TEXT    NOT NULL,
                 lens        TEXT,
-                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | no_synthesis | anchor_unverified | anchor_divergence | failed
+                status      TEXT    NOT NULL DEFAULT 'ok',   -- ok | no_synthesis | anchor_unverified | anchor_divergence | rate_unavailable | failed
                 error_msg   TEXT,
                 pillars_json    TEXT,   -- JSON list of PillarResult dicts
                 synthesis_json  TEXT,   -- JSON SynthesisOutput (raw dict)
@@ -244,16 +249,28 @@ def save_failed_evaluation(
     ticker: str,
     error_msg: str,
     db_path: Path = _DEFAULT_DB,
+    status: str = "failed",
 ) -> int:
-    """Record a failed evaluation so batch runs are fully auditable."""
+    """Record a non-completing evaluation so batch runs are fully auditable.
+
+    status distinguishes WHY it did not complete. 'failed' is an operational DOA (the
+    feed died, something raised). 'rate_unavailable' is a deliberate POLICY REFUSAL under
+    the mandatory-rate ruling — the pipeline worked and declined to score. Collapsing the
+    two would make a refusal read as a crash and hide the policy from the audit trail.
+    """
+    if status not in _NON_COMPLETING_STATUSES:
+        raise ValueError(
+            f"save_failed_evaluation status must be one of {_NON_COMPLETING_STATUSES}, "
+            f"got {status!r}"
+        )
     init_db(db_path)
     with _conn(db_path) as conn:
         cur = conn.execute(
             """
             INSERT INTO evaluations (ticker, run_at, status, error_msg)
-            VALUES (?, ?, 'failed', ?)
+            VALUES (?, ?, ?, ?)
             """,
-            (ticker, _utc_now(), error_msg[:2000]),
+            (ticker, _utc_now(), status, error_msg[:2000]),
         )
         return cur.lastrowid
 

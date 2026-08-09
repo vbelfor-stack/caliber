@@ -429,8 +429,38 @@ def score_growth(yf: TickerData, edgar: EdgarData, lens: str) -> PillarResult:
 
 # ── Pillar 5: Valuation ───────────────────────────────────────────────────────
 
+class RateUnavailable(Exception):
+    """The risk-free anchor is missing, so the valuation pillar REFUSES to score.
+
+    Phase D ruling (mandatory rate anchor): every other anchor may go missing and the
+    panel merely narrows, with provenance saying so. The RATE anchor may not. Scoring a
+    multiple with no risk-free denominator is not a degraded answer, it is a different
+    question — ethos rule 10 exists because a 22x multiple means opposite things at a 1%
+    and a 7% 10Y. Returning a score anyway would be silent degradation, so this raises.
+
+    Typed-signal siblings: PriceUnavailable (core.grading),
+    AnchorPriceDivergence (synthesis.schema). Same contract — raised loud at the point
+    of detection, converted to an honest persisted status at the boundary, and
+    record-and-continue at batch level so one refusing ticker cannot abort the run.
+    """
+
+
 def score_valuation(yf: TickerData, fred: FredData, lens: str) -> PillarResult:
-    """Dispatch to lens-specific valuation scorer."""
+    """Dispatch to lens-specific valuation scorer.
+
+    Refuses outright without a risk-free rate — see RateUnavailable. The check is HERE,
+    ahead of the dispatch, because it binds every lens: only the compounder consumes the
+    rate as a spread today, but the other four print it, and D-3 makes them all
+    rate-anchored. A per-lens check would silently exempt whichever lens forgot it.
+    """
+    if fred.rate_10y.is_missing():
+        raise RateUnavailable(
+            f"no FRED 10Y rate available — the valuation pillar refuses to score "
+            f"{yf.ticker} on the '{lens}' lens. The rate anchor is mandatory: a multiple "
+            f"judged against no risk-free regime is not a degraded score, it is "
+            f"meaningless. (rate source={fred.rate_10y.source}, "
+            f"confidence={fred.rate_10y.confidence})"
+        )
     if lens == "cyclical":
         return _valuation_cyclical(yf, fred)
     if lens == "compounder":

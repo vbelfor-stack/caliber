@@ -1,17 +1,66 @@
 {
-  "probed_at": "2026-07-09T18:54:31.401476+00:00",
   "series": "DGS10",
-  "fred_api_key_present": false,
-  "results": {
-    "fredapi": {
-      "note": "FRED_API_KEY not set \u2014 skipped fredapi path"
+  "recorded_at": "2026-08-09T21:21:55.416576+00:00",
+  "observations": [
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-08-06",
+      "value": "4.6900000000"
     },
-    "direct_api": {
-      "status_code": 400,
-      "url_shape": "https://api.stlouisfed.org/fred/series/observations",
-      "response_keys": [],
-      "sample_observations": [],
-      "error_message": "Bad Request.  The value for variable api_key is not a 32 character alpha-numeric lower-case string.  Read https://fred.stlouisfed.org/docs/api/api_key.html for more information."
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-08-05",
+      "value": "4.6300000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-08-04",
+      "value": "4.6300000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-08-03",
+      "value": "4.7000000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-31",
+      "value": "4.7500000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-30",
+      "value": "4.6800000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-29",
+      "value": "4.6700000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-28",
+      "value": "4.6100000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-27",
+      "value": "4.6500000000"
+    },
+    {
+      "realtime_start": "2026-08-07",
+      "realtime_end": "2026-08-07",
+      "date": "2026-07-24",
+      "value": "4.6900000000"
     }
-  }
+  ]
 }

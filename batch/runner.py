@@ -10,7 +10,11 @@ Usage:
   python -m batch.runner                      # reads tickers.txt
   python -m batch.runner --tickers MU,GOOG,V  # explicit list
   python -m batch.runner --fixture            # fixture mode (no live calls)
-  python -m batch.runner --no-synthesis       # skip LLM (pillars + store only)
+  python -m batch.runner --no-synthesis --db-path /tmp/x.db   # pillars + store, no LLM
+
+Degraded runs (--fixture / --no-synthesis) REQUIRE --db-path: they are measurement
+routes, and defaulting them into production caliber.db is how the 2026-08-07
+contamination happened. See DegradedRunWriteRefused.
 """
 from __future__ import annotations
 
@@ -41,9 +45,10 @@ from core.valuation_anchors import run_dark_panel
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
-from core.pillars import score_all
+from core.pillars import score_all, RateUnavailable
 from core.technicals import analyze_technicals
-from store.models import save_evaluation, save_failed_evaluation, get_cached_synthesis, save_synthesis_cache
+from store.models import (save_evaluation, save_failed_evaluation, get_cached_synthesis,
+                          save_synthesis_cache, _DEFAULT_DB)
 from synthesis.schema import check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
@@ -97,17 +102,66 @@ class TickerResult:
     freshness_watch: Optional[str] = None
 
 
+class DegradedRunWriteRefused(Exception):
+    """A degraded run tried to write to the DEFAULT (production) database.
+
+    A degraded run is one whose output is not a real evaluation: --fixture replays
+    recorded data, --no-synthesis produces an eval with no synthesis. Both are
+    MEASUREMENT routes, and both used to land in production caliber.db as a side effect
+    of merely being run — that is how 189 rows of test contamination got in (see the
+    2026-08-07 purge), and a --no-synthesis batch is the obvious cheap re-measurement
+    route that would do it again.
+
+    The rule is not "degraded runs may not persist" — `--no-synthesis` is documented as
+    "pillars + store only" and that capability is kept. The rule is that a degraded run
+    must NAME ITS DESTINATION: pass db_path (CLI: --db-path). Writing to production then
+    requires saying so out loud, which makes it a decision instead of an accident.
+    """
+
+
+def _guard_degraded_write(fixture_mode: bool, run_synthesis: bool, db_path: Optional[Path]) -> None:
+    """Refuse a degraded run that would write to the default production DB.
+
+    Raised BEFORE any work and deliberately OUTSIDE run_single_ticker's try/except: if
+    the broad handler caught it, the refusal would itself be persisted to production as
+    a 'failed' row — writing to the very database it exists to protect.
+    """
+    if db_path is not None:
+        return
+    degraded = []
+    if fixture_mode:
+        degraded.append("--fixture (replays recorded data, not a real evaluation)")
+    if not run_synthesis:
+        degraded.append("--no-synthesis (produces an eval with no synthesis)")
+    if not degraded:
+        return
+    raise DegradedRunWriteRefused(
+        "refusing to write a degraded run to the production database.\n"
+        "  Degraded because: " + "; ".join(degraded) + "\n"
+        f"  Default DB would be: {_DEFAULT_DB}\n"
+        "  Name a destination explicitly: --db-path /tmp/scratch.db\n"
+        "  (Pass the production path deliberately if that is genuinely what you want.)"
+    )
+
+
 def run_single_ticker(
     ticker: str,
     fixture_mode: bool = False,
     run_synthesis: bool = True,
     verbose: bool = True,
     force_refresh: bool = False,
+    db_path: Optional[Path] = None,
 ) -> TickerResult:
     """
     Run the full CALIBER pipeline for one ticker.
     Never raises — failures are caught and returned as TickerResult(status='failed').
+
+    EXCEPT DegradedRunWriteRefused, which is raised before any work: a degraded run
+    (fixture_mode or run_synthesis=False) must pass db_path explicitly rather than
+    defaulting into production caliber.db. See _guard_degraded_write.
     """
+    _guard_degraded_write(fixture_mode, run_synthesis, db_path)
+
     t0 = time.monotonic()
     _log = (lambda msg: print(f"  [{ticker}] {msg}")) if verbose else (lambda msg: None)
 
@@ -149,6 +203,9 @@ def run_single_ticker(
             sector_pe = fetch_sector_pe(yf.exchange or "NASDAQ")
         run_dark_panel(yf, fred, edgar, sector_pe, lens, log=_log)
 
+        # RateUnavailable is deliberately NOT caught here — it must reach the dedicated
+        # handler below, not the broad `except Exception` that reports operational DOA.
+        # A policy refusal filed as a crash is exactly the conflation D-2 removes.
         pillars = score_all(yf, edgar, fred, lens)
         tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
 
@@ -224,6 +281,7 @@ def run_single_ticker(
         eval_id = save_evaluation(
             ticker, lens, pillars, synthesis,
             expected_return=expected_return, status=anchor_status,
+            db_path=db_path or _DEFAULT_DB,
         )
         # Mirror the status save_evaluation actually persisted (anchor verdict
         # wins; else B-1 derivation from synthesis presence).
@@ -243,11 +301,32 @@ def run_single_ticker(
             freshness_watch=freshness,
         )
 
+    except RateUnavailable as exc:
+        # Mandatory-rate ruling: a refusal is not a crash. Persisted under its own status
+        # so the audit trail shows the pipeline worked and DECLINED, and record-and-
+        # continue keeps one rate-less ticker from aborting the batch.
+        err = f"RateUnavailable: {exc}"
+        _log(f"REFUSED TO SCORE — no risk-free anchor. {exc}")
+        try:
+            eval_id = save_failed_evaluation(
+                ticker, err, db_path=db_path or _DEFAULT_DB, status="rate_unavailable",
+            )
+        except Exception:
+            eval_id = None
+        return TickerResult(
+            ticker=ticker,
+            status="failed",       # not 'ok': no pillars were produced, nothing is usable
+            eval_id=eval_id,
+            error=err,
+            duration_s=time.monotonic() - t0,
+            eval_status="rate_unavailable",
+        )
+
     except Exception as exc:
         err = f"{type(exc).__name__}: {exc}"
         _log(f"FAILED — {err}")
         try:
-            eval_id = save_failed_evaluation(ticker, err)
+            eval_id = save_failed_evaluation(ticker, err, db_path=db_path or _DEFAULT_DB)
         except Exception:
             eval_id = None
         return TickerResult(
@@ -265,11 +344,18 @@ def run_batch(
     fixture_mode: bool = False,
     run_synthesis: bool = True,
     verbose: bool = True,
+    db_path: Optional[Path] = None,
 ) -> List[TickerResult]:
     """
     Run the full pipeline for every ticker with per-name isolation.
     Returns results in input order. Failures do not abort remaining tickers.
+
+    Raises DegradedRunWriteRefused up front (before any ticker runs) if this is a
+    degraded run with no explicit db_path — refusing the whole batch is right here, as
+    the destination is a property of the run, not of any one ticker.
     """
+    _guard_degraded_write(fixture_mode, run_synthesis, db_path)
+
     total = len(tickers)
     results: List[TickerResult] = []
 
@@ -284,6 +370,7 @@ def run_batch(
             fixture_mode=fixture_mode,
             run_synthesis=run_synthesis,
             verbose=verbose,
+            db_path=db_path,
         )
         results.append(result)
 
@@ -326,6 +413,9 @@ def main() -> None:
     parser.add_argument("--fixture", action="store_true", help="Use fixture mode (no live calls)")
     parser.add_argument("--no-synthesis", action="store_true", help="Skip LLM synthesis")
     parser.add_argument("--universe", default=str(DEFAULT_UNIVERSE), help="Path to universe file")
+    parser.add_argument("--db-path", default=None,
+                        help="Destination DB. REQUIRED for degraded runs (--fixture / "
+                             "--no-synthesis) so a measurement run cannot land in production.")
     args = parser.parse_args()
 
     if args.tickers:
@@ -337,11 +427,19 @@ def main() -> None:
         print("No tickers to process.", file=sys.stderr)
         sys.exit(1)
 
-    results = run_batch(
-        tickers,
-        fixture_mode=args.fixture,
-        run_synthesis=not args.no_synthesis,
-    )
+    try:
+        results = run_batch(
+            tickers,
+            fixture_mode=args.fixture,
+            run_synthesis=not args.no_synthesis,
+            db_path=Path(args.db_path) if args.db_path else None,
+        )
+    except DegradedRunWriteRefused as e:
+        # Loud, but a refusal is an expected operator outcome, not a crash — print it
+        # readably and exit 3 (matching evaluate.py's refusal code) rather than dumping
+        # a traceback that reads like a bug.
+        print(f"\nREFUSED: {e}\n", file=sys.stderr)
+        sys.exit(3)
 
     failed = [r for r in results if r.status == "failed"]
     sys.exit(1 if len(failed) == len(results) else 0)

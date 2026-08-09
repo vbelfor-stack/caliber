@@ -21,6 +21,19 @@ from batch.scheduler import dry_run
 FIXTURE_TICKERS = ["MU", "GOOG", "V"]   # fixtures exist for these three
 
 
+@pytest.fixture
+def scratch_db(tmp_path):
+    """Explicit destination for every degraded (fixture / no-synthesis) run.
+
+    D-2: run_single_ticker and run_batch now REFUSE a degraded run that does not name
+    its DB, because defaulting one into production caliber.db is exactly how the
+    2026-08-07 contamination happened — and this file was the source of it. conftest's
+    R-1 pin still redirects the default as a backstop, but these tests no longer rely
+    on that backstop: they say where they write.
+    """
+    return tmp_path / "batch_test.db"
+
+
 # ── Universe file ─────────────────────────────────────────────────────────────
 
 class TestReadUniverse:
@@ -50,8 +63,8 @@ class TestReadUniverse:
 # ── Single ticker isolation ───────────────────────────────────────────────────
 
 class TestRunSingleTicker:
-    def test_mu_fixture_mode_succeeds(self):
-        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_mu_fixture_mode_succeeds(self, scratch_db):
+        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert isinstance(result, TickerResult)
         assert result.status == "ok"
         assert result.eval_id is not None
@@ -62,64 +75,67 @@ class TestRunSingleTicker:
         # No synthesis here → persisted as 'no_synthesis'.
         assert result.eval_status == "no_synthesis"
 
-    def test_eval_status_failed_mirrors_db(self):
+    def test_eval_status_failed_mirrors_db(self, scratch_db):
         result = run_single_ticker("XXXXNOTREAL9999", fixture_mode=False,
-                                   run_synthesis=False, verbose=False)
+                                   run_synthesis=False, verbose=False, db_path=scratch_db)
         assert result.status == "failed"
         assert result.eval_status == "failed"
 
-    def test_goog_fixture_mode_succeeds(self):
-        result = run_single_ticker("GOOG", fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_goog_fixture_mode_succeeds(self, scratch_db):
+        result = run_single_ticker("GOOG", fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert result.status == "ok"
         assert result.avg_score is not None
         assert result.lens == "compounder", f"GOOG must be compounder, got {result.lens}"
 
-    def test_v_fixture_mode_succeeds(self):
-        result = run_single_ticker("V", fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_v_fixture_mode_succeeds(self, scratch_db):
+        result = run_single_ticker("V", fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert result.status == "ok"
         assert result.lens == "compounder"  # golden-ticker: V must be compounder
 
-    def test_bad_ticker_returns_failed_not_raises(self):
+    def test_bad_ticker_returns_failed_not_raises(self, scratch_db):
         """Core isolation guarantee: a bad ticker must NOT raise — status='failed'."""
         result = run_single_ticker(
-            "XXXXNOTREAL9999", fixture_mode=False, run_synthesis=False, verbose=False
+            "XXXXNOTREAL9999", fixture_mode=False, run_synthesis=False, verbose=False,
+            db_path=scratch_db,
         )
         assert result.status == "failed"
         assert result.error is not None
         assert result.eval_id is not None   # stored as failed-with-diagnosis
 
-    def test_failed_ticker_has_eval_id(self):
+    def test_failed_ticker_has_eval_id(self, scratch_db):
         """Failures must be persisted to the store so they're auditable."""
         result = run_single_ticker(
-            "BADFIXTURE999", fixture_mode=True, run_synthesis=False, verbose=False
+            "BADFIXTURE999", fixture_mode=True, run_synthesis=False, verbose=False,
+            db_path=scratch_db,
         )
         assert result.status == "failed"
         assert result.eval_id is not None
 
-    def test_duration_recorded(self):
-        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_duration_recorded(self, scratch_db):
+        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert result.duration_s >= 0.0
 
-    def test_mu_lens_is_cyclical(self):
-        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_mu_lens_is_cyclical(self, scratch_db):
+        result = run_single_ticker("MU", fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert result.lens == "cyclical"
 
 
 # ── Batch isolation ───────────────────────────────────────────────────────────
 
 class TestRunBatch:
-    def test_all_fixture_tickers_complete(self, capsys):
+    def test_all_fixture_tickers_complete(self, capsys, scratch_db):
         results = run_batch(
-            FIXTURE_TICKERS, fixture_mode=True, run_synthesis=False, verbose=False
+            FIXTURE_TICKERS, fixture_mode=True, run_synthesis=False, verbose=False,
+            db_path=scratch_db,
         )
         assert len(results) == 3
         statuses = [r.status for r in results]
         assert all(s == "ok" for s in statuses), f"Some failed: {statuses}"
 
-    def test_one_bad_ticker_does_not_abort_batch(self, capsys):
+    def test_one_bad_ticker_does_not_abort_batch(self, capsys, scratch_db):
         """Core isolation: BADFIXTURE fails, but MU and GOOG still complete."""
         tickers = ["MU", "BADFIXTURE9999", "GOOG"]
-        results = run_batch(tickers, fixture_mode=True, run_synthesis=False, verbose=False)
+        results = run_batch(tickers, fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert len(results) == 3
 
         mu = next(r for r in results if r.ticker == "MU")
@@ -131,20 +147,21 @@ class TestRunBatch:
         assert bad.status == "failed", "Bad ticker must be failed, not raise"
         assert bad.eval_id is not None, "Failed ticker must persist to store"
 
-    def test_results_in_input_order(self, capsys):
+    def test_results_in_input_order(self, capsys, scratch_db):
         tickers = ["V", "MU", "GOOG"]
-        results = run_batch(tickers, fixture_mode=True, run_synthesis=False, verbose=False)
+        results = run_batch(tickers, fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert [r.ticker for r in results] == tickers
 
-    def test_all_eval_ids_distinct(self, capsys):
+    def test_all_eval_ids_distinct(self, capsys, scratch_db):
         results = run_batch(
-            FIXTURE_TICKERS, fixture_mode=True, run_synthesis=False, verbose=False
+            FIXTURE_TICKERS, fixture_mode=True, run_synthesis=False, verbose=False,
+            db_path=scratch_db,
         )
         ids = [r.eval_id for r in results if r.eval_id is not None]
         assert len(ids) == len(set(ids)), "eval_ids must be distinct"
 
-    def test_empty_ticker_list_returns_empty(self, capsys):
-        results = run_batch([], fixture_mode=True, run_synthesis=False, verbose=False)
+    def test_empty_ticker_list_returns_empty(self, capsys, scratch_db):
+        results = run_batch([], fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert results == []
 
 
@@ -186,20 +203,21 @@ class TestSchedulerDryRun:
 # ── Store persistence checks ──────────────────────────────────────────────────
 
 class TestBatchStorePersistence:
-    def test_ok_runs_appear_in_store(self):
+    def test_ok_runs_appear_in_store(self, scratch_db):
         from store.models import list_evaluations
-        results = run_batch(["MU"], fixture_mode=True, run_synthesis=False, verbose=False)
+        results = run_batch(["MU"], fixture_mode=True, run_synthesis=False, verbose=False, db_path=scratch_db)
         assert results[0].status == "ok"
-        rows = list_evaluations("MU")
+        rows = list_evaluations("MU", db_path=scratch_db)
         assert any(r["id"] == results[0].eval_id for r in rows)
 
-    def test_failed_runs_appear_in_store_with_status_failed(self):
+    def test_failed_runs_appear_in_store_with_status_failed(self, scratch_db):
         from store.models import get_evaluation
         result = run_single_ticker(
-            "BADFAIL888", fixture_mode=True, run_synthesis=False, verbose=False
+            "BADFAIL888", fixture_mode=True, run_synthesis=False, verbose=False,
+            db_path=scratch_db,
         )
         assert result.status == "failed"
-        row = get_evaluation(result.eval_id)
+        row = get_evaluation(result.eval_id, db_path=scratch_db)
         assert row is not None
         assert row["status"] == "failed"
         assert row["error_msg"] is not None
