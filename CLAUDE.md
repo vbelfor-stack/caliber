@@ -129,6 +129,18 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   investigation (the ~$881 price was correct). Stays behind EDGAR.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
+- save_evaluation UNCONDITIONAL WRITE (D-0 finding, latent footgun, NOT fixed): batch/
+  runner.py:224 saves outside any `if run_synthesis:` guard, so a --no-synthesis batch —
+  the obvious cheap re-measurement route — writes no_synthesis rows into production
+  caliber.db and recontaminates the post-purge distribution. The D-0 probe sidesteps it
+  structurally rather than fixing it. Folds into D-2 or a small standalone.
+- SECTOR ANCHOR IS EXCHANGE-SCOPED (D-0 finding, needs a D-3 ruling): the FMP snapshot is
+  published per exchange, so the same sector carries two anchors by listing venue —
+  Technology/NASDAQ 48.1x (MU) vs Technology/NYSE 41.4x (NOW). ~0.33pp of yield; small,
+  but an economically arbitrary term inside an anchor that would be armed.
+- GOOG FCF yield 1.24% vs its 5.68% earnings yield (D-0, UNVERIFIED): plausible on current
+  datacenter capex, but it drives GOOG's least-flattering FCF reading — one confirmation
+  pass before FCF is armed. Low priority.
 
 ## EDGAR — E-1→E-4 ALL DONE (2026-08-08/09). Cross-check ARMED and live.
 Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again.
@@ -302,9 +314,18 @@ same at a 1% and a 7% 10Y.
   its own history AND cheap vs semis. Three anchors said buy; only the margin-trajectory
   read caught that the E was about to halve. The anchors are independent checks and their
   DISAGREEMENT IS THE SIGNAL.
-- AGGREGATION (PROVISIONAL, final ruling after D-0 data): MIN across available anchors —
-  "never look cheaper than your least flattering defensible denominator". Dispersion is
-  FLAGGED as signal, never averaged away.
+- AGGREGATION (PROVISIONAL — D-0 data is in, VIC'S RULING PENDING; D-1 does not start
+  until it lands): MIN across available anchors — "never look cheaper than your least
+  flattering defensible denominator". Dispersion is FLAGGED as signal, never averaged away.
+  D-0 RECOMMENDATION (docs/d0-panel.md §6.5, Code's, not a ruling): KEEP MIN. On trailing
+  earnings, median would restore WU to +12.03pp and flip MU from rich to cheap; both times
+  the anchor it discards is own-history — structurally the MINORITY anchor, so a median
+  discards it precisely when it dissents, and its dissent IS the value-trap signal.
+  Two conditions proposed: (1) record anchor COUNT and treat a 2-anchor panel as narrowed
+  — own history is trailing-only, so forward/FCF/EBITDA are 2-anchor everywhere and both
+  those anchors are market-referenced, not independent; (2) keep dispersion a REPORTED FLAG
+  and not an input, since on 3 of 4 metrics it is currently just |risk_free - sector| and
+  therefore metric-invariant — "dispersion is the signal" holds on trailing earnings only.
 - MISSING ANCHORS: the panel narrows and provenance says so — EXCEPT the rate anchor,
   which is MANDATORY. No FRED rate → the valuation pillar REFUSES TO SCORE, loudly. No
   rate-blind scoring (that is silent degradation).
@@ -319,9 +340,21 @@ same at a 1% and a 7% 10Y.
   Peers re-enter ONLY with hand-curated per-ticker lists — Vic's call later, never an
   adapter's inference.
 - PHASES (STOP between each; dark before arm):
-  D-0 log all three anchors' spreads per lens per eval, trailing AND forward where
-      estimates exist. Applied to nothing. Report distributions + inter-anchor
-      disagreement across the golden five.   <- IN PROGRESS
+  D-0 DONE 2026-08-09 (e963a01). Report: docs/d0-panel.md, re-runnable via
+      `python -m tools.probe_valuation_panel MU GOOG V NOW WU --json OUT`. The probe is
+      READ-ONLY BY CONSTRUCTION — it never imports batch.runner or store.models, pinned
+      three ways in tests/test_d0_probe_readonly.py (subprocess import closure, AST
+      imports, AST calls). Live run left caliber.db byte-identical.
+      HEADLINES: MU reproduced the founding case on first measurement — the set's only
+      three-anchor split, cheap vs 10Y (+0.42pp) and sector (+3.03pp), RICH vs own history
+      (-0.65pp), while its FORWARD yield of 30.16% reads +25/+28pp cheap with all anchors
+      agreeing (at a cycle peak the forward E is the number that lies). WU is the decisive
+      case: +12.97/+12.03/+13.54/+18.82pp cheap on every market-referenced denominator and
+      +1.38pp vs its own ~6x history — own-history strips 11.6pp off a screening buy.
+      Own-history covers 3 of 5 and for DIFFERENT reasons: V has no share series at all
+      (accepted data limit), NOW is split-truncated (Phase G dependency). Since MIN's value
+      concentrates in the worst-covered anchor, Phase G is worth more than its current
+      placement behind EDGAR suggests.
   D-1 extract the compounder's spread logic into one shared helper; behaviour asserted
       unchanged (no golden score may move).
   D-2 fix the FRED fixture (it records no value, so offline runs are rate-blind) AND make
