@@ -1,3 +1,18 @@
+> **SUPERSEDED 2026-08-09 — DO NOT READ AS CURRENT STATE. See CLAUDE.md, which auto-loads.**
+>
+> This file is a frozen 2026-07-17 snapshot, kept for the record. Its durable content was
+> absorbed into CLAUDE.md (which is the fix its own last section asks for), and two of its
+> claims were later DISPROVEN and must not be acted on:
+>
+> - "51 ok-evals have NULL E(R) — CONFIRMED correct-by-design" is **WRONG**. Those rows were
+>   TEST CONTAMINATION: tests/test_batch.py ran fixture-mode batches against production
+>   caliber.db with no db_path. 189 evaluations and 3,060 field_provenance rows were purged
+>   2026-08-07 under a blast-radius assertion; conftest.py now pins the default DB to a temp
+>   path. No real no-synthesis 'ok' eval ever existed.
+> - Open threads 2 and 3 are both CLOSED (B-1 status semantics; run_grading's CLEAN EMPTY line).
+>
+> Current state, always: CLAUDE.md.
+
 CALIBER — session state, 2026-07-17
 
 GRADER — DONE, closed this session:

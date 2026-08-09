@@ -22,6 +22,11 @@ byte-identical before and after.
 Re-run this after D-4 to re-measure against armed ladders. Because it persists nothing, it is
 safe to run at any time and as often as wanted.
 
+The raw record behind every number below is committed alongside this report as
+**`docs/d0-panel.json`**. Keep it: a re-run tomorrow will not reproduce these figures, because
+prices, estimates and the 10Y all move. The JSON is what makes the analysis auditable after
+the fact, and the fixed baseline a post-D-4 re-measurement is diffed against.
+
 ## Reading the numbers
 
 Everything is a **yield in percentage points**, so the three anchors share one currency:

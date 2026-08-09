@@ -1,0 +1,1192 @@
+{
+  "as_of": "2026-08-09",
+  "rate_10y": 4.69,
+  "tickers": [
+    "MU",
+    "GOOG",
+    "V",
+    "NOW",
+    "WU"
+  ],
+  "results": [
+    {
+      "ticker": "MU",
+      "lens": "cyclical",
+      "sector": "Technology",
+      "exchange": "NASDAQ",
+      "as_of": "2026-08-09",
+      "own_history": {
+        "share_points": 24,
+        "usable_quarters": 15,
+        "loss_periods_excluded": 5,
+        "span": "2021-09-02\u21922026-05-28",
+        "median_yield": 5.754249262897909
+      },
+      "sector_pe": 48.09514943959091,
+      "readings": [
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "risk_free",
+          "ticker_yield": 5.106145378716228,
+          "anchor_yield": 4.69,
+          "spread": 0.4161453787162275,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "sector",
+          "ticker_yield": 5.106145378716228,
+          "anchor_yield": 2.0792117534763728,
+          "spread": 3.026933625239855,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "own_history",
+          "ticker_yield": 5.106145378716228,
+          "anchor_yield": 5.754249262897909,
+          "spread": -0.6481038841816815,
+          "available": true,
+          "reason": "",
+          "note": "median of 15 quarters, 2021-09-02\u21922026-05-28; 5 loss period(s) excluded"
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "risk_free",
+          "ticker_yield": 30.15941748236608,
+          "anchor_yield": 4.69,
+          "spread": 25.46941748236608,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "sector",
+          "ticker_yield": 30.15941748236608,
+          "anchor_yield": 2.0792117534763728,
+          "spread": 28.08020572888971,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "own_history",
+          "ticker_yield": 30.15941748236608,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 2.640652207121431,
+          "anchor_yield": 4.69,
+          "spread": -2.0493477928785695,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "sector",
+          "ticker_yield": 2.640652207121431,
+          "anchor_yield": 2.0792117534763728,
+          "spread": 0.5614404536450581,
+          "available": true,
+          "reason": "",
+          "note": "basis: fcf_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "own_history",
+          "ticker_yield": 2.640652207121431,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 7.0445259985535325,
+          "anchor_yield": 4.69,
+          "spread": 2.354525998553532,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "sector",
+          "ticker_yield": 7.0445259985535325,
+          "anchor_yield": 2.0792117534763728,
+          "spread": 4.96531424507716,
+          "available": true,
+          "reason": "",
+          "note": "basis: ebitda_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "own_history",
+          "ticker_yield": 7.0445259985535325,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        }
+      ],
+      "per_metric": {
+        "earnings_yield_trailing": {
+          "least_flattering": "own_history",
+          "least_flattering_spread": -0.6481038841816815,
+          "anchor_range_pp": 3.6750375094215366,
+          "verdict_split": {
+            "cheap_vs": [
+              "risk_free",
+              "sector"
+            ],
+            "rich_vs": [
+              "own_history"
+            ]
+          },
+          "available_anchors": [
+            "risk_free",
+            "sector",
+            "own_history"
+          ]
+        },
+        "earnings_yield_forward": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 25.46941748236608,
+          "anchor_range_pp": 2.6107882465236276,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "fcf_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": -2.0493477928785695,
+          "anchor_range_pp": 2.6107882465236276,
+          "verdict_split": {
+            "cheap_vs": [
+              "sector"
+            ],
+            "rich_vs": [
+              "risk_free"
+            ]
+          },
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "ebitda_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 2.354525998553532,
+          "anchor_range_pp": 2.6107882465236276,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        }
+      },
+      "notes": [],
+      "rendered": "[VAL-PANEL D-0] MU  lens=cyclical  as_of=2026-08-09  APPLIED=NOTHING\n  metric                     anchor        ticker%  anchor%   spread  note\n  earnings_yield_trailing    risk_free        5.11     4.69    +0.42  \n  earnings_yield_trailing    sector           5.11     2.08    +3.03  \n  earnings_yield_trailing    own_history      5.11     5.75    -0.65  median of 15 quarters, 2021-09-02\u21922026-05-28; 5 loss period(s) excluded\n  earnings_yield_forward     risk_free       30.16     4.69   +25.47  \n  earnings_yield_forward     sector          30.16     2.08   +28.08  \n  earnings_yield_forward     own_history     30.16        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  fcf_yield                  risk_free        2.64     4.69    -2.05  \n  fcf_yield                  sector           2.64     2.08    +0.56  basis: fcf_yield vs sector EARNINGS yield\n  fcf_yield                  own_history      2.64        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  ebitda_yield               risk_free        7.04     4.69    +2.35  \n  ebitda_yield               sector           7.04     2.08    +4.97  basis: ebitda_yield vs sector EARNINGS yield\n  ebitda_yield               own_history      7.04        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  earnings_yield_trailing    least-flattering=own_history (-0.65pp), anchors 3.68pp apart  SPLIT \u2014 cheap vs risk_free+sector, rich vs own_history\n  earnings_yield_forward     least-flattering=risk_free (+25.47pp), anchors 2.61pp apart  all anchors agree\n  fcf_yield                  least-flattering=risk_free (-2.05pp), anchors 2.61pp apart  SPLIT \u2014 cheap vs sector, rich vs risk_free\n  ebitda_yield               least-flattering=risk_free (+2.35pp), anchors 2.61pp apart  all anchors agree"
+    },
+    {
+      "ticker": "GOOG",
+      "lens": "compounder",
+      "sector": "Communication Services",
+      "exchange": "NASDAQ",
+      "as_of": "2026-08-09",
+      "own_history": {
+        "share_points": 24,
+        "usable_quarters": 17,
+        "loss_periods_excluded": 0,
+        "span": "2022-06-30\u21922026-06-30",
+        "median_yield": 4.428050137254664
+      },
+      "sector_pe": 24.390624339432886,
+      "readings": [
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "risk_free",
+          "ticker_yield": 5.684448207733559,
+          "anchor_yield": 4.69,
+          "spread": 0.9944482077335586,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "sector",
+          "ticker_yield": 5.684448207733559,
+          "anchor_yield": 4.099936049538826,
+          "spread": 1.584512158194733,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "own_history",
+          "ticker_yield": 5.684448207733559,
+          "anchor_yield": 4.428050137254664,
+          "spread": 1.2563980704788946,
+          "available": true,
+          "reason": "",
+          "note": "median of 17 quarters, 2022-06-30\u21922026-06-30"
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "risk_free",
+          "ticker_yield": 6.893289388066879,
+          "anchor_yield": 4.69,
+          "spread": 2.203289388066879,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "sector",
+          "ticker_yield": 6.893289388066879,
+          "anchor_yield": 4.099936049538826,
+          "spread": 2.7933533385280533,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "own_history",
+          "ticker_yield": 6.893289388066879,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 1.242438382870799,
+          "anchor_yield": 4.69,
+          "spread": -3.4475616171292014,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "sector",
+          "ticker_yield": 1.242438382870799,
+          "anchor_yield": 4.099936049538826,
+          "spread": -2.857497666668027,
+          "available": true,
+          "reason": "",
+          "note": "basis: fcf_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "own_history",
+          "ticker_yield": 1.242438382870799,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 7.497566482832842,
+          "anchor_yield": 4.69,
+          "spread": 2.8075664828328417,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "sector",
+          "ticker_yield": 7.497566482832842,
+          "anchor_yield": 4.099936049538826,
+          "spread": 3.397630433294016,
+          "available": true,
+          "reason": "",
+          "note": "basis: ebitda_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "own_history",
+          "ticker_yield": 7.497566482832842,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        }
+      ],
+      "per_metric": {
+        "earnings_yield_trailing": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 0.9944482077335586,
+          "anchor_range_pp": 0.5900639504611744,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector",
+            "own_history"
+          ]
+        },
+        "earnings_yield_forward": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 2.203289388066879,
+          "anchor_range_pp": 0.5900639504611744,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "fcf_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": -3.4475616171292014,
+          "anchor_range_pp": 0.5900639504611744,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "ebitda_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 2.8075664828328417,
+          "anchor_range_pp": 0.5900639504611744,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        }
+      },
+      "notes": [],
+      "rendered": "[VAL-PANEL D-0] GOOG  lens=compounder  as_of=2026-08-09  APPLIED=NOTHING\n  metric                     anchor        ticker%  anchor%   spread  note\n  earnings_yield_trailing    risk_free        5.68     4.69    +0.99  \n  earnings_yield_trailing    sector           5.68     4.10    +1.58  \n  earnings_yield_trailing    own_history      5.68     4.43    +1.26  median of 17 quarters, 2022-06-30\u21922026-06-30\n  earnings_yield_forward     risk_free        6.89     4.69    +2.20  \n  earnings_yield_forward     sector           6.89     4.10    +2.79  \n  earnings_yield_forward     own_history      6.89        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  fcf_yield                  risk_free        1.24     4.69    -3.45  \n  fcf_yield                  sector           1.24     4.10    -2.86  basis: fcf_yield vs sector EARNINGS yield\n  fcf_yield                  own_history      1.24        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  ebitda_yield               risk_free        7.50     4.69    +2.81  \n  ebitda_yield               sector           7.50     4.10    +3.40  basis: ebitda_yield vs sector EARNINGS yield\n  ebitda_yield               own_history      7.50        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  earnings_yield_trailing    least-flattering=risk_free (+0.99pp), anchors 0.59pp apart  all anchors agree\n  earnings_yield_forward     least-flattering=risk_free (+2.20pp), anchors 0.59pp apart  all anchors agree\n  fcf_yield                  least-flattering=risk_free (-3.45pp), anchors 0.59pp apart  all anchors agree\n  ebitda_yield               least-flattering=risk_free (+2.81pp), anchors 0.59pp apart  all anchors agree"
+    },
+    {
+      "ticker": "V",
+      "lens": "compounder",
+      "sector": "Financial Services",
+      "exchange": "NYSE",
+      "as_of": "2026-08-09",
+      "own_history": {
+        "share_points": 0,
+        "usable_quarters": 0,
+        "loss_periods_excluded": 0,
+        "span": null,
+        "median_yield": null
+      },
+      "sector_pe": 17.7912822680127,
+      "readings": [
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "risk_free",
+          "ticker_yield": 3.246896551724138,
+          "anchor_yield": 4.69,
+          "spread": -1.4431034482758625,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "sector",
+          "ticker_yield": 3.246896551724138,
+          "anchor_yield": 5.620730338239419,
+          "spread": -2.3738337865152808,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "own_history",
+          "ticker_yield": 3.246896551724138,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "only 0 historical points (<8)",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "risk_free",
+          "ticker_yield": 5.285517241379311,
+          "anchor_yield": 4.69,
+          "spread": 0.5955172413793104,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "sector",
+          "ticker_yield": 5.285517241379311,
+          "anchor_yield": 5.620730338239419,
+          "spread": -0.3352130968601079,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "own_history",
+          "ticker_yield": 5.285517241379311,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 3.1047365171143126,
+          "anchor_yield": 4.69,
+          "spread": -1.5852634828856877,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "sector",
+          "ticker_yield": 3.1047365171143126,
+          "anchor_yield": 5.620730338239419,
+          "spread": -2.515993821125106,
+          "available": true,
+          "reason": "",
+          "note": "basis: fcf_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "own_history",
+          "ticker_yield": 3.1047365171143126,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 4.227494874159894,
+          "anchor_yield": 4.69,
+          "spread": -0.4625051258401065,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "sector",
+          "ticker_yield": 4.227494874159894,
+          "anchor_yield": 5.620730338239419,
+          "spread": -1.3932354640795248,
+          "available": true,
+          "reason": "",
+          "note": "basis: ebitda_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "own_history",
+          "ticker_yield": 4.227494874159894,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        }
+      ],
+      "per_metric": {
+        "earnings_yield_trailing": {
+          "least_flattering": "sector",
+          "least_flattering_spread": -2.3738337865152808,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "earnings_yield_forward": {
+          "least_flattering": "sector",
+          "least_flattering_spread": -0.3352130968601079,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": {
+            "cheap_vs": [
+              "risk_free"
+            ],
+            "rich_vs": [
+              "sector"
+            ]
+          },
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "fcf_yield": {
+          "least_flattering": "sector",
+          "least_flattering_spread": -2.515993821125106,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "ebitda_yield": {
+          "least_flattering": "sector",
+          "least_flattering_spread": -1.3932354640795248,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        }
+      },
+      "notes": [
+        "own-history anchor unavailable: no overlapping TTM earnings, share count and price series"
+      ],
+      "rendered": "[VAL-PANEL D-0] V  lens=compounder  as_of=2026-08-09  APPLIED=NOTHING\n  metric                     anchor        ticker%  anchor%   spread  note\n  earnings_yield_trailing    risk_free        3.25     4.69    -1.44  \n  earnings_yield_trailing    sector           3.25     5.62    -2.37  \n  earnings_yield_trailing    own_history      3.25        \u2014        \u2014  UNAVAILABLE: only 0 historical points (<8)\n  earnings_yield_forward     risk_free        5.29     4.69    +0.60  \n  earnings_yield_forward     sector           5.29     5.62    -0.34  \n  earnings_yield_forward     own_history      5.29        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  fcf_yield                  risk_free        3.10     4.69    -1.59  \n  fcf_yield                  sector           3.10     5.62    -2.52  basis: fcf_yield vs sector EARNINGS yield\n  fcf_yield                  own_history      3.10        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  ebitda_yield               risk_free        4.23     4.69    -0.46  \n  ebitda_yield               sector           4.23     5.62    -1.39  basis: ebitda_yield vs sector EARNINGS yield\n  ebitda_yield               own_history      4.23        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  earnings_yield_trailing    least-flattering=sector (-2.37pp), anchors 0.93pp apart  all anchors agree\n  earnings_yield_forward     least-flattering=sector (-0.34pp), anchors 0.93pp apart  SPLIT \u2014 cheap vs risk_free, rich vs sector\n  fcf_yield                  least-flattering=sector (-2.52pp), anchors 0.93pp apart  all anchors agree\n  ebitda_yield               least-flattering=sector (-1.39pp), anchors 0.93pp apart  all anchors agree\n  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series"
+    },
+    {
+      "ticker": "NOW",
+      "lens": "growth",
+      "sector": "Technology",
+      "exchange": "NYSE",
+      "as_of": "2026-08-09",
+      "own_history": {
+        "share_points": 24,
+        "usable_quarters": 2,
+        "loss_periods_excluded": 0,
+        "span": "2026-03-31\u21922026-06-30",
+        "median_yield": 1.6284027301301998
+      },
+      "sector_pe": 41.44841131755163,
+      "readings": [
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "risk_free",
+          "ticker_yield": 1.2892376681614348,
+          "anchor_yield": 4.69,
+          "spread": -3.400762331838566,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "sector",
+          "ticker_yield": 1.2892376681614348,
+          "anchor_yield": 2.4126377060356536,
+          "spread": -1.1234000378742188,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "own_history",
+          "ticker_yield": 1.2892376681614348,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "only 2 historical points (<8)",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "risk_free",
+          "ticker_yield": 6.8130525304292116,
+          "anchor_yield": 4.69,
+          "spread": 2.123052530429211,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "sector",
+          "ticker_yield": 6.8130525304292116,
+          "anchor_yield": 2.4126377060356536,
+          "spread": 4.4004148243935575,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "own_history",
+          "ticker_yield": 6.8130525304292116,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 3.547398801761925,
+          "anchor_yield": 4.69,
+          "spread": -1.1426011982380753,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "sector",
+          "ticker_yield": 3.547398801761925,
+          "anchor_yield": 2.4126377060356536,
+          "spread": 1.1347610957262715,
+          "available": true,
+          "reason": "",
+          "note": "basis: fcf_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "own_history",
+          "ticker_yield": 3.547398801761925,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 2.583321435196993,
+          "anchor_yield": 4.69,
+          "spread": -2.1066785648030075,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "sector",
+          "ticker_yield": 2.583321435196993,
+          "anchor_yield": 2.4126377060356536,
+          "spread": 0.17068372916133923,
+          "available": true,
+          "reason": "",
+          "note": "basis: ebitda_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "own_history",
+          "ticker_yield": 2.583321435196993,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        }
+      ],
+      "per_metric": {
+        "earnings_yield_trailing": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": -3.400762331838566,
+          "anchor_range_pp": 2.2773622939643468,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "earnings_yield_forward": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": 2.123052530429211,
+          "anchor_range_pp": 2.2773622939643468,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "fcf_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": -1.1426011982380753,
+          "anchor_range_pp": 2.2773622939643468,
+          "verdict_split": {
+            "cheap_vs": [
+              "sector"
+            ],
+            "rich_vs": [
+              "risk_free"
+            ]
+          },
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "ebitda_yield": {
+          "least_flattering": "risk_free",
+          "least_flattering_spread": -2.1066785648030075,
+          "anchor_range_pp": 2.2773622939643468,
+          "verdict_split": {
+            "cheap_vs": [
+              "sector"
+            ],
+            "rich_vs": [
+              "risk_free"
+            ]
+          },
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        }
+      },
+      "notes": [],
+      "rendered": "[VAL-PANEL D-0] NOW  lens=growth  as_of=2026-08-09  APPLIED=NOTHING\n  metric                     anchor        ticker%  anchor%   spread  note\n  earnings_yield_trailing    risk_free        1.29     4.69    -3.40  \n  earnings_yield_trailing    sector           1.29     2.41    -1.12  \n  earnings_yield_trailing    own_history      1.29        \u2014        \u2014  UNAVAILABLE: only 2 historical points (<8)\n  earnings_yield_forward     risk_free        6.81     4.69    +2.12  \n  earnings_yield_forward     sector           6.81     2.41    +4.40  \n  earnings_yield_forward     own_history      6.81        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  fcf_yield                  risk_free        3.55     4.69    -1.14  \n  fcf_yield                  sector           3.55     2.41    +1.13  basis: fcf_yield vs sector EARNINGS yield\n  fcf_yield                  own_history      3.55        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  ebitda_yield               risk_free        2.58     4.69    -2.11  \n  ebitda_yield               sector           2.58     2.41    +0.17  basis: ebitda_yield vs sector EARNINGS yield\n  ebitda_yield               own_history      2.58        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  earnings_yield_trailing    least-flattering=risk_free (-3.40pp), anchors 2.28pp apart  all anchors agree\n  earnings_yield_forward     least-flattering=risk_free (+2.12pp), anchors 2.28pp apart  all anchors agree\n  fcf_yield                  least-flattering=risk_free (-1.14pp), anchors 2.28pp apart  SPLIT \u2014 cheap vs sector, rich vs risk_free\n  ebitda_yield               least-flattering=risk_free (-2.11pp), anchors 2.28pp apart  SPLIT \u2014 cheap vs sector, rich vs risk_free"
+    },
+    {
+      "ticker": "WU",
+      "lens": "compounder",
+      "sector": "Financial Services",
+      "exchange": "NYSE",
+      "as_of": "2026-08-09",
+      "own_history": {
+        "share_points": 24,
+        "usable_quarters": 20,
+        "loss_periods_excluded": 0,
+        "span": "2021-09-30\u21922026-06-30",
+        "median_yield": 16.27201045895422
+      },
+      "sector_pe": 17.7912822680127,
+      "readings": [
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "risk_free",
+          "ticker_yield": 17.655367231638415,
+          "anchor_yield": 4.69,
+          "spread": 12.965367231638414,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "sector",
+          "ticker_yield": 17.655367231638415,
+          "anchor_yield": 5.620730338239419,
+          "spread": 12.034636893398996,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_trailing",
+          "anchor": "own_history",
+          "ticker_yield": 17.655367231638415,
+          "anchor_yield": 16.27201045895422,
+          "spread": 1.3833567726841949,
+          "available": true,
+          "reason": "",
+          "note": "median of 20 quarters, 2021-09-30\u21922026-06-30"
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "risk_free",
+          "ticker_yield": 26.412429378531073,
+          "anchor_yield": 4.69,
+          "spread": 21.72242937853107,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "sector",
+          "ticker_yield": 26.412429378531073,
+          "anchor_yield": 5.620730338239419,
+          "spread": 20.791699040291654,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "earnings_yield_forward",
+          "anchor": "own_history",
+          "ticker_yield": 26.412429378531073,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 18.232842474055968,
+          "anchor_yield": 4.69,
+          "spread": 13.542842474055966,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "sector",
+          "ticker_yield": 18.232842474055968,
+          "anchor_yield": 5.620730338239419,
+          "spread": 12.612112135816549,
+          "available": true,
+          "reason": "",
+          "note": "basis: fcf_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "fcf_yield",
+          "anchor": "own_history",
+          "ticker_yield": 18.232842474055968,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "risk_free",
+          "ticker_yield": 23.507314321590425,
+          "anchor_yield": 4.69,
+          "spread": 18.817314321590423,
+          "available": true,
+          "reason": "",
+          "note": ""
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "sector",
+          "ticker_yield": 23.507314321590425,
+          "anchor_yield": 5.620730338239419,
+          "spread": 17.886583983351006,
+          "available": true,
+          "reason": "",
+          "note": "basis: ebitda_yield vs sector EARNINGS yield"
+        },
+        {
+          "metric": "ebitda_yield",
+          "anchor": "own_history",
+          "ticker_yield": 23.507314321590425,
+          "anchor_yield": null,
+          "spread": null,
+          "available": false,
+          "reason": "own-history series is trailing-earnings only",
+          "note": ""
+        }
+      ],
+      "per_metric": {
+        "earnings_yield_trailing": {
+          "least_flattering": "own_history",
+          "least_flattering_spread": 1.3833567726841949,
+          "anchor_range_pp": 11.582010458954219,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector",
+            "own_history"
+          ]
+        },
+        "earnings_yield_forward": {
+          "least_flattering": "sector",
+          "least_flattering_spread": 20.791699040291654,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "fcf_yield": {
+          "least_flattering": "sector",
+          "least_flattering_spread": 12.612112135816549,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        },
+        "ebitda_yield": {
+          "least_flattering": "sector",
+          "least_flattering_spread": 17.886583983351006,
+          "anchor_range_pp": 0.9307303382394183,
+          "verdict_split": null,
+          "available_anchors": [
+            "risk_free",
+            "sector"
+          ]
+        }
+      },
+      "notes": [],
+      "rendered": "[VAL-PANEL D-0] WU  lens=compounder  as_of=2026-08-09  APPLIED=NOTHING\n  metric                     anchor        ticker%  anchor%   spread  note\n  earnings_yield_trailing    risk_free       17.66     4.69   +12.97  \n  earnings_yield_trailing    sector          17.66     5.62   +12.03  \n  earnings_yield_trailing    own_history     17.66    16.27    +1.38  median of 20 quarters, 2021-09-30\u21922026-06-30\n  earnings_yield_forward     risk_free       26.41     4.69   +21.72  \n  earnings_yield_forward     sector          26.41     5.62   +20.79  \n  earnings_yield_forward     own_history     26.41        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  fcf_yield                  risk_free       18.23     4.69   +13.54  \n  fcf_yield                  sector          18.23     5.62   +12.61  basis: fcf_yield vs sector EARNINGS yield\n  fcf_yield                  own_history     18.23        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  ebitda_yield               risk_free       23.51     4.69   +18.82  \n  ebitda_yield               sector          23.51     5.62   +17.89  basis: ebitda_yield vs sector EARNINGS yield\n  ebitda_yield               own_history     23.51        \u2014        \u2014  UNAVAILABLE: own-history series is trailing-earnings only\n  earnings_yield_trailing    least-flattering=own_history (+1.38pp), anchors 11.58pp apart  all anchors agree\n  earnings_yield_forward     least-flattering=sector (+20.79pp), anchors 0.93pp apart  all anchors agree\n  fcf_yield                  least-flattering=sector (+12.61pp), anchors 0.93pp apart  all anchors agree\n  ebitda_yield               least-flattering=sector (+17.89pp), anchors 0.93pp apart  all anchors agree"
+    }
+  ],
+  "failures": [],
+  "distributions": {
+    "earnings_yield_trailing": {
+      "per_anchor": {
+        "risk_free": {
+          "n": 5,
+          "min": -3.400762331838566,
+          "median": 0.4161453787162275,
+          "max": 12.965367231638414,
+          "by_ticker": {
+            "MU": 0.4161453787162275,
+            "GOOG": 0.9944482077335586,
+            "V": -1.4431034482758625,
+            "NOW": -3.400762331838566,
+            "WU": 12.965367231638414
+          }
+        },
+        "sector": {
+          "n": 5,
+          "min": -2.3738337865152808,
+          "median": 1.584512158194733,
+          "max": 12.034636893398996,
+          "by_ticker": {
+            "MU": 3.026933625239855,
+            "GOOG": 1.584512158194733,
+            "V": -2.3738337865152808,
+            "NOW": -1.1234000378742188,
+            "WU": 12.034636893398996
+          }
+        },
+        "own_history": {
+          "n": 3,
+          "min": -0.6481038841816815,
+          "median": 1.2563980704788946,
+          "max": 1.3833567726841949,
+          "by_ticker": {
+            "MU": -0.6481038841816815,
+            "GOOG": 1.2563980704788946,
+            "WU": 1.3833567726841949
+          }
+        }
+      },
+      "verdict_splits": {
+        "MU": {
+          "cheap_vs": [
+            "risk_free",
+            "sector"
+          ],
+          "rich_vs": [
+            "own_history"
+          ]
+        }
+      },
+      "dispersion_pp": {
+        "n": 5,
+        "min": 0.5900639504611744,
+        "median": 2.2773622939643468,
+        "max": 11.582010458954219
+      },
+      "least_flattering_counts": {
+        "own_history": 2,
+        "risk_free": 2,
+        "sector": 1
+      }
+    },
+    "earnings_yield_forward": {
+      "per_anchor": {
+        "risk_free": {
+          "n": 5,
+          "min": 0.5955172413793104,
+          "median": 2.203289388066879,
+          "max": 25.46941748236608,
+          "by_ticker": {
+            "MU": 25.46941748236608,
+            "GOOG": 2.203289388066879,
+            "V": 0.5955172413793104,
+            "NOW": 2.123052530429211,
+            "WU": 21.72242937853107
+          }
+        },
+        "sector": {
+          "n": 5,
+          "min": -0.3352130968601079,
+          "median": 4.4004148243935575,
+          "max": 28.08020572888971,
+          "by_ticker": {
+            "MU": 28.08020572888971,
+            "GOOG": 2.7933533385280533,
+            "V": -0.3352130968601079,
+            "NOW": 4.4004148243935575,
+            "WU": 20.791699040291654
+          }
+        },
+        "own_history": {
+          "n": 0
+        }
+      },
+      "verdict_splits": {
+        "V": {
+          "cheap_vs": [
+            "risk_free"
+          ],
+          "rich_vs": [
+            "sector"
+          ]
+        }
+      },
+      "dispersion_pp": {
+        "n": 5,
+        "min": 0.5900639504611744,
+        "median": 0.9307303382394183,
+        "max": 2.6107882465236276
+      },
+      "least_flattering_counts": {
+        "risk_free": 3,
+        "sector": 2
+      }
+    },
+    "fcf_yield": {
+      "per_anchor": {
+        "risk_free": {
+          "n": 5,
+          "min": -3.4475616171292014,
+          "median": -1.5852634828856877,
+          "max": 13.542842474055966,
+          "by_ticker": {
+            "MU": -2.0493477928785695,
+            "GOOG": -3.4475616171292014,
+            "V": -1.5852634828856877,
+            "NOW": -1.1426011982380753,
+            "WU": 13.542842474055966
+          }
+        },
+        "sector": {
+          "n": 5,
+          "min": -2.857497666668027,
+          "median": 0.5614404536450581,
+          "max": 12.612112135816549,
+          "by_ticker": {
+            "MU": 0.5614404536450581,
+            "GOOG": -2.857497666668027,
+            "V": -2.515993821125106,
+            "NOW": 1.1347610957262715,
+            "WU": 12.612112135816549
+          }
+        },
+        "own_history": {
+          "n": 0
+        }
+      },
+      "verdict_splits": {
+        "MU": {
+          "cheap_vs": [
+            "sector"
+          ],
+          "rich_vs": [
+            "risk_free"
+          ]
+        },
+        "NOW": {
+          "cheap_vs": [
+            "sector"
+          ],
+          "rich_vs": [
+            "risk_free"
+          ]
+        }
+      },
+      "dispersion_pp": {
+        "n": 5,
+        "min": 0.5900639504611744,
+        "median": 0.9307303382394183,
+        "max": 2.6107882465236276
+      },
+      "least_flattering_counts": {
+        "risk_free": 3,
+        "sector": 2
+      }
+    },
+    "ebitda_yield": {
+      "per_anchor": {
+        "risk_free": {
+          "n": 5,
+          "min": -2.1066785648030075,
+          "median": 2.354525998553532,
+          "max": 18.817314321590423,
+          "by_ticker": {
+            "MU": 2.354525998553532,
+            "GOOG": 2.8075664828328417,
+            "V": -0.4625051258401065,
+            "NOW": -2.1066785648030075,
+            "WU": 18.817314321590423
+          }
+        },
+        "sector": {
+          "n": 5,
+          "min": -1.3932354640795248,
+          "median": 3.397630433294016,
+          "max": 17.886583983351006,
+          "by_ticker": {
+            "MU": 4.96531424507716,
+            "GOOG": 3.397630433294016,
+            "V": -1.3932354640795248,
+            "NOW": 0.17068372916133923,
+            "WU": 17.886583983351006
+          }
+        },
+        "own_history": {
+          "n": 0
+        }
+      },
+      "verdict_splits": {
+        "NOW": {
+          "cheap_vs": [
+            "sector"
+          ],
+          "rich_vs": [
+            "risk_free"
+          ]
+        }
+      },
+      "dispersion_pp": {
+        "n": 5,
+        "min": 0.5900639504611744,
+        "median": 0.9307303382394183,
+        "max": 2.6107882465236276
+      },
+      "least_flattering_counts": {
+        "risk_free": 3,
+        "sector": 2
+      }
+    }
+  }
+}
