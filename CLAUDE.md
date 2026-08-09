@@ -130,9 +130,21 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 
-## EDGAR — E-3 ARMED 2026-08-09; E-4 done (note still unfirable)
-Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again and
-restores the anti-launder NOTE, which has been unfirable since the AV teardown.
+## EDGAR — E-1→E-4 ALL DONE (2026-08-08/09). Cross-check ARMED and live.
+Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again.
+It did NOT revive the anti-launder NOTE — see the E-4 ceiling finding.
+- E-1 6977a72 · E-2 25b40c5 · E-3 built 0df4e6d, basis-aligned 8d9bd07, ARMED 031506f
+  · E-4 5f62e96. Rulings: R1 e2d53f2 · R-NEW 8e657a9 · R3 dark 539c998 · R-A 36ad838
+  · R-C 3a4ec18 · R-B dark b2dcc30.
+- ARMED SET (moves confidence): gross_margin, operating_margin, profit_margin, roe, roa,
+  current_ratio, shares_outstanding, total_cash@FY. agree→high, conflict→low.
+- PERMANENT ADVISORY (measured, logged, never applied — declared basis mismatch):
+  total_cash (MRQ), total_debt (MRQ), debt_to_equity (FMP is NET of cash, EDGAR gross),
+  operating_cashflow and free_cashflow (FMP annual, EDGAR TTM).
+- DARK (computed and logged, applied to nothing): total_debt@FY, total_debt(reported).
+- Rows are keyed by LABEL, not field: one FMP field may carry several rows. If two ARMED
+  rows disagree about a field, apply_report applies NEITHER and logs "!CONTRADICTION" —
+  resolving by row order would be silent degradation.
 - E-1 (6977a72): XBRL companyfacts extraction — raw us-gaap/dei concept facts, form-filtered
   (10-K/10-Q family), numeric-coerced, most-recent-first. Fixtures for MU/GOOG/V.
 - E-2 (25b40c5): canonical field resolution — 16 fields in adapters/edgar_adapter.py.
@@ -162,10 +174,18 @@ restores the anti-launder NOTE, which has been unfirable since the AV teardown.
   - Typed reasons on every withheld field (no_tag, stale_tag, synonym_conflict,
     ambiguous_period, ttm_unavailable, derive_incomplete) + per-synonym trail. These are the
     queryable tag-migration map for onboarding new tickers.
-  - Coverage: MU 16/16, GOOG 16/16, V 12/16. V's 4 gaps are ACCEPTED DATA LIMITS: no
-    cost-of-revenue or capex concept filed (no_tag x2), gross profit therefore underivable
-    (derive_incomplete), share count stale with no fallback (stale_tag). Consequence: V gets
-    no gross-margin and no FCF cross-check. Zero synonym conflicts on the golden CIKs.
+  - Coverage now 19 specs (E-2 shipped 16; +short_term_investments, +total_debt_reported,
+    +operating_lease_liability): MU 19/19, GOOG 18/19, NOW 18/19, WU 15/19, V 14/19.
+    V's gaps are ACCEPTED DATA LIMITS: no cost-of-revenue or capex concept filed
+    (no_tag x2), gross profit therefore underivable (derive_incomplete), share count and
+    ST-investments stale with no fallback. Consequence: V gets no gross-margin and no FCF
+    cross-check. Zero synonym conflicts on the golden CIKs.
+  - conflict_check=False marks chains holding DISTINCT-but-substitutable measures, where
+    priority order decides and disagreement is expected rather than ambiguous: revenue
+    (total Revenues vs the ASC 606 subset — WU files both), current_debt
+    (ShortTermBorrowings vs its CommercialPaper component — NOW files both),
+    short_term_investments, total_debt_reported. The gate stays ARMED for genuinely
+    ambiguous chains (equity), tested directly.
 - E-3 FRESHNESS RULING (locked 2026-08-08, before build): freshness is PER-FIELD, from that
   field's OWN period-end — never per-ticker. MU long_term_debt lags 182d while its siblings
   sit at the latest quarter; it stays capped at medium while they may upgrade. The dark-launch
@@ -222,8 +242,49 @@ restores the anti-launder NOTE, which has been unfirable since the AV teardown.
   and estimate derived), Valuation (fcf_yield, ev_to_ebitda, + the FRED rate at LOW).
   tests/test_anti_launder_revival.py walks the chain and pins the blockers; its
   test_verdict_high_is_still_blocked is EXPECTED TO FAIL when coverage expands — that
-  failure is the signal the note has become firable.
-  Arming R3(b) would close 2 of Financial Health's 4 blockers.
+  failure is the signal the note has become firable. LEAVE IT PINNED (ruling R-D).
+  Arming total_cash@FY closed 1 of Financial Health's 4 blockers.
+  THE MEDIUM CEILING IS THE HEADLINE: verdict_conf tops out at medium on every real eval,
+  so a high-confidence miss cannot be flagged. Closing it needs a second source for
+  price/estimate-derived fields, which EDGAR is not.
+
+## EDGAR — alignment semantic (R-A, approved 2026-08-09, SCOPED)
+A matched-period row is aged on ALIGNMENT (gap between the two sides' periods, zero by
+construction) instead of absolute age: a correctly-labelled annual figure corroborating an
+annual FMP field launders nothing. Without it, every matched row would render stale_capped
+(an annual period is up to a year old by definition) and could never be a real test.
+Valid ONLY while all three hold — and the third is RE-CHECKED EVERY EVALUATION, not trusted:
+  1. periods matched         — period_basis == 'annual_fy'
+  2. bases proven identical  — a missing aligning input makes the row advisory BEFORE the
+                               gate is reached (V and WU: no ST-investment tag → cash-only)
+  3. the primary's IN-USE value is still the matched-period figure — _tracks_matched_period
+     asks which of two EDGAR PERIODS the FMP value tracks (not whether it agrees, which
+     would be circular). Fails CLOSED when the two periods are indistinguishable.
+XBRL-LAG still applies, scoped to what can invalidate a matched pair: a 10-K covering a
+LATER fiscal year caps the row; a quarterly lag does not.
+Caught in practice twice already: MU's recorded ticker fixture serves total_cash as MRQ
+(alignment revoked, row capped), and V's lease-inclusive debt drifted away from FMP under
+R-B (alignment revoked rather than reporting a false disagreement).
+
+## FRESHNESS-WATCH — standing operational feature
+Per-ticker informational line, no confidence effect, emitted on every eval past 60d from
+the governing period-end. Surfaces in evaluate.py output and under the batch summary table.
+Two shapes: under XBRL-LAG it says extraction-pending; otherwise it predicts the next data
+date from the ISSUER'S OWN cadence + median filing lag. Degrades honestly — fixtures record
+no report_date, so offline it says "(p90 lag — issuer filing history unavailable)".
+Known imprecision: 53-week fiscal years add a catch-up quarter a median cadence cannot
+predict, so MU's estimate lands ~7d early.
+
+## EDGAR — recorders and fixtures
+- `python -m tools.record_edgar_fixture TICKER...` and `python -m tools.record_fmp_fixture
+  TICKER...`. Both reuse the ADAPTER's own live fetch path, so a fixture cannot drift from
+  what production requests (the Phase-0 probe_fmp.py did drift — it still targets the
+  retired v3 API and writes keys the adapter no longer reads; treat it as dead).
+- Re-recording MOVES THE REGRESSION BASELINE — deliberate manual step, never incidental.
+  Prior files are backed up to *.json.bak (gitignored).
+- Three fixture sets: tests/fixtures/edgar (all five), tests/fixtures/fmp (all five, the
+  pairing production runs), tests/fixtures/ticker (older yfinance-shaped recording, kept
+  for the historical pipeline). Golden-five invariants run against edgar+fmp.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
