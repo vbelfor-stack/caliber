@@ -1,6 +1,57 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
+## ▶ SESSION PICKUP — READ THIS FIRST (written at close, 2026-08-09)
+Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
+section is the cold-start record; everything below it is the durable detail.
+
+**WHERE WE ARE — PHASE D IS CLOSED (2026-08-09).** All five valuation lenses are rate-aware
+and ARMED, on THREE DIFFERENT MECHANISMS. Ethos rule 10 is fully built.
+
+| Mechanism | Lenses | Shape |
+|---|---|---|
+| panel-anchored | compounder, cyclical, standard | MIN across available anchors (RULED permanent) |
+| rate-shifted thresholds | growth | EV/Rev thresholds x k=(R0+ERP)/(R+ERP); R0=4.0, clamp [0.60,1.80] |
+| cost-of-equity | bank | P/B vs justified P/B = ROE/CoE; RATIO ladder + excess-ROE gate |
+
+- growth: R0=4.0 is PROVISIONAL — **revisit if the 10Y exits 3–6%**. Clamp locked.
+- cyclical: TRAILING basis + peak/rollover HARD GATE capping at 2.
+- bank: ladder is on the RATIO, never the difference (scale-dependence ruling).
+- ARMED_LENSES != ARMED_PANEL_LENSES, deliberately. "Armed" does not mean "panel-scored".
+- Last live proof: the value trap was caught on C — 1.08x book, screen-cheap, ROE under CoE,
+  scored 4 -> 3 by the armed instrument.
+
+**OPEN TRIPWIRES — each REPORTS TO VIC before its result is treated as validated:**
+1. **First production STANDARD-lens eval** — report the full panel readout. No golden ticker
+   is natively standard-lens, so that first live case is the only real evidence the mapping
+   will ever have had.
+2. **First live BANK eval landing in rung 4 or 5** — flagged `BANK-RUNG-UNCALIBRATED`. Those
+   rungs are PROVISIONAL-UNCALIBRATED: no calibration bank (JPM/BK/USB/C) trades below
+   justified book, so they are reasoned, not measured.
+3. **β SINGLE-SOURCE CAP** on the bank pillar (`_cap_beta_confidence`) — β is FMP-only, has no
+   cross-check, and moves CoE directly. SELF-RETIRES the day a corroborated second β source
+   lands; no code change needed.
+
+**NEXT ORDER (scoped, awaiting an explicit go — do NOT start it unprompted):**
+**PHASE G SCOPING — REPORT ONLY, no implementation.**
+- Root-cause NOW's split-truncated own-history anchor (5:1 split, 208M -> 1,046M shares).
+- SCOPE BOUNDARY, BIAS AGAINST CREEP: G exists to fix OWN-HISTORY COVERAGE, currently 3/20.
+- Split detection, with the SINGLE-SOURCE RISK named.
+- Blast-radius audit across the golden five + the four banks.
+- Phased plan, DARK BEFORE ARM.
+- **The report MUST state expected own-history coverage after the fix.**
+
+**STANDING SEQUENCE AFTER G:** EDGAR expansion resumes ONLY after G. Then the recorded
+roadmap items: β cross-check, ttm_summed synthetic-only coverage, dark total_debt variants,
+provenance relabel.
+
+**SESSION PROTOCOL — non-negotiable:**
+- Every close = commit + push + `git rev-list --count origin/master..master` reads 0 +
+  `gh auth setup-git` re-check (the credential helper has vanished mid-session twice).
+- Degraded runs (`--fixture` / `--no-synthesis`) must NAME THEIR DESTINATION (`--db-path`).
+- DARK BEFORE ARM on any new comparison surface.
+- Golden diffs are REVIEWED, never asserted.
+
 ## How we work (relay / architect model)
 - Vic is architect and gatekeeper; Code executes work orders. Report as you go, in plain English.
 - STOP and ask before: changing grading/scoring logic, restructuring working code, deleting or
