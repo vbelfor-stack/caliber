@@ -203,11 +203,20 @@ class TestBankInstrument:
 class TestBankLadderProposal:
     """Calibrated on JPM/BK/USB/C. Applied to nothing — the bank lens is not armed."""
 
-    def test_bank_lens_is_still_not_armed(self):
-        """THE INVARIANT. The ladder exists as a proposal; score_valuation must not use
-        it until Vic rules."""
+    def test_bank_ladder_is_on_the_ratio_not_the_difference(self):
+        """FLIPPED 2026-08-09: the not-armed pin fired and the bank lens was armed on this
+        ladder. What remains pinned is the RULED SHAPE — the ratio, not the difference —
+        so a later edit cannot quietly revert to the scale-dependent metric.
+
+        Bank is armed but NOT panel-anchored: it scores off cost of equity, so it belongs
+        in ARMED_LENSES and must stay out of ARMED_PANEL_LENSES."""
         from core.pillars import ARMED_LENSES, ARMED_PANEL_LENSES
-        assert "bank" not in ARMED_LENSES and "bank" not in ARMED_PANEL_LENSES
+        assert "bank" in ARMED_LENSES
+        assert "bank" not in ARMED_PANEL_LENSES
+        from core.valuation_anchors import score_bank_instrument
+        s = score_bank_instrument({"price_to_book": 2.0, "justified_pb": 1.0,
+                                   "excess_roe_pp": 5.0})
+        assert s["ratio"] == pytest.approx(2.0), "score must key off the RATIO"
 
     def test_ratio_discriminates_where_the_difference_does_not(self):
         """THE CALIBRATION FINDING. JPM and BK sit +0.70 and +0.68 on the DIFFERENCE —
@@ -249,3 +258,89 @@ class TestBankLadderProposal:
         from core.valuation_anchors import score_bank_instrument
         assert score_bank_instrument({"price_to_book": None, "justified_pb": 1.0}) is None
         assert score_bank_instrument({"price_to_book": 1.0, "justified_pb": None}) is None
+
+
+# ── Bank lens ARMED (2026-08-09) + the three codicils ────────────────────────
+
+class TestBankArmed:
+    @staticmethod
+    def _yf(ticker="JPM"):
+        return fetch_fmp(ticker, fixture_path=FIXTURES / "fmp" / f"{ticker}.json")
+
+    @staticmethod
+    def _fred(rate=4.69):
+        return FredData(rate_10y=Prov(rate, "FRED", AS_OF, "high"))
+
+    def test_bank_is_now_armed(self):
+        from core.pillars import ARMED_LENSES
+        assert "bank" in ARMED_LENSES
+
+    def test_all_five_lenses_are_armed(self):
+        """Phase D closed: every lens is rate-aware, on three different mechanisms."""
+        from core.pillars import ARMED_LENSES
+        assert set(ARMED_LENSES) == {"compounder", "cyclical", "standard", "growth", "bank"}
+
+    def test_c_is_the_validating_case(self):
+        """THE RULING'S OWN JUSTIFICATION, pinned. C screens cheap on raw P/B (1.08x, which
+        the old ladder scored 4) but its ROE is under its cost of equity, so the armed
+        instrument scores it 3 and says why."""
+        r = score_valuation(self._yf("C"), self._fred(), "bank")
+        assert r.score == 3
+        assert "ROE-BELOW-COST-OF-EQUITY" in r.flags
+
+    @pytest.mark.parametrize("ticker,expected", [("JPM", 2), ("BK", 2), ("USB", 3), ("C", 3)])
+    def test_armed_calibration_baseline(self, ticker, expected):
+        """Reviewed baseline from the armed four-bank diff. Edit only with a measured
+        before/after, never to fit."""
+        assert score_valuation(self._yf(ticker), self._fred(), "bank").score == expected
+
+    # ── CODICIL 1: rungs 5 and 4 are provisional-uncalibrated ────────────────
+
+    def test_cheap_rungs_are_flagged_uncalibrated(self):
+        """No bank in the calibration set traded below justified book, so rungs 5 and 4
+        are reasoned rather than measured. The flag is what makes the first live eval
+        landing there reportable, per the tripwire."""
+        yf = self._yf("C")
+        yf.price_to_book = Prov(0.40, "test", AS_OF, "medium")   # deep discount
+        yf.roe = Prov(0.30, "test", AS_OF, "medium")             # and it earns well
+        r = score_valuation(yf, self._fred(), "bank")
+        assert r.score >= 4
+        assert "BANK-RUNG-UNCALIBRATED" in r.flags
+
+    def test_calibrated_rungs_carry_no_uncalibrated_flag(self):
+        for t in ("JPM", "BK", "USB", "C"):
+            r = score_valuation(self._yf(t), self._fred(), "bank")
+            assert "BANK-RUNG-UNCALIBRATED" not in r.flags, t
+
+    # ── CODICIL 2: beta is single-source, caps the pillar at medium ──────────
+
+    def test_beta_caps_bank_confidence_at_medium(self):
+        """Beta is FMP-only, has no cross-check, and moves CoE directly. A 'high'
+        bank score resting on an uncorroborated beta is exactly the laundering the
+        anti-launder rule exists to prevent."""
+        yf = self._yf("JPM")
+        for name in ("price_to_book", "roe", "beta"):
+            p = getattr(yf, name)
+            setattr(yf, name, Prov(p.value, "test", AS_OF, "high"))
+        yf.beta = Prov(yf.beta.value, "test", AS_OF, "medium")   # the single-source one
+        assert score_valuation(yf, self._fred(), "bank").confidence == "medium"
+
+    def test_a_corroborated_beta_lifts_the_cap_automatically(self):
+        """The cap is written to disappear the day a second beta source is wired — no
+        code change needed."""
+        yf = self._yf("JPM")
+        for name in ("price_to_book", "roe", "beta"):
+            p = getattr(yf, name)
+            setattr(yf, name, Prov(p.value, "test", AS_OF, "high"))
+        assert score_valuation(yf, self._fred(), "bank").confidence == "high"
+
+    # ── withholding rather than falling back to a raw P/B screen ────────────
+
+    def test_missing_beta_withholds_the_instrument_and_says_so(self):
+        """Without CoE there is no justified P/B. Scoring off raw P/B instead would be
+        the very screen the justified-P/B work replaced."""
+        yf = self._yf("JPM")
+        yf.beta = Prov(None, "test", AS_OF, "low")
+        r = score_valuation(yf, self._fred(), "bank")
+        assert "BANK-INSTRUMENT-UNAVAILABLE" in r.flags
+        assert "justified P/B unavailable" in r.rationale

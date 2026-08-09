@@ -152,10 +152,23 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
   E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
   reachability): the note is NOT revived, see the E-4 finding below. See EDGAR section.
-- Phase D — VALUATION PANEL. D-0 THROUGH D-4 COMPLETE (2026-08-09). ARMED: compounder,
-  cyclical, standard (panel-anchored) + growth (rate-shifted EV/Rev thresholds).
-  BANK PENDING A CALIBRATION RULING — ladder proposed, see docs/d5-banks.md.
-  See Phase D section.
+- Phase D — VALUATION PANEL: **CLOSED 2026-08-09. ALL FIVE LENSES ARMED.** Ethos rule 10
+  is fully built — every lens is rate-aware, on THREE DIFFERENT MECHANISMS:
+    panel-anchored (MIN across anchors) : compounder, cyclical, standard
+    rate-shifted thresholds             : growth
+    cost-of-equity                      : bank
+  ARMED_LENSES and ARMED_PANEL_LENSES are deliberately DIFFERENT SETS — 'armed' does
+  not mean 'panel-scored'. See Phase D section + docs/d5-banks.md.
+- OPEN TRIPWIRES (Phase D leftovers, each reports to Vic before its result is trusted):
+  1. STANDARD-LENS FIRST EVAL — no golden ticker is natively standard-lens, so the first
+     production eval scoring through it reports with its full panel readout.
+  2. BANK CHEAP RUNGS (5 and 4) ARE PROVISIONAL-UNCALIBRATED — no bank in the JPM/BK/
+     USB/C set trades below justified book, so those rungs are reasoned, not measured.
+     Flagged BANK-RUNG-UNCALIBRATED; first live eval landing there reports with the full
+     readout.
+  3. BETA IS SINGLE-SOURCE (FMP, no cross-check) and moves CoE directly, so the bank
+     pillar is CAPPED AT MEDIUM while beta is uncorroborated (_cap_beta_confidence).
+     The cap LIFTS AUTOMATICALLY when a second beta source is wired — no code change.
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. MOVED UP (ruling 2026-08-09): scope it IMMEDIATELY
   AFTER D-4 ARMS, BEFORE any further EDGAR expansion. No longer "stays behind EDGAR".
@@ -166,6 +179,9 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   not price correctness.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
+- BETA CROSS-CHECK — single-source gap, now load-bearing (it moves the bank lens's cost
+  of equity). Sits alongside the other price/estimate-derived fields EDGAR structurally
+  cannot corroborate (see the E-4 ceiling finding). Wiring it lifts tripwire 3 above.
 - DEGRADED-RUN WRITE GUARD (was "save_evaluation UNCONDITIONAL WRITE", FIXED in D-2
   2026-08-09): a DEGRADED run is one whose output is not a real evaluation — --fixture
   (replays recorded data) or --no-synthesis (eval with no synthesis). Both are MEASUREMENT
@@ -530,6 +546,28 @@ same at a 1% and a 7% 10Y.
       more accurate. total_debt_reported is DARK anyway. JPM 9/19 -> 11/19.
       The expected-fail pin fired and was FLIPPED to test_jpm_cash_resolves_through_the_
       bank_tag.
+  D-6 (2026-08-09) — BANK ARMED. PHASE D CLOSED. Report docs/d5-banks.md.
+      LADDER RULED ON THE RATIO (P/B / justified P/B), NOT the difference —
+      scale-dependence rationale adopted: JPM +0.70 and BK +0.68 are indistinguishable on
+      the difference but sit at 1.36x and 1.45x on the ratio, and +0.70 is 36% of JPM's
+      justified 1.96 but would be 80% of C's 0.87.
+      Rungs: <0.85 -> 5, <1.05 -> 4, <1.25 -> 3, <1.50 -> 2, else 1.
+      EXCESS-ROE GATE ADOPTED (excess ROE < 0 -> CAP AT 3), mirroring the cyclical peak
+      gate: a low P/B on a bank not covering its cost of equity is cheap FOR A REASON, and
+      no rung geometry over the price can say the denominator is impaired.
+      ARMED FOUR-BANK DIFF, reviewed: JPM 2->2, BK 2->2, USB 3->3, C 4->3. ONE CELL MOVED
+      AND IT IS THE VALIDATING CASE — C screened 4 (cheap) on the old raw P/B ladder at
+      1.08x book; armed it scores 3 with ROE-BELOW-COST-OF-EQUITY. The bank value trap,
+      caught by the instrument that was built for it.
+      WITHHOLDING RULE: if ROE or beta is missing there is no justified P/B, so the lens
+      reports P/B and REFUSES to score off it (BANK-INSTRUMENT-UNAVAILABLE). Falling back
+      to a raw P/B ladder would be the exact screen this work replaced.
+      CODICIL 3 (recorded, nothing to implement): C's period-end lags two quarters; R1
+      symmetric gating applies normally on a live C run — acceptable for rung-setting,
+      stale-capped live.
+      SEC_TICKER_ALIASES DESIGN RATIFIED: explicit per-issuer, never a name match, because
+      pairing a wrong CIK crosses one issuer's fundamentals with another's price.
+      EQUITY-CONFLICT GATE firing on 3 of 4 banks is THE GATE WORKING — on record.
   BANK CALIBRATION UNIVERSE (ruled 2026-08-09): JPM + BK + USB + C. ALL FOUR ARE
       CALIBRATION INSTRUMENTS, NEVER HOLDINGS — CALIBRATION_CIKS, pinned absent from
       tickers.txt for every one of them. All four select the bank lens (SIC 602x).

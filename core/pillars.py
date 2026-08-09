@@ -21,9 +21,10 @@ from adapters.base import Confidence, Prov, PillarResult, min_conf, missing_prov
 from adapters.edgar_adapter import EdgarData
 from adapters.fred_adapter import FredData
 from core.datatypes import TickerData
-from core.valuation_anchors import (GROWTH_SHIFT_BOUNDS, ValuationPanel, compute_panel,
-                                    dark_lens_score, score_growth_shifted,
-                                    score_yield_spread)
+from core.valuation_anchors import (GROWTH_SHIFT_BOUNDS, ValuationPanel,
+                                    bank_instrument_reading, compute_panel,
+                                    dark_lens_score, score_bank_instrument,
+                                    score_growth_shifted, score_yield_spread)
 
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
@@ -458,7 +459,29 @@ ARMED_PANEL_LENSES = ("compounder", "cyclical", "standard")
 # Growth is ARMED too, but on the RATE-SHIFTED THRESHOLD mechanism, not the panel —
 # it is rate-anchored, not panel-anchored. Kept separate so the distinction stays
 # visible: "armed" and "panel-scored" are not the same set.
-ARMED_LENSES = ARMED_PANEL_LENSES + ("growth",)
+ARMED_LENSES = ARMED_PANEL_LENSES + ("growth", "bank")
+# All five lenses are armed as of 2026-08-09 (Phase D closed), on three DIFFERENT
+# mechanisms — keeping them as distinct sets is what stops "armed" being read as
+# "panel-scored":
+#   panel-anchored : compounder, cyclical, standard   (MIN across anchors)
+#   rate-shifted   : growth                            (thresholds move with the 10Y)
+#   cost-of-equity : bank                              (P/B vs ROE/CoE)
+
+
+def _cap_beta_confidence(conf: "Confidence", yf: TickerData) -> "Confidence":
+    """CODICIL 2 (ruled 2026-08-09): beta is SINGLE-SOURCE (FMP, no cross-check) and moves
+    the cost of equity directly, so the bank pillar may not exceed MEDIUM while it is in
+    use. A high-confidence bank score resting on an uncorroborated beta would be exactly
+    the laundering the anti-launder rule exists to prevent.
+
+    Lifts automatically the day a second beta source is wired — no code change needed,
+    because it caps only when beta is present AND itself uncorroborated.
+    """
+    if yf.beta is None or yf.beta.is_missing():
+        return conf
+    if yf.beta.confidence == "high":
+        return conf                      # a corroborated beta needs no cap
+    return "medium" if conf == "high" else conf
 
 
 def score_valuation(
@@ -712,28 +735,52 @@ def _valuation_compounder(yf: TickerData, fred: FredData, panel=None) -> PillarR
 
 
 def _valuation_bank(yf: TickerData, fred: FredData) -> PillarResult:
-    """Bank / insurer / REIT lens: P/TBV, P/FFO."""
-    flags: List[str] = []
-    inputs: List[Prov] = [yf.price_to_book, fred.rate_10y]
-    score = 3
-    parts = ["Bank/insurer/REIT lens."]
+    """Bank / insurer / REIT lens — ARMED 2026-08-09: P/B vs JUSTIFIED P/B.
 
-    if not yf.price_to_book.is_missing():
-        ptb = yf.price_to_book.value
-        parts.append(f"P/TBV {ptb:.2f}x.")
-        if ptb < 0.8:
-            score = 5
-        elif ptb < 1.2:
-            score = 4
-        elif ptb < 2.0:
-            score = 3
-        elif ptb < 3.0:
-            score = 2
-        else:
-            score = 1
+    RULED: a yield spread does not fit a bank. Book value IS the asset base, so the
+    question is not what it earns against the risk-free rate but whether it earns more on
+    its book than shareholders require. justified P/B = ROE / CoE, CoE = 10Y + beta x ERP
+    — still rate-anchored, through the cost of equity rather than a spread.
+
+    LADDER ON THE RATIO, NOT THE DIFFERENCE (ruled on the four-bank calibration): JPM
+    (+0.70) and BK (+0.68) are indistinguishable on the difference but sit at 1.36x and
+    1.45x of justified, and the difference is scale-dependent in the justified value.
+
+    EXCESS-ROE GATE: excess ROE < 0 caps the score at 3. Same shape as the cyclical peak
+    gate — a low P/B on a bank that does not cover its cost of equity is cheap FOR A
+    REASON, and no rung geometry over the price can say the denominator is impaired. C is
+    the validating case: 1.08x book, screen-cheap, ROE under CoE.
+    """
+    flags: List[str] = []
+    # CODICIL 2: beta is FMP single-source with no cross-check and moves CoE directly, so
+    # it is a KEY INPUT here and its confidence caps the pillar. See _cap_beta_confidence.
+    inputs: List[Prov] = [yf.price_to_book, yf.roe, yf.beta, fred.rate_10y]
+    score = 3
+    parts = ["Bank lens."]
+
+    reading = bank_instrument_reading(yf, fred)
+    scored = score_bank_instrument(reading)
+    if scored is not None:
+        score = scored["score"]
+        flags.extend(scored["flags"])
+        parts.append(
+            f"P/B {reading['price_to_book']:.2f}x vs justified "
+            f"{reading['justified_pb']:.2f}x ({scored['ratio']:.2f}x); "
+            f"ROE {reading['roe_pct']:.1f}% vs CoE {reading['cost_of_equity_pct']:.1f}%."
+        )
+        # CODICIL 1: rungs 5 and 4 are PROVISIONAL-UNCALIBRATED — no bank in the
+        # calibration set traded below justified book, so those rungs are reasoned, not
+        # measured. Flagged so the first live eval landing there is reportable.
+        if score >= 4:
+            flags.append("BANK-RUNG-UNCALIBRATED")
+    elif not yf.price_to_book.is_missing():
+        # Instrument unavailable (no ROE or no beta): report P/B, do NOT score off it.
+        # A raw P/B ladder is the screen the justified-P/B work exists to replace.
+        parts.append(f"P/B {yf.price_to_book.value:.2f}x; justified P/B unavailable.")
+        flags.append("BANK-INSTRUMENT-UNAVAILABLE")
 
     parts.append(_rate_note(fred))
-    confidence = min_conf(*[p for p in inputs if not p.is_missing()])
+    confidence = _cap_beta_confidence(min_conf(*[p for p in inputs if not p.is_missing()]), yf)
 
     return PillarResult(
         name="Valuation",
