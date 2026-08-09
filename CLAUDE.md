@@ -239,7 +239,9 @@ It did NOT revive the anti-launder NOTE — see the E-4 ceiling finding.
   corroborate: Financial Health (debt_to_equity NET-vs-gross, free_cashflow annual-vs-TTM,
   total_cash/total_debt annual-vs-MRQ), Management (earnings_history, insider_transactions
   — hardcoded medium), Growth (revenue_growth, trailing/forward PE, analyst_count — price
-  and estimate derived), Valuation (fcf_yield, ev_to_ebitda, + the FRED rate at LOW).
+  and estimate derived), Valuation (fcf_yield, ev_to_ebitda, revenue_growth). NOTE the
+  FRED rate reads LOW only in the offline fixture, which records no value; live it is
+  4.69 at HIGH and is not a blocker.
   tests/test_anti_launder_revival.py walks the chain and pins the blockers; its
   test_verdict_high_is_still_blocked is EXPECTED TO FAIL when coverage expands — that
   failure is the signal the note has become firable. LEAVE IT PINNED (ruling R-D).

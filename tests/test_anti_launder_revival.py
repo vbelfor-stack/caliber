@@ -15,7 +15,7 @@ These tests walk the chain link by link and pin down exactly how far EDGAR carri
 The chain is restored up to pillar level and is still blocked at the verdict, because
 enforced_verdict_confidence takes the MINIMUM across all five pillars and four of them
 carry material inputs EDGAR structurally cannot corroborate (price- and estimate-derived
-fields, the FRED rate). test_verdict_high_is_still_blocked documents that gap and names
+fields). test_verdict_high_is_still_blocked documents that gap and names
 the blockers; it is EXPECTED TO FAIL when coverage expands, which is the point — the day
 verdict-high becomes reachable, this suite says so loudly instead of silently.
 """
