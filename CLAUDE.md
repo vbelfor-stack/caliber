@@ -120,9 +120,9 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   See feed-reality section above (incl. the tracked provenance-relabel follow-up).
 - EDGAR — IN PROGRESS (unblocked by teardown). SEC filings integration; unlocks "high"
   confidence (the wired secondary source that makes the anti-launder NOTE reachable again).
-  E-1 DONE (XBRL extraction, commit 6977a72). E-2 DONE (field resolution, commit 25b40c5;
-  see EDGAR section below). E-3 BUILT AND DARK (0df4e6d + basis alignment 8d9bd07);
-  threshold LOCKED, second dark run done — AWAITING ARM. See EDGAR section below.
+  E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
+  E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
+  reachability): the note is NOT revived, see the E-4 finding below. See EDGAR section.
 - Phase D — after EDGAR. # TODO Vic: scope
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
@@ -130,7 +130,7 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 
-## EDGAR — E-1/E-2 DONE, E-3 BUILT AND DARK (2026-08-08), awaiting arm
+## EDGAR — E-3 ARMED 2026-08-09; E-4 done (note still unfirable)
 Purpose: EDGAR is the wired SECOND source. It makes "high" confidence reachable again and
 restores the anti-launder NOTE, which has been unfirable since the AV teardown.
 - E-1 (6977a72): XBRL companyfacts extraction — raw us-gaap/dei concept facts, form-filtered
@@ -191,10 +191,39 @@ restores the anti-launder NOTE, which has been unfirable since the AV teardown.
     unconditional annual-vs-MRQ basis note — advisory by design, never an agree.
   - Average-equity ROE landed: GOOG 25.0% -> 4.3% (agree). MU 29.0% -> 5.5%, which is just
     OVER the 5.0% tolerance and therefore still a CONFLICT (would downgrade MU roe to low).
-  - OPEN, blocks arming: a conflict-derived 'low' BYPASSES the staleness/lag cap, because
-    apply_staleness_penalty only caps 'high'. V's current_ratio (10.4%) would be downgraded
-    to low on data the same run flags XBRL-LAG as a full quarter stale. Downgrades on
-    known-stale data need a ruling before arm.
+  - RESOLVED by R1 (symmetric gating, e2d53f2).
+- R1 SYMMETRIC GATING (ruling 2026-08-08, DONE): a source too stale to RAISE confidence is
+  too stale to LOWER it. Stale/lagged data renders stale_capped and moves nothing either
+  way; the divergence is still logged with the suppressed direction named. The staleness
+  engine is reused, PROBED with a synthetic 'high' since it only caps that level.
+- R-NEW FRESHNESS-WATCH (DONE, 8e657a9): informational line past 60d with the predicted
+  next-data date from the ISSUER'S OWN cadence + median filing lag (golden five: MU 32d,
+  GOOG 30d, V 33d, NOW 27d, WU 40d). Under XBRL-LAG it says extraction-pending instead of
+  predicting a filing that already happened. No confidence effect. Cadence is measured on
+  ONE core balance-sheet concept — pooling all instants poisons it with dei cover-page
+  dates (read MU's quarters as 77d, not 91d).
+- E-3 ARMED 2026-08-09 (031506f). agree→high, conflict→low (both under R1's gate);
+  basis_mismatch/stale_capped/no_edgar/no_fmp move nothing. compute_cross_check stays PURE;
+  apply_report is the only writer, and it touches the confidence LABEL and source string
+  only — values and as_of are asserted unchanged. Exception containment kept: a failure
+  degrades to the pre-EDGAR state (everything 'medium', the safe direction) and says so.
+- LIVE ARMED PASS 2026-08-09, ids 216-220 (MU/GOOG/V/NOW/WU, all status=ok). Fields applied
+  MU 7, GOOG 7, NOW 7, WU 6, V 0 (V fully suppressed by XBRL-LAG — R1 working live).
+  'high' persisted in field_provenance for the first time since the AV teardown.
+  Controlled A/B on the same live data (armed vs unarmed): pillar SCORES identical on all
+  five, so E(R) and grades are provably untouched; grades table still 0 rows.
+- E-4 FINDING (2026-08-09): the anti-launder NOTE is STILL UNFIRABLE. The chain is
+  EDGAR agreement → field high → pillar high → verdict high → NOTE. EDGAR restored it to
+  PILLAR level (Business Quality reaches high under full corroboration) but the verdict is
+  min-across-five-pillars, and four pillars carry material inputs EDGAR structurally cannot
+  corroborate: Financial Health (debt_to_equity NET-vs-gross, free_cashflow annual-vs-TTM,
+  total_cash/total_debt annual-vs-MRQ), Management (earnings_history, insider_transactions
+  — hardcoded medium), Growth (revenue_growth, trailing/forward PE, analyst_count — price
+  and estimate derived), Valuation (fcf_yield, ev_to_ebitda, + the FRED rate at LOW).
+  tests/test_anti_launder_revival.py walks the chain and pins the blockers; its
+  test_verdict_high_is_still_blocked is EXPECTED TO FAIL when coverage expands — that
+  failure is the signal the note has become firable.
+  Arming R3(b) would close 2 of Financial Health's 4 blockers.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
