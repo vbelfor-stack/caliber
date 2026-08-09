@@ -21,8 +21,9 @@ from adapters.base import Confidence, Prov, PillarResult, min_conf, missing_prov
 from adapters.edgar_adapter import EdgarData
 from adapters.fred_adapter import FredData
 from core.datatypes import TickerData
-from core.valuation_anchors import (ValuationPanel, compute_panel,
-                                    dark_lens_score, score_yield_spread)
+from core.valuation_anchors import (GROWTH_SHIFT_BOUNDS, ValuationPanel, compute_panel,
+                                    dark_lens_score, score_growth_shifted,
+                                    score_yield_spread)
 
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
@@ -454,6 +455,10 @@ class RateUnavailable(Exception):
 #   bank   — mechanism ruled (P/B vs justified P/B) but NOT armed: no calibration exists
 #            until JPM is onboarded and dark-calibrated.
 ARMED_PANEL_LENSES = ("compounder", "cyclical", "standard")
+# Growth is ARMED too, but on the RATE-SHIFTED THRESHOLD mechanism, not the panel —
+# it is rate-anchored, not panel-anchored. Kept separate so the distinction stays
+# visible: "armed" and "panel-scored" are not the same set.
+ARMED_LENSES = ARMED_PANEL_LENSES + ("growth",)
 
 
 def score_valuation(
@@ -742,7 +747,20 @@ def _valuation_bank(yf: TickerData, fred: FredData) -> PillarResult:
 
 
 def _valuation_growth(yf: TickerData, fred: FredData) -> PillarResult:
-    """Growth / SaaS lens: EV/Revenue vs growth, Rule of 40."""
+    """Growth / SaaS lens — D-4 ARMED: Rule-of-40 x EV/Revenue, RATE-SHIFTED thresholds.
+
+    STANDING RULING: lenses keep their instruments, the rate shifts thresholds, not
+    measures. The panel mapping was REJECTED PERMANENTLY — scoring an EBITDA yield here
+    would swap a growth-QUALITY instrument for a PROFITABILITY one. So the instrument,
+    the Rule-of-40 gate and the rung ordering are all untouched; only the EV/Revenue
+    thresholds move, by k = (R0 + ERP) / (R + ERP).
+
+    R0 = 4.0 RATIFIED PROVISIONALLY (2026-08-09): the fixed ladder was implicitly
+    calibrated in a ~4% regime, so 4.0 as the k=1 point preserves its meaning.
+    REVISIT TRIGGER: 10Y outside 3-6%. Clamp [0.60, 1.80] locked.
+
+    This lens takes no panel — deliberately. It is rate-anchored, not panel-anchored.
+    """
     flags: List[str] = []
     inputs: List[Prov] = [yf.ev_to_revenue, yf.revenue_growth, yf.operating_margin, fred.rate_10y]
     score = 3
@@ -759,16 +777,23 @@ def _valuation_growth(yf: TickerData, fred: FredData) -> PillarResult:
 
     if not yf.ev_to_revenue.is_missing():
         evr = yf.ev_to_revenue.value
-        parts.append(f"EV/Revenue {evr:.1f}x.")
-        base = 3
-        if rule40 is not None:
-            if rule40 >= 60:
-                base = 5 if evr < 10 else 4 if evr < 20 else 3
-            elif rule40 >= 40:
-                base = 4 if evr < 8 else 3 if evr < 15 else 2
-            else:
-                base = 3 if evr < 6 else 2 if evr < 10 else 1
-        score = base
+        rate = None if fred.rate_10y.is_missing() else fred.rate_10y.value
+        shifted = score_growth_shifted(evr, rule40, rate)
+        if shifted is not None:
+            score = shifted["score"]
+            parts.append(
+                f"EV/Revenue {evr:.1f}x vs rate-shifted thresholds "
+                f"{shifted['shifted_thresholds']} (k={shifted['shift_k']:.2f})."
+            )
+            if abs(shifted["shift_k"] - 1.0) > 0.001:
+                flags.append(f"RATE-SHIFT-K={shifted['shift_k']:.2f}")
+            if shifted["shift_k"] in GROWTH_SHIFT_BOUNDS:
+                # The clamp is a guard against a rate shock producing an absurd multiple.
+                # If it BINDS, the shift is no longer a smooth function of the rate and
+                # that must be visible rather than silently flattened.
+                flags.append("RATE-SHIFT-CLAMPED")
+        else:
+            parts.append(f"EV/Revenue {evr:.1f}x.")
 
     if not yf.ev_to_revenue.is_missing() and yf.ev_to_revenue.value > 20:
         flags.append("HIGH-EV-REVENUE-MULTIPLE")

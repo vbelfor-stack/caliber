@@ -1,0 +1,96 @@
+[
+  {
+    "price_to_book": 2.661562592432421,
+    "roe_pct": 17.810887122712458,
+    "beta": 0.977,
+    "rate_10y": 4.69,
+    "cost_of_equity_pct": 9.086500000000001,
+    "excess_roe_pp": 8.724387122712457,
+    "justified_pb": 1.9601482554022402,
+    "pb_vs_justified": 0.7014143370301806,
+    "ticker": "JPM",
+    "lens": "bank",
+    "sic": "6021",
+    "industry": "Banks - Diversified",
+    "proposed": {
+      "ratio": 1.3578373906652506,
+      "raw_score": 2,
+      "score": 2,
+      "difference": 0.7014143370301806,
+      "excess_roe_pp": 8.724387122712457,
+      "flags": [
+        "RICH-VS-JUSTIFIED-PB"
+      ]
+    }
+  },
+  {
+    "price_to_book": 2.1960655109260254,
+    "roe_pct": 14.18382224624097,
+    "beta": 1.04,
+    "rate_10y": 4.69,
+    "cost_of_equity_pct": 9.370000000000001,
+    "excess_roe_pp": 4.813822246240969,
+    "justified_pb": 1.5137483720641376,
+    "pb_vs_justified": 0.6823171388618878,
+    "ticker": "BK",
+    "lens": "bank",
+    "sic": "6022",
+    "industry": "Investment - Banking & Investment Services",
+    "proposed": {
+      "ratio": 1.4507467366795477,
+      "raw_score": 2,
+      "score": 2,
+      "difference": 0.6823171388618878,
+      "excess_roe_pp": 4.813822246240969,
+      "flags": [
+        "RICH-VS-JUSTIFIED-PB"
+      ]
+    }
+  },
+  {
+    "price_to_book": 1.4735253292205481,
+    "roe_pct": 12.49126077837334,
+    "beta": 0.978,
+    "rate_10y": 4.69,
+    "cost_of_equity_pct": 9.091000000000001,
+    "excess_roe_pp": 3.4002607783733385,
+    "justified_pb": 1.3740249453716136,
+    "pb_vs_justified": 0.09950038384893456,
+    "ticker": "USB",
+    "lens": "bank",
+    "sic": "6021",
+    "industry": "Banks - Diversified",
+    "proposed": {
+      "ratio": 1.072415267411338,
+      "raw_score": 3,
+      "score": 3,
+      "difference": 0.09950038384893456,
+      "excess_roe_pp": 3.4002607783733385,
+      "flags": []
+    }
+  },
+  {
+    "price_to_book": 1.082923314388133,
+    "roe_pct": 8.393847372590441,
+    "beta": 1.102,
+    "rate_10y": 4.69,
+    "cost_of_equity_pct": 9.649000000000001,
+    "excess_roe_pp": -1.2551526274095597,
+    "justified_pb": 0.8699188903088859,
+    "pb_vs_justified": 0.21300442407924702,
+    "ticker": "C",
+    "lens": "bank",
+    "sic": "6021",
+    "industry": "Banks - Diversified",
+    "proposed": {
+      "ratio": 1.244855499118561,
+      "raw_score": 3,
+      "score": 3,
+      "difference": 0.21300442407924702,
+      "excess_roe_pp": -1.2551526274095597,
+      "flags": [
+        "ROE-BELOW-COST-OF-EQUITY"
+      ]
+    }
+  }
+]

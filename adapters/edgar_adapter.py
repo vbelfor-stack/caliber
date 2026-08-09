@@ -104,7 +104,17 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     FieldSpec("current_assets", "instant", (("AssetsCurrent", "us-gaap"),)),
     FieldSpec("total_liabilities", "instant", (("Liabilities", "us-gaap"),)),
     FieldSpec("current_liabilities", "instant", (("LiabilitiesCurrent", "us-gaap"),)),
-    FieldSpec("cash", "instant", (("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),)),
+    # BANK TAG MIGRATION (JPM onboarding, 2026-08-09). JPM abandoned
+    # CashAndCashEquivalentsAtCarryingValue at 2018-12-31 and files the bank-specific
+    # CashAndDueFromBanks instead (current to 2026-06-30). The two are distinct
+    # PRESENTATIONS of the same balance-sheet line — a bank shows cash and due-from-banks
+    # where an industrial shows cash and equivalents — so priority order decides and a
+    # disagreement is expected rather than ambiguous, exactly like revenue and
+    # current_debt. Generic tag stays FIRST so no non-bank resolution changes.
+    FieldSpec("cash", "instant", (
+        ("CashAndCashEquivalentsAtCarryingValue", "us-gaap"),
+        ("CashAndDueFromBanks", "us-gaap"),      # JPM/BK/USB/C current tag
+    ), conflict_check=False),
     # FMP's total_cash is cashAndShortTermInvestments, so the EDGAR side needs the
     # investment leg to be the same measure. Chain runs broadest-first; the entries are
     # distinct measures (AFS debt securities are a subset of marketable securities), so
@@ -132,9 +142,19 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     # current-portion tag at all, so long_term_debt + current_debt is unassemblable for
     # it, but DebtAndCapitalLeaseObligations carries exactly what FMP's totalDebt means.
     # Used as an ALTERNATIVE input set, never as a substitute for the components.
+    # LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities is chained HERE,
+    # not on long_term_debt, DESPITE being the tag JPM migrated to when it abandoned
+    # LongTermDebt. Its name is explicit: it INCLUDES CURRENT MATURITIES, so it is a debt
+    # TOTAL, not the non-current leg. Putting it on long_term_debt would have silently
+    # conflated two bases — the same class of error the R-B lease work and the
+    # NET-vs-gross debt_to_equity advisory exist to prevent — and would then have been
+    # added to current_debt downstream, double-counting the current portion.
+    # CONSEQUENCE, stated: JPM's long_term_debt stays WITHHELD (stale_tag). That is the
+    # honest outcome; it has no non-current-only debt tag to resolve.
     FieldSpec("total_debt_reported", "instant", (
         ("DebtAndCapitalLeaseObligations", "us-gaap"),
         ("DebtLongtermAndShorttermCombinedAmount", "us-gaap"),
+        ("LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities", "us-gaap"),
     ), conflict_check=False),
     # R-B: FMP's totalDebt is lease-inclusive for most issuers. Measured at the fiscal
     # year-end across the golden five, the gap between FMP and gross filed debt equals
@@ -625,6 +645,17 @@ def _headers() -> Dict[str, str]:
     return {"User-Agent": EDGAR_UA, "Accept": "application/json"}
 
 
+# FMP <-> SEC ticker mismatches, EXPLICIT and per-issuer. Never a fuzzy name match: two
+# filers can share a name fragment, and silently pairing the wrong CIK would cross an
+# issuer's fundamentals with another's price — the worst failure this pipeline can have.
+# Found during the 2026-08-09 bank onboarding.
+SEC_TICKER_ALIASES = {
+    # BNY Mellon trades on the NYSE as BK and FMP serves it that way, but SEC's
+    # company_tickers.json lists it as BNY following the 2024 rebrand. Same CIK 1390777.
+    "BK": "BNY",
+}
+
+
 def _get_cik(ticker: str) -> str:
     """Look up CIK from SEC tickers.json. Raises loudly on failure."""
     global _TICKERS_CACHE
@@ -640,11 +671,15 @@ def _get_cik(ticker: str) -> str:
                 f"Error: {type(e).__name__}: {e}"
             ) from e
 
-    cik_int = _TICKERS_CACHE.get(ticker.upper())
+    symbol = ticker.upper()
+    cik_int = _TICKERS_CACHE.get(symbol)
+    if cik_int is None and symbol in SEC_TICKER_ALIASES:
+        cik_int = _TICKERS_CACHE.get(SEC_TICKER_ALIASES[symbol])
     if cik_int is None:
         raise RuntimeError(
             f"[EDGAR] Ticker '{ticker}' not found in SEC tickers.json. "
-            f"Check spelling or use the SEC-listed ticker symbol."
+            f"Check spelling, or add an explicit entry to SEC_TICKER_ALIASES if the SEC "
+            f"symbol differs from the exchange symbol."
         )
     return str(cik_int).zfill(10)
 

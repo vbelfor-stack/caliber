@@ -432,7 +432,10 @@ GOLDEN_CIKS = ("MU", "GOOG", "V", "NOW", "WU")
 # findings in docs/d4-arming.md. That is an OPEN FINDING awaiting a ruling on the synonym
 # chain, deliberately not patched here: adding a bank-specific tag changes EDGAR field
 # resolution for every ticker, which is E-2 work, not D-4 work.
-CALIBRATION_CIKS = ("JPM",)
+# Bank calibration universe RULED 2026-08-09: JPM (money-center), BK (trust/custody,
+# high quality), USB (quality regional), C (the below-book discriminator case). All four
+# are CALIBRATION INSTRUMENTS, never holdings — pinned absent from tickers.txt.
+CALIBRATION_CIKS = ("JPM", "BK", "USB", "C")
 ALL_EDGAR_CIKS = GOLDEN_CIKS + CALIBRATION_CIKS
 _REASONS = {
     REASON_NO_TAG, REASON_STALE_TAG, REASON_SYNONYM_CONFLICT,
@@ -744,33 +747,59 @@ class TestEdgarFieldResolution:
 # ── JPM onboarding (D-4): the bank-lens calibration instrument ───────────────
 
 class TestJpmOnboarding:
-    def test_jpm_selects_the_bank_lens(self):
-        """The whole point of adding it. SIC 6021, Banks - Diversified."""
+    @pytest.mark.parametrize("ticker", CALIBRATION_CIKS)
+    def test_calibration_tickers_select_the_bank_lens(self, ticker):
+        """The whole point of adding them — the bank lens had no real bank before."""
         from core.lens_select import select_lens
         from adapters.fmp_adapter import fetch_fmp
-        yf = fetch_fmp("JPM", fixture_path=FMP / "JPM.json")
-        edgar = fetch_edgar("JPM", fixture_path=EDGAR / "JPM.json")
-        assert edgar.sic == "6021"
+        yf = fetch_fmp(ticker, fixture_path=FMP / f"{ticker}.json")
+        edgar = fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json")
+        assert edgar.sic.startswith("602"), f"{ticker} SIC {edgar.sic} is not a bank SIC"
         assert select_lens(yf.sector, yf.industry, edgar.sic) == "bank"
 
-    def test_jpm_is_not_in_the_batch_universe(self):
-        """Calibration instrument, NOT a holding — ruled 2026-08-09. If it ever appears
+    def test_bk_resolves_through_the_sec_ticker_alias(self):
+        """BNY Mellon trades as BK and FMP serves it that way, but SEC lists it as BNY.
+        The alias is EXPLICIT per-issuer — a fuzzy name match could pair the wrong CIK,
+        crossing one issuer's fundamentals with another's price."""
+        from adapters.edgar_adapter import SEC_TICKER_ALIASES
+        assert SEC_TICKER_ALIASES["BK"] == "BNY"
+        assert fetch_edgar("BK", fixture_path=EDGAR / "BK.json").cik == "0001390777"
+
+    @pytest.mark.parametrize("ticker", CALIBRATION_CIKS)
+    def test_calibration_tickers_are_not_in_the_batch_universe(self, ticker):
+        """Calibration instruments, NOT holdings — ruled 2026-08-09. If one ever appears
         in tickers.txt it starts consuming synthesis budget and producing E(R) for a
         position nobody holds."""
         universe = Path("tickers.txt").read_text(encoding="utf-8")
         lines = [l.split("#")[0].strip().upper()
                  for l in universe.splitlines() if l.split("#")[0].strip()]
-        assert "JPM" not in lines
+        assert ticker not in lines
 
-    def test_jpm_cash_is_withheld_by_the_stale_gate(self):
-        """OPEN FINDING, pinned so it cannot regress silently: JPM abandoned
-        CashAndCashEquivalentsAtCarryingValue in 2018 and now files the bank-specific
-        CashAndDueFromBanks. The gate correctly withholds rather than serving a
-        seven-year-old figure wearing a fresh label. This test SHOULD start failing when
-        the synonym chain is extended — that failure is the signal the fix landed."""
+    def test_jpm_cash_resolves_through_the_bank_tag(self):
+        """FLIPPED 2026-08-09: the expected-fail pin fired and the chain was extended.
+
+        Was: cash withheld (stale_tag) because JPM abandoned
+        CashAndCashEquivalentsAtCarryingValue in 2018. Now: the chain falls through to
+        the bank-specific CashAndDueFromBanks and resolves at the current period. The
+        generic tag stays FIRST in the chain, so no non-bank resolution moved — verified
+        live across the golden five at the time of the change."""
         cash = _fields("JPM")["cash"]
-        assert not cash.is_resolved()
-        assert cash.reason == REASON_STALE_TAG
+        assert cash.is_resolved(), f"JPM cash should resolve via CashAndDueFromBanks: {cash.reason}"
+        assert cash.value and cash.value > 0
+        assert cash.period_end >= "2026-01-01", (
+            f"must be a CURRENT period, not the abandoned 2018 tag: {cash.period_end}")
+
+    def test_jpm_long_term_debt_stays_withheld(self):
+        """DELIBERATE, not an oversight. JPM's migration target,
+        LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities, INCLUDES
+        current maturities, so it is a debt TOTAL and is chained on total_debt_reported.
+        Chaining it here would conflate two bases and double-count the current portion
+        against current_debt. JPM files no non-current-only debt tag, so this is withheld
+        and that is the honest answer."""
+        ltd = _fields("JPM")["long_term_debt"]
+        assert not ltd.is_resolved()
+        assert _fields("JPM")["total_debt_reported"].is_resolved(), (
+            "the migration target belongs on total_debt_reported and must resolve there")
 
     def test_jpm_unclassified_balance_sheet_yields_no_current_ratio(self):
         """Same accepted data limit as WU: banks do not file AssetsCurrent /

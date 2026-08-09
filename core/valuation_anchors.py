@@ -698,3 +698,53 @@ def score_growth_shifted(
                     "shifted_thresholds": [round(t, 2) for t, _ in shifted],
                     "base_thresholds": [t for t, _ in rungs]}
     return None
+
+
+# ── D-5 DARK: bank-lens ladder proposal (APPLIES NOTHING, NOT ARMED) ─────────
+# Mechanism RULED 2026-08-09: P/B against justified P/B = ROE / CoE, CoE = 10Y + beta x
+# ERP. The ladder below is a PROPOSAL calibrated on JPM/BK/USB/C and awaits a ruling.
+#
+# THE LADDER IS ON THE RATIO, NOT THE DIFFERENCE. The ruling named
+# "P/B - justified P/B", and the four readouts argue against it: JPM (+0.70) and BK
+# (+0.68) are nearly identical on the difference while sitting at 1.36x and 1.45x of
+# justified — and a +0.70 premium means 36% on JPM's justified 1.96 but would mean 80%
+# on C's justified 0.87. The difference is scale-dependent in the justified value; the
+# ratio is not. Both are reported so the ruling can compare them directly.
+BANK_PB_RATIO_LADDER = (
+    (0.85, 5, None),
+    (1.05, 4, None),
+    (1.25, 3, None),
+    (1.50, 2, "RICH"),
+    (None, 1, "VERY-RICH"),
+)
+
+
+def score_bank_instrument(reading: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Proposed bank score from bank_instrument_reading(). DARK — applied to nothing.
+
+    EXCESS-ROE GATE: a bank earning LESS than its cost of equity is capped at 3 no matter
+    how cheap its P/B looks. This is the bank analogue of the cyclical peak gate — a low
+    P/B on a bank that does not cover its cost of equity is cheap FOR A REASON, and no
+    rung geometry over the price can express that the denominator is impaired.
+
+    On today's four the gate does not bite (C is already at 3 on the ratio alone). It is
+    written for the case that is NOT in this dataset: a sub-book bank whose ROE has
+    collapsed, which is exactly when the instrument would otherwise scream buy.
+    """
+    pb, just = reading.get("price_to_book"), reading.get("justified_pb")
+    excess = reading.get("excess_roe_pp")
+    if pb is None or not just:
+        return None
+    ratio = pb / just
+    score, flag = 1, "VERY-RICH"
+    for threshold, sc, fl in BANK_PB_RATIO_LADDER:
+        if threshold is None or ratio < threshold:
+            score, flag = sc, fl
+            break
+    flags = [f"{flag}-VS-JUSTIFIED-PB"] if flag else []
+    gated = score
+    if excess is not None and excess < 0:
+        gated = min(score, 3)
+        flags.append("ROE-BELOW-COST-OF-EQUITY")
+    return {"ratio": ratio, "raw_score": score, "score": gated,
+            "difference": pb - just, "excess_roe_pp": excess, "flags": flags}

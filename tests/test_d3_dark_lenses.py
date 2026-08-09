@@ -196,3 +196,56 @@ class TestBankInstrument:
         fred = FredData(rate_10y=Prov(4.69, "FRED", AS_OF, "high"))
         r = bank_instrument_reading(yf, fred)
         assert r["cost_of_equity_pct"] is None and r["excess_roe_pp"] is None
+
+
+# ── D-5 DARK: bank instrument ladder (NOT ARMED) ─────────────────────────────
+
+class TestBankLadderProposal:
+    """Calibrated on JPM/BK/USB/C. Applied to nothing — the bank lens is not armed."""
+
+    def test_bank_lens_is_still_not_armed(self):
+        """THE INVARIANT. The ladder exists as a proposal; score_valuation must not use
+        it until Vic rules."""
+        from core.pillars import ARMED_LENSES, ARMED_PANEL_LENSES
+        assert "bank" not in ARMED_LENSES and "bank" not in ARMED_PANEL_LENSES
+
+    def test_ratio_discriminates_where_the_difference_does_not(self):
+        """THE CALIBRATION FINDING. JPM and BK sit +0.70 and +0.68 on the DIFFERENCE —
+        indistinguishable — but 1.36x and 1.45x on the RATIO. The difference is scale-
+        dependent in the justified value; the ratio is not."""
+        from core.valuation_anchors import score_bank_instrument
+        jpm = score_bank_instrument({"price_to_book": 2.66, "justified_pb": 1.96,
+                                     "excess_roe_pp": 8.72})
+        bk = score_bank_instrument({"price_to_book": 2.20, "justified_pb": 1.51,
+                                    "excess_roe_pp": 4.81})
+        assert abs(jpm["difference"] - bk["difference"]) < 0.05
+        assert bk["ratio"] > jpm["ratio"] + 0.05
+
+    def test_below_book_is_not_automatically_cheap(self):
+        """C trades at 1.08x BOOK but 1.24x JUSTIFIED book, because its ROE (8.4%) is
+        under its cost of equity (9.65%). The bank-lens value trap."""
+        from core.valuation_anchors import score_bank_instrument
+        c = score_bank_instrument({"price_to_book": 1.08, "justified_pb": 0.87,
+                                   "excess_roe_pp": -1.26})
+        assert c["ratio"] > 1.0, "cheap on book, dear on what it earns"
+        assert "ROE-BELOW-COST-OF-EQUITY" in c["flags"]
+
+    def test_excess_roe_gate_caps_a_collapsed_bank(self):
+        """The gate is written for the case NOT in the calibration set: a sub-book bank
+        whose ROE has collapsed, which is when the instrument would otherwise scream buy."""
+        from core.valuation_anchors import score_bank_instrument
+        s = score_bank_instrument({"price_to_book": 0.50, "justified_pb": 0.80,
+                                   "excess_roe_pp": -4.0})
+        assert s["raw_score"] == 5, "ratio alone would call it maximally cheap"
+        assert s["score"] == 3, "gate must cap a bank not covering its cost of equity"
+
+    def test_gate_never_raises(self):
+        from core.valuation_anchors import score_bank_instrument
+        s = score_bank_instrument({"price_to_book": 4.0, "justified_pb": 1.0,
+                                   "excess_roe_pp": -2.0})
+        assert s["score"] == s["raw_score"] == 1
+
+    def test_missing_inputs_withhold(self):
+        from core.valuation_anchors import score_bank_instrument
+        assert score_bank_instrument({"price_to_book": None, "justified_pb": 1.0}) is None
+        assert score_bank_instrument({"price_to_book": 1.0, "justified_pb": None}) is None

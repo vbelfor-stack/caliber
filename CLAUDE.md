@@ -152,8 +152,10 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
   E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
   reachability): the note is NOT revived, see the E-4 finding below. See EDGAR section.
-- Phase D — VALUATION PANEL (scoped 2026-08-09). IN PROGRESS: D-0 DONE, D-1 DONE,
-  aggregation RULED (MIN, permanent). NEXT IS D-2. See Phase D section.
+- Phase D — VALUATION PANEL. D-0 THROUGH D-4 COMPLETE (2026-08-09). ARMED: compounder,
+  cyclical, standard (panel-anchored) + growth (rate-shifted EV/Rev thresholds).
+  BANK PENDING A CALIBRATION RULING — ladder proposed, see docs/d5-banks.md.
+  See Phase D section.
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. MOVED UP (ruling 2026-08-09): scope it IMMEDIATELY
   AFTER D-4 ARMS, BEFORE any further EDGAR expansion. No longer "stays behind EDGAR".
@@ -503,6 +505,62 @@ same at a 1% and a 7% 10Y.
       at ZIRP every name gains a rung; above 6% NOW falls to the floor; WU invariant
       (0.88x EV/Rev is cheap in any regime). OPEN QUESTION FOR THE RULING: R0=4.0 is a
       JUDGEMENT, not a measurement — it sets where k=1.
+  D-5 (2026-08-09) — GROWTH ARMED + JPM CHAIN MIGRATION + BANK CALIBRATION.
+      Report docs/d5-banks.md, record docs/d5-bank-calibration.json.
+      GROWTH ARMED on the rate-shifted EV/Rev mechanism. R0 = 4.0 RATIFIED PROVISIONALLY
+      (the fixed ladder was implicitly calibrated in a ~4% regime, so 4.0 as the k=1 point
+      preserves its meaning). CLAMP [0.60, 1.80] LOCKED. REVISIT TRIGGER: 10Y OUTSIDE 3-6%.
+      Golden-five growth diff re-measured: DELTA 0 on all five at k=0.925. A
+      RATE-SHIFT-CLAMPED flag fires if the clamp ever binds — past that point the shift is
+      no longer a smooth function of the rate and that must be visible.
+      NOTE ARMED_LENSES vs ARMED_PANEL_LENSES are DELIBERATELY DIFFERENT SETS: growth is
+      armed but RATE-anchored, not PANEL-anchored.
+      JPM CHAIN MIGRATION EXECUTED. cash: +CashAndDueFromBanks (appended SECOND so the
+      generic tag still wins for every non-bank). The other migration target,
+      LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities, was chained on
+      total_debt_reported and NOT on long_term_debt — it INCLUDES CURRENT MATURITIES, so
+      it is a debt TOTAL; putting it on long_term_debt would conflate two bases and then
+      double-count the current portion against current_debt. CONSEQUENCE: JPM's
+      long_term_debt stays WITHHELD (it files no non-current-only tag). Pinned by test.
+      GOLDEN-FIVE VERIFIED UNCHANGED — LIVE, not by fixture. The fixture check was
+      MISLEADING (golden fixtures predate the new tags so they cannot contain them). Live:
+      MU 19/19, GOOG 18/19, V 14/19, NOW 18/19, WU 15/19 — no resolution changed. GOOG
+      does file the new debt tag but its newest fact is 2024-09-30 (~639d), so the 450d
+      stale gate withholds it; its REASON moves no_tag -> stale_tag, which is strictly
+      more accurate. total_debt_reported is DARK anyway. JPM 9/19 -> 11/19.
+      The expected-fail pin fired and was FLIPPED to test_jpm_cash_resolves_through_the_
+      bank_tag.
+  BANK CALIBRATION UNIVERSE (ruled 2026-08-09): JPM + BK + USB + C. ALL FOUR ARE
+      CALIBRATION INSTRUMENTS, NEVER HOLDINGS — CALIBRATION_CIKS, pinned absent from
+      tickers.txt for every one of them. All four select the bank lens (SIC 602x).
+      NEW INTEGRATION FINDING — SEC_TICKER_ALIASES: BK could not be onboarded at all.
+      BNY Mellon trades as BK and FMP serves it that way, but SEC's company_tickers.json
+      lists BNY (CIK 1390777) after the 2024 rebrand. The alias map is EXPLICIT per-issuer
+      — never a fuzzy name match, which could pair the wrong CIK and cross one issuer's
+      fundamentals with another's price.
+      E-2 COVERAGE: JPM 11/19, BK 11/19, USB 10/19, C 11/19.
+      SYSTEMATIC FINDING — the equity conflict gate fires on 3 of 4 banks (BK 1.3%, USB
+      0.7%, C 0.7% between StockholdersEquity and the including-NCI variant). Banks carry
+      minority interests routinely, so both tags are fresh and genuinely disagree. The
+      gate is deliberately ARMED on equity, so this is it WORKING. It does not block the
+      bank instrument, which takes ROE from FMP. JPM files only one tag.
+      C's latest period-end is 2025-12-31, TWO QUARTERS behind the others — R1 symmetric
+      gating would treat it as lagged on a live run.
+      BANK INSTRUMENT CALIBRATED on four points. RECOMMENDATION AWAITING RULING: put the
+      ladder on the RATIO (P/B / justified P/B), NOT the ruled DIFFERENCE. Evidence: JPM
+      +0.70 and BK +0.68 are indistinguishable on the difference but sit at 1.36x and
+      1.45x of justified; the difference is scale-dependent in the justified value (+0.70
+      is 36% on JPM's 1.96 but would be 80% on C's 0.87). Proposed rungs on r:
+      <0.85 -> 5, <1.05 -> 4, <1.25 -> 3, <1.50 -> 2, else 1, PLUS an EXCESS-ROE GATE
+      (excess ROE < 0 -> cap 3), same shape as the cyclical peak gate.
+      HEADLINE: C trades at 1.08x BOOK but 1.24x JUSTIFIED book because its ROE (8.39%)
+      does not cover its CoE (9.65%) — cheap on book, dear on what it earns. The bank
+      value trap, caught.
+      LIMITS ON RECORD: the gate does not bite on today's four (C is already 3 on ratio
+      alone) — it is tested synthetically only; NO bank in the set trades below justified
+      book, so the 5 and 4 RUNGS ARE UNCALIBRATED; four points cannot validate five rungs;
+      beta is FMP single-source and moves CoE directly with no cross-check.
+      BANK REMAINS UNARMED, pinned by test_bank_lens_is_still_not_armed.
   JPM — SIXTH GOLDEN TICKER, BANK-LENS CALIBRATION INSTRUMENT (ruled 2026-08-09).
       CIK 0000019617, SIC 6021, NYSE. Lens confirmed 'bank'. EXPLICITLY NOT A HOLDING:
       absent from tickers.txt on purpose and PINNED so by
