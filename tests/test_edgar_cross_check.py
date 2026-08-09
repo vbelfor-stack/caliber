@@ -12,6 +12,7 @@ import pytest
 from adapters.base import Prov
 from adapters.edgar_adapter import FilingRef, fetch_edgar
 from adapters.fixture_adapter import fetch_fixture
+from adapters.fmp_adapter import fetch_fmp
 from core.edgar_cross_check import (
     APPLICABLE_VERDICTS, COMPARISONS, DIVERGENCE_TOLERANCE_PCT,
     FRESHNESS_THRESHOLD_DAYS, VERDICT_AGREE, VERDICT_BASIS_MISMATCH,
@@ -27,9 +28,23 @@ EDGAR = FIXTURES / "edgar"
 TICKER = FIXTURES / "ticker"
 
 
+GOLDEN = ("MU", "GOOG", "V", "NOW", "WU")
+
+
 def _pair(ticker: str):
     return (fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json"),
             fetch_fixture(ticker, fixture_path=TICKER / f"{ticker}.json"))
+
+
+def _fmp_pair(ticker: str):
+    """EDGAR + the recorded FMP feed, which is the pairing production actually runs.
+
+    The tests/fixtures/ticker set is the older yfinance-shaped recording and exists for
+    the historical pipeline; tests/fixtures/fmp is a verbatim recording of the live FMP
+    payload. Golden-five invariants run against the latter (R-C).
+    """
+    return (fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json"),
+            fetch_fmp(ticker, fixture_path=FIXTURES / "fmp" / f"{ticker}.json"))
 
 
 class TestComputeIsPure:
@@ -322,6 +337,91 @@ class TestDarkComparisons:
         assert by_label["total_debt"].period_end == min(
             fields["long_term_debt"].period_end, fields["current_debt"].period_end)
         assert by_label["total_debt(reported)"].period_end == fields["cash"].period_end
+
+
+class TestGoldenFiveOffline:
+    """R-C: the comparison layer now runs offline for all five golden tickers, against
+    the recorded FMP payload rather than the older yfinance-shaped fixtures.
+
+    These are the invariants that must hold for EVERY ticker, so they are the ones worth
+    paying five-ticker coverage for. Ticker-specific behaviour stays in the classes above.
+    """
+
+    @pytest.mark.parametrize("ticker", GOLDEN)
+    def test_every_comparison_yields_a_delta(self, ticker):
+        edgar, yf = _fmp_pair(ticker)
+        report = compute_cross_check(edgar, yf, today="2026-08-09")
+        assert {(d.label or d.fmp_field) for d in report.deltas} == {
+            (c.label or c.fmp_field) for c in COMPARISONS}
+
+    @pytest.mark.parametrize("ticker", GOLDEN)
+    def test_withheld_edgar_fields_are_never_compared(self, ticker):
+        edgar, yf = _fmp_pair(ticker)
+        for d in compute_cross_check(edgar, yf, today="2026-08-09").deltas:
+            if d.verdict == VERDICT_NO_EDGAR:
+                assert d.edgar_value is None
+                assert d.would_be_confidence == d.current_confidence
+
+    @pytest.mark.parametrize("ticker", GOLDEN)
+    def test_application_moves_labels_only(self, ticker):
+        edgar, yf = _fmp_pair(ticker)
+        before = {n: (p.value, p.as_of) for n, p in vars(yf).items()
+                  if isinstance(p, Prov)}
+        apply_report(compute_cross_check(edgar, yf, today="2026-08-09"), yf)
+        assert {n: (p.value, p.as_of) for n, p in vars(yf).items()
+                if isinstance(p, Prov)} == before
+
+    @pytest.mark.parametrize("ticker", GOLDEN)
+    def test_dark_rows_move_nothing(self, ticker):
+        edgar, yf = _fmp_pair(ticker)
+        report = compute_cross_check(edgar, yf, today="2026-08-09")
+        assert any(d.dark for d in report.deltas)
+        applied = apply_report(report, yf)
+        dark_only = {d.fmp_field for d in report.deltas if d.dark} - {
+            d.fmp_field for d in report.deltas if not d.dark and d.would_change}
+        assert not [a for a in applied if a.split("→")[0] in dark_only]
+
+    @pytest.mark.parametrize("ticker", GOLDEN)
+    def test_no_contradictions_on_the_golden_five(self, ticker):
+        """Two armed rows on one field must not disagree. If this ever fires, the
+        comparison set has grown an ambiguity that needs resolving at the table."""
+        edgar, yf = _fmp_pair(ticker)
+        applied = apply_report(
+            compute_cross_check(edgar, yf, today="2026-08-09"), yf)
+        assert not [a for a in applied if a.startswith("!CONTRADICTION")]
+
+    def test_wu_total_debt_reaches_a_verdict_only_via_the_reported_total(self):
+        """The R-B case, now offline: WU's components are unassemblable, so its armed
+        row is no_edgar and only the dark reported-total row produces a value."""
+        edgar, yf = _fmp_pair("WU")
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-09").deltas}
+        assert by_label["total_debt"].verdict == VERDICT_NO_EDGAR
+        assert by_label["total_debt(reported)"].edgar_value == pytest.approx(2_697_200_000)
+
+    @pytest.mark.parametrize("ticker", ("MU", "GOOG", "NOW"))
+    def test_matched_period_cash_is_identical_to_fmp(self, ticker):
+        """The identity that justified arming total_cash@FY, now pinned offline: read at
+        the fiscal year-end, EDGAR cash+ST-investments IS FMP's cashAndShortTermInvestments."""
+        edgar, yf = _fmp_pair(ticker)
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-09").deltas}
+        row = by_label["total_cash@FY"]
+        assert row.divergence_pct == pytest.approx(0.0, abs=0.05)
+        assert row.verdict == VERDICT_AGREE
+        assert "gated on alignment" in row.note
+
+    @pytest.mark.parametrize("ticker", ("V", "WU"))
+    def test_issuers_without_st_investments_stay_advisory(self, ticker):
+        """Scope condition 2: a missing aligning input keeps the row advisory, so it
+        never reaches the gate and can never be corroborated on a narrower measure."""
+        edgar, yf = _fmp_pair(ticker)
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-09").deltas}
+        row = by_label["total_cash@FY"]
+        assert row.verdict == VERDICT_BASIS_MISMATCH
+        assert not row.would_change
+        assert "short_term_investments" in row.note
 
 
 class TestComparisons:

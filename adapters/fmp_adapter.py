@@ -282,7 +282,13 @@ def fetch_fmp(ticker: str, fixture_path: Optional[Path] = None) -> TickerData:
     return _from_live(ticker)
 
 
-def _from_live(ticker: str) -> TickerData:
+def fetch_payload(ticker: str) -> Dict[str, Any]:
+    """Every live FMP response for one ticker, keyed as the fixture format stores them.
+
+    Single source of truth for the endpoint set: the live path, the fixture path and the
+    fixture RECORDER all go through this shape, so a recorded fixture cannot drift from
+    what the live adapter actually requests.
+    """
     key = os.environ.get("FMP_API_KEY", "")
     if not key:
         raise RuntimeError(f"[fmp] FMP_API_KEY not set — cannot fetch {ticker}")
@@ -293,31 +299,55 @@ def _from_live(ticker: str) -> TickerData:
         profile_raw = _get(f"profile?symbol={ticker}", key)
         if not profile_raw:
             raise RuntimeError(f"[fmp] empty profile for {ticker} — ticker may be invalid")
-        profile = _first(profile_raw)
 
-        ratios = _first(_safe_get(f"ratios-ttm?symbol={ticker}", key, []))
-        metrics = _first(_safe_get(f"key-metrics-ttm?symbol={ticker}", key, []))
-        income_annual = _safe_get(f"income-statement?symbol={ticker}&period=annual&limit=4", key, [])
-        income_q = _safe_get(f"income-statement?symbol={ticker}&period=quarter&limit=8", key, [])
-        balance = _first(_safe_get(f"balance-sheet-statement?symbol={ticker}&period=annual&limit=1", key, []))
-        cashflow = _first(_safe_get(f"cash-flow-statement?symbol={ticker}&period=annual&limit=1", key, []))
-        price_history = _safe_get(f"historical-price-eod/full?symbol={ticker}&limit=365", key, [])
-        earnings = _safe_get(f"earnings?symbol={ticker}&limit=8", key, [])
-        analyst_est = _safe_get(f"analyst-estimates?symbol={ticker}&limit=3&period=annual", key, [])
-        price_target = _first(_safe_get(f"price-target-summary?symbol={ticker}", key, []))
-        shares_float = _first(_safe_get(f"shares-float?symbol={ticker}", key, []))
-
+        return {
+            "profile": profile_raw,
+            "ratios_ttm": _safe_get(f"ratios-ttm?symbol={ticker}", key, []),
+            "key_metrics_ttm": _safe_get(f"key-metrics-ttm?symbol={ticker}", key, []),
+            "income_annual": _safe_get(
+                f"income-statement?symbol={ticker}&period=annual&limit=4", key, []),
+            "income_q": _safe_get(
+                f"income-statement?symbol={ticker}&period=quarter&limit=8", key, []),
+            "balance": _safe_get(
+                f"balance-sheet-statement?symbol={ticker}&period=annual&limit=1", key, []),
+            "cashflow": _safe_get(
+                f"cash-flow-statement?symbol={ticker}&period=annual&limit=1", key, []),
+            "price_history": _safe_get(
+                f"historical-price-eod/full?symbol={ticker}&limit=365", key, []),
+            "earnings": _safe_get(f"earnings?symbol={ticker}&limit=8", key, []),
+            "analyst_est": _safe_get(
+                f"analyst-estimates?symbol={ticker}&limit=3&period=annual", key, []),
+            "price_target": _safe_get(f"price-target-summary?symbol={ticker}", key, []),
+            "shares_float": _safe_get(f"shares-float?symbol={ticker}", key, []),
+        }
     except Exception as e:
         raise RuntimeError(
             f"[fmp] fetch failed for ticker={ticker}. "
             f"Error: {type(e).__name__}: {e}"
         ) from e
 
+
+def _from_payload(ticker: str, raw: Dict[str, Any]) -> TickerData:
+    """Build TickerData from a payload, live or recorded — one code path for both."""
     return _build(
-        ticker, profile, ratios, metrics,
-        income_annual, income_q, balance, cashflow,
-        price_history, earnings, analyst_est, price_target, shares_float,
+        ticker,
+        _first(raw.get("profile") or []),
+        _first(raw.get("ratios_ttm") or []),
+        _first(raw.get("key_metrics_ttm") or []),
+        raw.get("income_annual") or [],
+        raw.get("income_q") or [],
+        _first(raw.get("balance") or []),
+        _first(raw.get("cashflow") or []),
+        raw.get("price_history") or [],
+        raw.get("earnings") or [],
+        raw.get("analyst_est") or [],
+        _first(raw.get("price_target") or []),
+        _first(raw.get("shares_float") or []),
     )
+
+
+def _from_live(ticker: str) -> TickerData:
+    return _from_payload(ticker, fetch_payload(ticker))
 
 
 def _from_fixture(ticker: str, path: Path) -> TickerData:
@@ -327,22 +357,4 @@ def _from_fixture(ticker: str, path: Path) -> TickerData:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         raise RuntimeError(f"[fmp] corrupt fixture {path}: {e}") from e
-
-    profile = _first(raw.get("profile") or [])
-    ratios = _first(raw.get("ratios_ttm") or [])
-    metrics = _first(raw.get("key_metrics_ttm") or [])
-    income_annual = raw.get("income_annual") or []
-    income_q = raw.get("income_q") or []
-    balance = _first(raw.get("balance") or [])
-    cashflow = _first(raw.get("cashflow") or [])
-    price_history = raw.get("price_history") or []
-    earnings = raw.get("earnings") or []
-    analyst_est = raw.get("analyst_est") or []
-    price_target = _first(raw.get("price_target") or [])
-    shares_float = _first(raw.get("shares_float") or [])
-
-    return _build(
-        ticker, profile, ratios, metrics,
-        income_annual, income_q, balance, cashflow,
-        price_history, earnings, analyst_est, price_target, shares_float,
-    )
+    return _from_payload(ticker, raw)
