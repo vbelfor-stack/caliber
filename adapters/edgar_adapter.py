@@ -323,7 +323,10 @@ def _in_range(days: Optional[int], bounds: Tuple[int, int]) -> bool:
     return days is not None and bounds[0] <= days <= bounds[1]
 
 
-def _assemble_ttm(recs: List[Dict[str, Any]], name: str, concept: str) -> ResolvedField:
+def _assemble_ttm(
+    recs: List[Dict[str, Any]], name: str, concept: str,
+    as_of_end: Optional[str] = None,
+) -> ResolvedField:
     """Trailing-twelve-month value for a flow concept.
 
     Duration facts for one concept mix QTD, year-to-date and full-year windows, so a naive
@@ -352,8 +355,15 @@ def _assemble_ttm(recs: List[Dict[str, Any]], name: str, concept: str) -> Resolv
             detail=f"{concept}: no duration facts (instant-only concept?)",
         )
 
-    latest_end = max(f["end"] for f in facts)
+    # as_of_end assembles the TTM as it stood at an EARLIER period-end, which is what
+    # builds a historical series. Default (None) is the newest period — the live path.
+    latest_end = as_of_end or max(f["end"] for f in facts)
     at_latest = [f for f in facts if f["end"] == latest_end]
+    if not at_latest:
+        return ResolvedField(
+            name=name, concept=concept, reason=REASON_TTM_UNAVAILABLE,
+            detail=f"{concept}: no duration fact ending {latest_end}",
+        )
     current = max(at_latest, key=lambda f: f["days"])   # YTD spans further than QTD
 
     # 1. The newest fact is itself a full year.
@@ -413,6 +423,56 @@ def _assemble_ttm(recs: List[Dict[str, Any]], name: str, concept: str) -> Resolv
         detail=(f"{concept}: no clean 4-quarter set and {missing} missing for the "
                 f"{current['days']}d window ending {current['end']}"),
     )
+
+
+def ttm_series(
+    financials: "EdgarFinancials", field_name: str, limit: int = 24
+) -> List[ResolvedField]:
+    """The same TTM figure assembled at each historical period-end, newest first.
+
+    Phase D's own-history anchor needs a multiple SERIES, which needs an earnings series.
+    This reuses _assemble_ttm at each period-end rather than reimplementing the
+    reconstruction rule, so a historical TTM is assembled by exactly the same three paths
+    (annual / summed / reconstructed) as the live one, and periods that cannot be
+    assembled are dropped rather than approximated.
+
+    Follows the tag the field actually resolved to, so a migrated issuer keeps its series.
+    """
+    rf = financials.fields.get(field_name)
+    if rf is None or not rf.concept or rf.concept.startswith("derived:"):
+        return []
+    recs = financials.concepts.get(rf.concept, [])
+    ends = sorted({r["end"] for r in recs if r.get("end") and r.get("start")},
+                  reverse=True)[:limit]
+    out = []
+    for end in ends:
+        assembled = _assemble_ttm(recs, field_name, rf.concept, as_of_end=end)
+        if assembled.is_resolved():
+            out.append(assembled)
+    return out
+
+
+def instant_series(
+    financials: "EdgarFinancials", field_name: str, limit: int = 24
+) -> List[ResolvedField]:
+    """A balance-sheet field's value at each historical period-end, newest first."""
+    rf = financials.fields.get(field_name)
+    if rf is None or not rf.concept or rf.concept.startswith("derived:"):
+        return []
+    seen, out = set(), []
+    for r in sorted(financials.concepts.get(rf.concept, []),
+                    key=lambda r: (r.get("end") or ""), reverse=True):
+        end = r.get("end")
+        if not end or r.get("start") or end in seen:
+            continue
+        seen.add(end)
+        out.append(ResolvedField(
+            name=field_name, value=float(r["value"]), unit=r.get("unit"),
+            period_end=end, concept=rf.concept, method="instant",
+        ))
+        if len(out) >= limit:
+            break
+    return out
 
 
 def _resolve_one(

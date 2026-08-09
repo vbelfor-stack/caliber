@@ -80,6 +80,10 @@ class TickerData:
     # so provenance reflects the true feed — EDGAR cross-check will key off this.
     feed_source: str = "unknown"
 
+    # Listing venue. The sector P/E snapshot (Phase D market anchor) is published per
+    # exchange, so the anchor cannot be matched to a ticker without it.
+    exchange: Optional[str] = None
+
     fetched_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 

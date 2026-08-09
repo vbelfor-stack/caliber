@@ -25,7 +25,8 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
-from adapters.fmp_adapter import fetch_fmp
+from adapters.fmp_adapter import fetch_fmp, fetch_sector_pe
+from core.valuation_anchors import run_dark_panel
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
@@ -167,6 +168,12 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     # ── Lens selection ────────────────────────────────────────────────────────
     lens = select_lens(yf.sector, yf.industry, edgar.sic)
     print(f"\n  Valuation lens: {lens_label(lens)} ({lens})")
+
+    # Phase D-0 DARK: measure the three valuation anchors and log the spreads.
+    # Applies nothing — no Prov, score, E(R) or grade can move.
+    run_dark_panel(yf, fred, edgar,
+                   fetch_sector_pe(yf.exchange or "NASDAQ") if not fixture_mode else {},
+                   lens)
 
     # ── Five pillars ──────────────────────────────────────────────────────────
     print(f"\n{_divider('=')}")

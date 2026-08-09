@@ -32,7 +32,7 @@ import json
 import os
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from adapters.base import (
     Confidence, Prov, TrajectoryPoint, coerce, min_conf, missing_prov,
@@ -41,7 +41,7 @@ from adapters.base import (
 from core.datatypes import TickerData
 
 TODAY_STR: str  # set at import from caller; module-level default below
-from datetime import date as _date
+from datetime import date as _date, timedelta
 TODAY_STR = _date.today().isoformat()
 
 SOURCE = "fmp"
@@ -74,6 +74,44 @@ def _safe_get(endpoint: str, key: str, default: Any = None) -> Any:
         return _get(endpoint, key)
     except Exception:
         return default
+
+
+# ── Sector P/E snapshot (Phase D, market anchor) ──────────────────────────────
+# One call serves every ticker on an exchange for a day, so it is cached per
+# (date, exchange) rather than fetched per evaluation. The snapshot is published per
+# TRADING day — a weekend date returns an empty list, so the request walks back to the
+# most recent weekday rather than reporting "no sector data" on a Sunday run.
+_SECTOR_PE_CACHE: Dict[Tuple[str, str], Dict[str, float]] = {}
+_SECTOR_PE_MAX_LOOKBACK_DAYS = 5
+
+
+def fetch_sector_pe(exchange: str, as_of: Optional[str] = None) -> Dict[str, float]:
+    """{sector_name: pe} for one exchange, or {} when unavailable.
+
+    Advisory data for a dark measurement phase: it returns empty rather than raising, and
+    the caller records the anchor as unavailable. It is not a pipeline input yet.
+    """
+    as_of = as_of or TODAY_STR
+    cache_key = (as_of, exchange.upper())
+    if cache_key in _SECTOR_PE_CACHE:
+        return _SECTOR_PE_CACHE[cache_key]
+
+    key = os.environ.get("FMP_API_KEY", "")
+    out: Dict[str, float] = {}
+    if key:
+        day = _date.fromisoformat(as_of[:10])
+        for back in range(_SECTOR_PE_MAX_LOOKBACK_DAYS + 1):
+            probe = (day - timedelta(days=back)).isoformat()
+            rows = _safe_get(
+                f"sector-pe-snapshot?date={probe}&exchange={exchange}", key, [])
+            if rows:
+                out = {
+                    r["sector"]: float(r["pe"]) for r in rows
+                    if r.get("sector") and r.get("pe") is not None
+                }
+                break
+    _SECTOR_PE_CACHE[cache_key] = out
+    return out
 
 
 def _first(lst: Any, default: Optional[Dict] = None) -> Dict:
@@ -236,6 +274,7 @@ def _build(
         name=profile.get("companyName"),
         sector=profile.get("sector"),
         industry=profile.get("industry"),
+        exchange=profile.get("exchange"),
         sic=None,  # populated by EDGAR adapter
         gross_margin=gross_margin,
         operating_margin=operating_margin,

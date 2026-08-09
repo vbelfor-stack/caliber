@@ -37,6 +37,7 @@ from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
+from core.valuation_anchors import run_dark_panel
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
@@ -139,6 +140,15 @@ def run_single_ticker(
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
         lens = select_lens(yf.sector, yf.industry, edgar.sic)
+
+        # Phase D-0 DARK: measure the three valuation anchors; applies nothing.
+        if fixture_mode:
+            sector_pe = {}
+        else:
+            from adapters.fmp_adapter import fetch_sector_pe
+            sector_pe = fetch_sector_pe(yf.exchange or "NASDAQ")
+        run_dark_panel(yf, fred, edgar, sector_pe, lens, log=_log)
+
         pillars = score_all(yf, edgar, fred, lens)
         tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
 
