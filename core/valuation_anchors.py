@@ -389,15 +389,22 @@ def render_panel(panel: ValuationPanel) -> str:
     return "\n".join(lines)
 
 
-def run_dark_panel(
+def build_panel(
     ticker_data: Any, fred: Any, edgar: Optional[EdgarData],
     sector_pe: Dict[str, float], lens: str,
     log: Optional[Any] = None,
 ) -> Optional[ValuationPanel]:
-    """Compute and log the panel. Applies nothing, and cannot fail an evaluation.
+    """Compute and log the valuation panel.
 
-    D-0 is measurement: it has no reach into any score, so a bug in it must not be able
-    to take down an evaluation it cannot influence. It reports its own failure loudly.
+    LOAD-BEARING AS OF D-4 (was run_dark_panel, which applied nothing). The armed lenses
+    — compounder, cyclical, standard — score off this object, so it is no longer pure
+    measurement and the old name would be a lie.
+
+    The broad except is KEPT and its meaning is now explicit: a panel failure degrades
+    the armed lenses to the RISK-FREE-ONLY fallback in score_valuation, which is a real
+    score and is flagged PANEL-NARROWED rather than passed off as full breadth. The
+    mandatory rate anchor still binds underneath, so the failure mode is a narrower
+    score, never a rate-blind one.
     """
     emit = log or print
     try:
@@ -405,8 +412,8 @@ def run_dark_panel(
         emit(render_panel(panel))
         return panel
     except Exception as e:                              # noqa: BLE001 — see docstring
-        emit(f"[VAL-PANEL D-0] FAILED for {getattr(ticker_data, 'ticker', '?')}: "
-             f"{type(e).__name__}: {e} (measurement only; evaluation unaffected)")
+        emit(f"[VAL-PANEL] FAILED (degrading to risk-free-only) for {getattr(ticker_data, 'ticker', '?')}: "
+             f"{type(e).__name__}: {e}")
         return None
 
 
@@ -617,7 +624,7 @@ def run_dark_lens(
 ) -> Optional[DarkLensScore]:
     """Compute and log the would-be panel score for the ACTIVE lens. Applies nothing.
 
-    Same containment contract as run_dark_panel: D-3 has no reach into any score, so a
+    Same containment contract as build_panel: D-3 has no reach into any score, so a
     bug here must not be able to take down an evaluation it cannot influence.
     """
     emit = log or print
@@ -632,3 +639,62 @@ def run_dark_lens(
         emit(f"[VAL-LENS D-3] FAILED for {panel.ticker}: {type(e).__name__}: {e} "
              f"(measurement only; evaluation unaffected)")
         return None
+
+
+# ── D-4 DARK: growth lens, rate-SHIFTED EV/Revenue thresholds ────────────────
+# RULED 2026-08-09: the panel mapping for growth is REJECTED PERMANENTLY. Principle on
+# record — LENSES KEEP THEIR INSTRUMENTS, THE RATE SHIFTS THRESHOLDS, NOT MEASURES. The
+# growth lens therefore keeps Rule-of-40 x EV/Revenue (a growth-QUALITY instrument) and
+# becomes rate-aware by moving the EV/Revenue thresholds, not by swapping in a yield.
+#
+# Mechanism: a growth multiple is a duration asset, so its fair level scales roughly
+# inversely with the discount rate. Thresholds are multiplied by
+#     k = (R0 + ERP) / (R + ERP)
+# with R0 = 4.0 (the baseline 10Y the current fixed ladder was implicitly calibrated at)
+# and ERP = 4.5pp. k > 1 loosens thresholds in a low-rate regime, k < 1 tightens them in
+# a high-rate one. Bounded so a rate shock cannot produce an absurd multiple.
+GROWTH_BASELINE_RATE = 4.0
+GROWTH_ERP = 4.5
+GROWTH_SHIFT_BOUNDS = (0.60, 1.80)
+
+# The live fixed ladder, lifted verbatim so the shift has something explicit to act on.
+# (rule40_floor, [(evr_threshold, score), ...], floor_score)
+GROWTH_EVR_LADDER = (
+    (60.0, ((10.0, 5), (20.0, 4)), 3),
+    (40.0, ((8.0, 4), (15.0, 3)), 2),
+    (0.0,  ((6.0, 3), (10.0, 2)), 1),
+)
+
+
+def growth_threshold_shift(rate_10y: Optional[float]) -> float:
+    """Multiplier applied to every EV/Revenue threshold. 1.0 = the current ladder."""
+    if rate_10y is None:
+        return 1.0
+    k = (GROWTH_BASELINE_RATE + GROWTH_ERP) / (rate_10y + GROWTH_ERP)
+    lo, hi = GROWTH_SHIFT_BOUNDS
+    return max(lo, min(hi, k))
+
+
+def score_growth_shifted(
+    ev_to_revenue: Optional[float],
+    rule40: Optional[float],
+    rate_10y: Optional[float],
+) -> Optional[Dict[str, Any]]:
+    """Rule-of-40 x EV/Revenue with rate-shifted thresholds. DARK — applied to nothing."""
+    if ev_to_revenue is None:
+        return None
+    k = growth_threshold_shift(rate_10y)
+    r40 = rule40 if rule40 is not None else 0.0
+    for floor, rungs, floor_score in GROWTH_EVR_LADDER:
+        if r40 >= floor:
+            shifted = [(t * k, sc) for t, sc in rungs]
+            score = floor_score
+            for threshold, sc in shifted:
+                if ev_to_revenue < threshold:
+                    score = sc
+                    break
+            return {"score": score, "shift_k": k, "rule40": rule40,
+                    "ev_to_revenue": ev_to_revenue,
+                    "shifted_thresholds": [round(t, 2) for t, _ in shifted],
+                    "base_thresholds": [t for t, _ in rungs]}
+    return None

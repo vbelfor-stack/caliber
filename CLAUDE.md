@@ -454,45 +454,78 @@ same at a 1% and a 7% 10Y.
       removed; 15 in test_batch.py were MODIFIED to name a db_path, because they were
       exercising the exact route the new guard blocks — that file was the original
       contamination source, so it relying on conftest's backstop was the smell.
-  D-3 DARK DONE 2026-08-09 — AWAITING VIC'S RULINGS, NOTHING ARMED.
-      Report docs/d3-lenses.md, raw record docs/d3-lenses.json, re-runnable via
-      `python -m tools.probe_d3_lenses MU GOOG V NOW WU --json OUT`. Probe is read-only
-      by construction; tests/test_d0_probe_readonly.py now pins BOTH probes. Dark score
-      also logs at both eval boundaries beside the live score. caliber.db unchanged.
-      HEADLINE: on NATIVE lenses only 1 of 5 cells moves (NOW growth 2->3). Compounder
-      is Delta-0 on all five — MIN over three anchors changed the BINDING denominator on
-      V and WU (sector, not risk-free) without changing a rung. 8 of 20 cells move
-      overall; 5 of those 8 are the growth lens.
-      PROPOSALS AWAITING RULING (one per lens + two agenda items):
-      - compounder: CONFIRM as-is (prototype, Delta-0).
-      - cyclical: TRAILING basis + keep the peak/rollover HARD GATE as a cap at 2.
-        Load-bearing evidence: on FORWARD, MU scores 5 (maximally cheap, all anchors
-        agreeing) at a cycle peak — the 2018 signature; on TRAILING it scores 3 raw with
-        own-history already dissenting. Both end at 2 once the gate fires, so the basis
-        choice is about the FAILURE MODE: with no trajectory read, forward hands the
-        model a 5 and trailing a 3.
-      - growth: DO NOT ARM on this mapping. Live lens scores EV/Revenue gated by
-        Rule-of-40 (a growth-QUALITY instrument); the panel scores EBITDA yield (a
-        PROFITABILITY instrument). 4 of 5 move up, two by two rungs. That is an
-        instrument swap, not a recalibration. Preferred alternative: keep Rule-of-40 x
-        EV/Rev and let the rate shift the EV/Rev THRESHOLD. Needs its own dark pass.
-      - standard: CONFIRM (EBITDA yield, default ladder, Delta-0 on 4 of 5) — but NO
-        golden ticker is natively standard-lens, so all evidence is counterfactual.
-      - bank: THE PANEL DOES NOT FIT. Recommend a different instrument: P/B vs justified
-        P/B = ROE/CoE, CoE = 10Y + beta x ERP(4.5pp). Still rate-anchored via CoE. No
-        bank name exists in the golden five; recommend ruling the mechanism now and
-        NOT arming in D-4 until a bank ticker is added and dark-calibrated.
-      - (a) INDEPENDENCE-NARROWED: recommend FLAG ONLY, no score effect. Decisive
-        measurement: 17 of 20 cells (85%) are independence-narrowed, so a one-rung
-        haircut would be a global ladder recalibration through a side door, not a
-        degraded-case adjustment. Narrowing means WE KNOW LESS, and the honest response
-        is to say so — same shape as the R1 symmetric-gating ruling.
-      - (b) EXCHANGE-SCOPED SECTOR P/E: recommend PRIMARY-LISTING CONVENTION (current
-        behaviour, documented). The ~0.33pp artifact is a third of the narrowest rung and
-        flips ZERO scores in the golden five; a cap-weighted blend needs constituent data
-        FMP does not serve in the snapshot.
-  D-4 arm per lens on those rulings; golden-five re-baseline as a REVIEWED DIFF, not an
-      equality assertion — unlike EDGAR, "no score moved" cannot be the success criterion.
+  D-3 DONE 2026-08-09 + ALL SEVEN RULINGS ISSUED. Report docs/d3-lenses.md (+ .json).
+      RULINGS (permanent unless re-ruled):
+      1. COMPOUNDER — confirmed as-is. ARMED at D-4.
+      2. CYCLICAL — TRAILING basis + hard gate as a CAP AT 2. ARMED at D-4. Rationale on
+         record: forward unanimity at a cycle peak is the 2018 signature; the gate sets
+         the FAILURE MODE because peak-margin denominators invalidate rung geometry.
+      3. GROWTH — panel mapping REJECTED PERMANENTLY. PRINCIPLE ON RECORD: LENSES KEEP
+         THEIR INSTRUMENTS, THE RATE SHIFTS THRESHOLDS, NOT MEASURES. Growth does NOT
+         arm at D-4. Rate-shifted EV/Rev dark pass APPROVED and DONE — see D-4 below.
+      4. STANDARD — ARMED at D-4 WITH A TRIPWIRE: the FIRST production eval scoring
+         through the standard lens is reported to Vic with its full panel readout before
+         its result is treated as validated. No golden ticker is natively standard-lens,
+         so that first live case is the only real evidence the mapping will have had.
+      5. BANK — mechanism RULED: P/B vs justified P/B = ROE/CoE, CoE = 10Y + beta x ERP.
+         NOT ARMED. JPM added as sixth golden ticker (see D-4). Bank arms only after a
+         calibration report and a further ruling.
+      6. INDEPENDENCE-NARROWED — FLAG ONLY, no score effect. Rationale: 17 of 20 readings
+         (85%) were independence-narrowed, so a haircut would be a global ladder
+         recalibration through a side door, not a degraded-case adjustment.
+      7. EXCHANGE-SCOPED SECTOR P/E — PRIMARY-LISTING CONVENTION, documented.
+         REVISIT TRIGGER ON RECORD: any golden spread landing within 0.33pp of a rung
+         boundary. (Today none does; the artifact flips zero scores.)
+  D-4 DONE 2026-08-09 — ARMED compounder + cyclical + standard. Report docs/d4-arming.md,
+      records docs/d4-diff.json (before/after, 25 cells) + docs/d4-arming.json.
+      REVIEWED DIFF: 3 of 25 cells moved, and ALL FIVE NATIVE CELLS ARE UNCHANGED. Every
+      move is a counterfactual forced-lens cell (NOW cyclical 2->1, NOW standard 1->2,
+      WU cyclical 5->4). NO E(R) AND NO GRADE MOVES FROM THIS ARMING.
+      What changed without crossing a rung: MU cyclical now BINDS ON OWN_HISTORY
+      (-0.65pp) — the founding case, with the peak gate capping at 2 on top; V and WU
+      compounder bind on SECTOR (were risk-free-only); WU compounder now carries
+      SECULAR-DECLINE-FCF-YIELD at a sector-bound +12.61pp.
+      Offline fixture baseline: scores unchanged, gained PANEL-NARROWED-MARKET-ONLY
+      (fixture calls have no sector snapshot / no EDGAR, so armed lenses fall back to a
+      risk-free-only panel and the flag is that fallback declaring itself). PRE_D4_SCORES
+      kept in tests/test_pillars.py so the diff stays auditable from the test file.
+      BUG FOUND AND FIXED WHILE ARMING: threading the panel from the boundaries left
+      panel=None for DIRECT callers of a lens function, and the compounder then skipped
+      its whole FCF branch and silently dropped SECULAR-DECLINE-FCF-YIELD. The
+      risk-free-only fallback now lives inside _panel_score, so a lens behaves the same
+      whether entered through the dispatcher or called directly.
+      RENAME: run_dark_panel -> build_panel. It is load-bearing now (armed lenses score
+      off it) and its broad except no longer claims "evaluation unaffected" — it says it
+      degrades to risk-free-only, which is flagged, never rate-blind.
+      GROWTH DARK PASS (ruling 3) — NOT ARMED, awaiting Vic. Mechanism: EV/Rev thresholds
+      multiplied by k = (R0 + ERP) / (R + ERP), R0=4.0, ERP=4.5, clamped [0.60, 1.80].
+      Delta ZERO on all five at the live 4.69% (k=0.925), but genuinely rate-sensitive:
+      at ZIRP every name gains a rung; above 6% NOW falls to the floor; WU invariant
+      (0.88x EV/Rev is cheap in any regime). OPEN QUESTION FOR THE RULING: R0=4.0 is a
+      JUDGEMENT, not a measurement — it sets where k=1.
+  JPM — SIXTH GOLDEN TICKER, BANK-LENS CALIBRATION INSTRUMENT (ruled 2026-08-09).
+      CIK 0000019617, SIC 6021, NYSE. Lens confirmed 'bank'. EXPLICITLY NOT A HOLDING:
+      absent from tickers.txt on purpose and PINNED so by
+      test_jpm_is_not_in_the_batch_universe. Lives in CALIBRATION_CIKS, held to
+      resolved-xor-reason but NOT to test_core_fields_resolve.
+      E-2 ONBOARDING: 9/19 resolved. TWO TAG MIGRATIONS FOUND (actionable, NOT fixed —
+      extending a chain changes EDGAR resolution for every ticker and feeds the armed
+      cross-check, so it is E-2 work under its own ruling):
+        - cash: CashAndCashEquivalentsAtCarryingValue ABANDONED 2018-12-31 (stale 2738d);
+          JPM now files the bank-specific CashAndDueFromBanks, current to 2026-06-30.
+        - long_term_debt: LongTermDebt abandoned ~12y ago (stale 4383d); now
+          LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities.
+      test_jpm_cash_is_withheld_by_the_stale_gate is EXPECTED TO FAIL when the chain is
+      extended — that failure is the signal the fix landed.
+      Accepted limits (structural, like WU's): unclassified balance sheet so no
+      current_assets/current_liabilities and no current_ratio; no cost_of_revenue or
+      gross_profit (a bank has none); no OperatingIncomeLoss.
+      BANK INSTRUMENT CALIBRATED: P/B 2.66, ROE 17.81%, beta 0.977, CoE 9.09%,
+      justified P/B 1.96, P/B-justified +0.70 (~36% premium; excess ROE +8.7pp). Every
+      input present — unlike the golden five, where beta on a cyclical (MU 2.19) inflated
+      CoE into nonsense. STILL MISSING FOR ARMING: a LADDER. One calibration point cannot
+      set rungs; would want several banks spanning the quality range (high-ROE trust bank,
+      low-ROE regional, ideally one below book). Universe decision — Vic's.
 - BLAST RADIUS, why this is not EDGAR: this is the first change that can move a SCORE.
   score -> avg_score -> synthesis prompt -> E(R) -> grade. EDGAR could only ever move a
   confidence label and a failure there degraded to 'medium'. A failure here moves grades.

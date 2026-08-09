@@ -26,7 +26,7 @@ except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
 from adapters.fmp_adapter import fetch_fmp, fetch_sector_pe
-from core.valuation_anchors import run_dark_panel, run_dark_lens
+from core.valuation_anchors import build_panel, run_dark_lens
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
@@ -171,7 +171,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
 
     # Phase D-0 DARK: measure the three valuation anchors and log the spreads.
     # Applies nothing — no Prov, score, E(R) or grade can move.
-    _panel = run_dark_panel(yf, fred, edgar,
+    _panel = build_panel(yf, fred, edgar,
                             fetch_sector_pe(yf.exchange or "NASDAQ") if not fixture_mode else {},
                             lens)
 
@@ -181,7 +181,7 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     print(_divider("="))
 
     try:
-        pillars = score_all(yf, edgar, fred, lens)
+        pillars = score_all(yf, edgar, fred, lens, panel=_panel)
     except RateUnavailable as e:
         # Mandatory-rate ruling: refuse loudly rather than print a rate-blind scorecard.
         # Distinct exit code (3) so a caller can tell a policy REFUSAL from a crash (1).

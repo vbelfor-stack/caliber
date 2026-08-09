@@ -52,7 +52,7 @@ def probe_ticker(ticker: str, fred: Any, log) -> Dict[str, Any]:
 
     scores, rows = [], []
     for lens in LENSES:
-        live = score_valuation(yf, fred, lens)          # the REAL live scorer
+        live = score_valuation(yf, fred, lens, panel=panel)   # REAL live scorer, full panel
         dark = dark_lens_score(panel, lens, live_score=live.score,
                                peak_warning=peak_warning)
         scores.append(dark)

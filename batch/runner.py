@@ -41,7 +41,7 @@ from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
-from core.valuation_anchors import run_dark_panel, run_dark_lens
+from core.valuation_anchors import build_panel, run_dark_lens
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
@@ -201,12 +201,12 @@ def run_single_ticker(
         else:
             from adapters.fmp_adapter import fetch_sector_pe
             sector_pe = fetch_sector_pe(yf.exchange or "NASDAQ")
-        _panel = run_dark_panel(yf, fred, edgar, sector_pe, lens, log=_log)
+        _panel = build_panel(yf, fred, edgar, sector_pe, lens, log=_log)
 
         # RateUnavailable is deliberately NOT caught here — it must reach the dedicated
         # handler below, not the broad `except Exception` that reports operational DOA.
         # A policy refusal filed as a crash is exactly the conflation D-2 removes.
-        pillars = score_all(yf, edgar, fred, lens)
+        pillars = score_all(yf, edgar, fred, lens, panel=_panel)
         tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
 
         # Phase D-3 DARK: log the would-be panel score beside the live one.

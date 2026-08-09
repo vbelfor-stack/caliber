@@ -394,36 +394,52 @@ def test_all_pillar_rationales_within_limit(mu_yf, mu_edgar, fred, mu_lens):
         )
 
 
-# ── D-1: golden valuation scores must not move under the helper extraction ───
-# D-1 is a pure refactor. Unlike D-3/D-4 (where a moved score is the POINT and the
-# re-baseline is a reviewed diff), here ANY movement is a regression. These values were
-# captured from the pre-extraction code and must be edited only by a ruling that
-# deliberately changes scoring.
+# ── Golden valuation baseline — REVIEWED DIFF at D-4 (2026-08-09) ────────────
+# D-1 was a pure refactor and these values did not move. D-4 ARMED panel anchoring on
+# the compounder, cyclical and standard lenses, which CAN move a score — so this table
+# is a reviewed baseline, not an invariant. Any future edit needs the same treatment:
+# a measured before/after, not a convenient rewrite.
+#
+# WHAT THE D-4 DIFF ACTUALLY DID TO THESE SIX CELLS: every SCORE is unchanged. The only
+# change is the added PANEL-NARROWED-MARKET-ONLY flag, which is correct and informative
+# here — these are FIXTURE calls with no sector snapshot and no EDGAR, so the armed
+# lenses fall back to a risk-free-only panel. The flag is the fallback declaring itself
+# (independence-narrowed ruling: FLAG ONLY, no score effect), and its presence in the
+# offline baseline is exactly the visibility that ruling was meant to buy.
+
+_NARROWED = "PANEL-NARROWED-MARKET-ONLY"
 
 GOLDEN_VALUATION = [
     # (ticker, lens, 10Y rate, score, flags)
-    ("MU",   "cyclical",   0.00, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"]),
-    ("MU",   "cyclical",   4.69, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"]),
-    ("GOOG", "compounder", 0.00, 3, []),
-    ("GOOG", "compounder", 4.69, 1, ["VERY-RICH-VS-RISK-FREE"]),
-    ("V",    "compounder", 0.00, 5, []),
-    ("V",    "compounder", 4.69, 2, ["RICH-VS-RISK-FREE"]),
+    ("MU",   "cyclical",   0.00, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP", _NARROWED]),
+    ("MU",   "cyclical",   4.69, 2, ["CYCLE-PEAK-MARGINS", "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP", _NARROWED]),
+    ("GOOG", "compounder", 0.00, 3, [_NARROWED]),
+    ("GOOG", "compounder", 4.69, 1, ["VERY-RICH-VS-RISK-FREE", _NARROWED]),
+    ("V",    "compounder", 0.00, 5, [_NARROWED]),
+    ("V",    "compounder", 4.69, 2, ["RICH-VS-RISK-FREE", _NARROWED]),
 ]
+
+# The pre-D-4 scores, kept so the diff is auditable from the test file itself.
+PRE_D4_SCORES = {("MU", 0.00): 2, ("MU", 4.69): 2, ("GOOG", 0.00): 3,
+                 ("GOOG", 4.69): 1, ("V", 0.00): 5, ("V", 4.69): 2}
 
 
 @pytest.mark.parametrize("ticker,lens,rate,score,flags", GOLDEN_VALUATION)
-def test_d1_golden_valuation_score_unchanged(ticker, lens, rate, score, flags):
+def test_d4_golden_valuation_baseline(ticker, lens, rate, score, flags):
     yf = fetch_fixture(ticker, fixture_path=YF_FIXTURES / f"{ticker}.json")
     got_lens = select_lens(yf.sector, yf.industry, yf.sic)
     assert got_lens == lens, f"{ticker} lens drifted: {got_lens} != {lens}"
     result = score_valuation(yf, _make_fred(rate), got_lens)
     assert result.score == score, (
-        f"D-1 must not move a golden score. {ticker} @10Y={rate}: "
-        f"expected {score}, got {result.score}"
+        f"golden score moved. {ticker} @10Y={rate}: expected {score}, got {result.score}. "
+        f"If deliberate, re-baseline with a measured before/after — never edit to fit."
     )
     assert sorted(result.flags) == sorted(flags), (
-        f"D-1 must not move golden flags. {ticker} @10Y={rate}: "
-        f"expected {flags}, got {result.flags}"
+        f"golden flags moved. {ticker} @10Y={rate}: expected {flags}, got {result.flags}"
+    )
+    assert result.score == PRE_D4_SCORES[(ticker, rate)], (
+        f"D-4 arming was measured NOT to move any of these six scores; only the "
+        f"PANEL-NARROWED flag was added. {ticker} @10Y={rate} moved — investigate."
     )
 
 
@@ -442,11 +458,15 @@ def test_d1_rate_sensitivity_survives_extraction():
 
 def test_d1_no_duplicate_ladder_left_in_pillars():
     """CLAUDE.md: never add duplicate logic. The extraction is only real if the inline
-    ladder is GONE — a surviving copy would drift from the shared one at D-3."""
+    ladder is GONE — a surviving copy would drift from the shared one.
+
+    D-4 moved the compounder one level further out: it now reaches the ladder through
+    _panel_score -> dark_lens_score -> score_yield_spread, so it consumes the panel
+    rather than calling the helper directly. The no-inline-ladder rule is unchanged."""
     import inspect
     from core.pillars import _valuation_compounder
     src = inspect.getsource(_valuation_compounder)
-    assert "score_yield_spread" in src, "compounder must consume the shared helper"
+    assert "_panel_score" in src, "compounder must consume the shared panel path"
     for literal in ('"RICH-VS-RISK-FREE"', '"VERY-RICH-VS-RISK-FREE"'):
         assert literal not in src, (
             f"inline ladder flag {literal} still hardcoded in _valuation_compounder — "

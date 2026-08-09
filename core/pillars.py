@@ -21,7 +21,8 @@ from adapters.base import Confidence, Prov, PillarResult, min_conf, missing_prov
 from adapters.edgar_adapter import EdgarData
 from adapters.fred_adapter import FredData
 from core.datatypes import TickerData
-from core.valuation_anchors import score_yield_spread
+from core.valuation_anchors import (ValuationPanel, compute_panel,
+                                    dark_lens_score, score_yield_spread)
 
 TODAY_STR = __import__("datetime").date.today().isoformat()
 
@@ -445,13 +446,34 @@ class RateUnavailable(Exception):
     """
 
 
-def score_valuation(yf: TickerData, fred: FredData, lens: str) -> PillarResult:
+# D-4 ARMED 2026-08-09 on Vic's D-3 rulings. These three lenses derive their score from
+# the valuation panel (MIN across available anchors) instead of a fixed absolute ladder.
+#   growth — panel mapping REJECTED PERMANENTLY. Ruling principle: LENSES KEEP THEIR
+#            INSTRUMENTS, THE RATE SHIFTS THRESHOLDS, NOT MEASURES. Its rate-shifted
+#            EV/Revenue mechanism is on a separate dark pass and is NOT armed.
+#   bank   — mechanism ruled (P/B vs justified P/B) but NOT armed: no calibration exists
+#            until JPM is onboarded and dark-calibrated.
+ARMED_PANEL_LENSES = ("compounder", "cyclical", "standard")
+
+
+def score_valuation(
+    yf: TickerData,
+    fred: FredData,
+    lens: str,
+    panel: "Optional[ValuationPanel]" = None,
+) -> PillarResult:
     """Dispatch to lens-specific valuation scorer.
 
     Refuses outright without a risk-free rate — see RateUnavailable. The check is HERE,
-    ahead of the dispatch, because it binds every lens: only the compounder consumes the
-    rate as a spread today, but the other four print it, and D-3 makes them all
-    rate-anchored. A per-lens check would silently exempt whichever lens forgot it.
+    ahead of the dispatch, because it binds every lens.
+
+    `panel` carries the sector and own-history anchors, which need EDGAR and the FMP
+    sector snapshot — neither of which this module may fetch (pillars must stay pure and
+    offline). The evaluation boundaries build it and pass it down. When it is absent the
+    armed lenses fall back to a RISK-FREE-ONLY panel built from `fred` alone: still
+    correct, but a 1-anchor panel, and it says so via the PANEL-NARROWED flag rather than
+    pretending to a breadth it does not have. For the compounder that fallback is exactly
+    the pre-D-4 behaviour, which is why the D-1 golden values are unchanged by arming.
     """
     if fred.rate_10y.is_missing():
         raise RateUnavailable(
@@ -462,14 +484,44 @@ def score_valuation(yf: TickerData, fred: FredData, lens: str) -> PillarResult:
             f"confidence={fred.rate_10y.confidence})"
         )
     if lens == "cyclical":
-        return _valuation_cyclical(yf, fred)
+        return _valuation_cyclical(yf, fred, panel)
     if lens == "compounder":
-        return _valuation_compounder(yf, fred)
+        return _valuation_compounder(yf, fred, panel)
     if lens == "bank":
         return _valuation_bank(yf, fred)
     if lens == "growth":
         return _valuation_growth(yf, fred)
-    return _valuation_standard(yf, fred)
+    return _valuation_standard(yf, fred, panel)
+
+
+def _panel_score(yf, fred, panel, lens: str, peak_warning: Optional[str] = None):
+    """The armed panel verdict for one lens: (DarkLensScore | None).
+
+    Thin wrapper so every armed lens reaches the aggregation the same way — MIN across
+    available anchors, RULED permanent — and so the narrowing flags are emitted from one
+    place rather than re-derived per lens.
+
+    THE FALLBACK LIVES HERE, not in score_valuation, so a lens function called DIRECTLY
+    behaves identically to one reached through the dispatcher. When it lived upstream, a
+    direct call left panel=None and the lens silently lost its whole scoring path — the
+    compounder fell through to EV/EBITDA and stopped emitting SECULAR-DECLINE-FCF-YIELD.
+    A guard that only works when entered by the front door is not a guard.
+    """
+    if panel is None:
+        panel = compute_panel(yf, fred, None, {}, lens)   # risk-free-only fallback
+    return dark_lens_score(panel, lens, peak_warning=peak_warning)
+
+
+def _panel_flags(ps) -> List[str]:
+    """Narrowing flags, FLAG-ONLY per the independence-narrowed ruling (2026-08-09).
+
+    17 of 20 measured readings were independence-narrowed, so a score haircut would have
+    been a global ladder recalibration through a side door. These flags change no score;
+    they record that the panel was thinner than three independent anchors.
+    """
+    if ps is None:
+        return []
+    return [f for f in ps.flags if f.startswith("PANEL-NARROWED")]
 
 
 def _rate_note(fred: FredData) -> str:
@@ -517,11 +569,19 @@ def _cycle_position_from_trajectory(yf: TickerData) -> tuple:
         return ("unknown", None)
 
 
-def _valuation_cyclical(yf: TickerData, fred: FredData) -> PillarResult:
+def _valuation_cyclical(yf: TickerData, fred: FredData, panel=None) -> PillarResult:
     """
-    Cyclical lens: normalize to mid-cycle earnings.
-    Cycle position derived from trajectory tag, NOT TTM level alone (per spec).
-    Golden test (MU): low forward PE at extreme margins = SELL signal, not cheap.
+    Cyclical lens — D-4 ARMED: TRAILING earnings yield vs the panel, plus a HARD GATE.
+
+    BASIS RULED TRAILING (2026-08-09). On a forward basis MU scores 5 — maximally cheap,
+    every anchor agreeing — at a cycle peak; that unanimity IS the 2018 signature. On
+    trailing the same name scores 3 raw with own-history already dissenting. Both end at
+    2 once the gate fires, so the basis choice is really about the FAILURE MODE: with no
+    trajectory read available, forward hands the model a 5 and trailing a 3.
+
+    GATE, NOT LADDER (ruled): at peak/rollover margins the denominator itself is about to
+    change, so no rung geometry over the current E is meaningful. The gate CAPS at 2 and
+    can never lift a score.
     """
     flags: List[str] = []
     inputs: List[Prov] = [yf.trailing_pe, yf.forward_pe, yf.gross_margin, fred.rate_10y]
@@ -534,39 +594,33 @@ def _valuation_cyclical(yf: TickerData, fred: FredData) -> PillarResult:
             flags.append("CYCLE-PEAK-MARGINS")
 
     score = 3
-    rationale_parts = [f"Cyclical/mid-cycle. Cycle position: {cycle_pos}."]
+    rationale_parts = [f"Cyclical. Cycle: {cycle_pos}."]
 
-    if not yf.forward_pe.is_missing():
-        fpe = yf.forward_pe.value
+    ps = _panel_score(yf, fred, panel, "cyclical", peak_warning=warn_type)
+    if ps is not None and ps.panel_score is not None:
+        score = ps.panel_score
+        flags.extend(f for f in ps.flags if f.startswith(("RICH", "VERY-RICH")))
+        flags.extend(_panel_flags(ps))
+        rationale_parts.append(
+            f"Trailing earnings yield vs {ps.binding_anchor} "
+            f"({ps.binding_spread:+.1f}pp)."
+        )
+        if warn_type == "peak":
+            flags.append("LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP")
+            rationale_parts.append(
+                "Peak-cycle earnings: low multiple is a sell signal, not cheap.")
+        elif warn_type == "rollover":
+            flags.append("MARGINS-CONTRACTING-EARNINGS-DECLINING")
+            rationale_parts.append(
+                "Margins contracting; declining earnings make a low multiple misleading.")
+    else:
+        rationale_parts.append("Trailing earnings yield unavailable.")
         if warn_type == "peak":
             flags.append("LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP")
             score = 2
-            rationale_parts.append(
-                f"Forward PE {fpe:.1f}x reflects peak-cycle earnings estimates; "
-                f"mid-cycle normalized multiple is materially higher. "
-                f"Low multiple is a sell signal, not cheap."
-            )
         elif warn_type == "rollover":
             flags.append("MARGINS-CONTRACTING-EARNINGS-DECLINING")
             score = 2
-            rationale_parts.append(
-                f"Forward PE {fpe:.1f}x at contracting margins; "
-                f"declining earnings make low multiple misleading."
-            )
-        else:
-            if fpe < 12:
-                score = 5
-            elif fpe < 17:
-                score = 4
-            elif fpe < 25:
-                score = 3
-            elif fpe < 35:
-                score = 2
-            else:
-                score = 1
-            rationale_parts.append(f"Forward PE {fpe:.1f}x at {cycle_pos} cycle.")
-    else:
-        rationale_parts.append("Forward PE unavailable.")
 
     rationale_parts.append(_rate_note(fred))
     confidence = min_conf(*[p for p in inputs if not p.is_missing()])
@@ -582,7 +636,7 @@ def _valuation_cyclical(yf: TickerData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_compounder(yf: TickerData, fred: FredData) -> PillarResult:
+def _valuation_compounder(yf: TickerData, fred: FredData, panel=None) -> PillarResult:
     """
     Quality compounder lens (Visa, payments, exchanges, GOOG).
     NOT P/TBV — book value is meaningless for asset-light networks.
@@ -603,26 +657,27 @@ def _valuation_compounder(yf: TickerData, fred: FredData) -> PillarResult:
         and yf.revenue_growth.value < 0.03   # <3% trailing YoY = not meaningfully growing
     )
 
-    # FCF yield vs 10Y rate (equity risk premium proxy)
-    if not yf.fcf_yield.is_missing() and not fred.rate_10y.is_missing():
-        fy = yf.fcf_yield.value * 100
-        r = fred.rate_10y.value
-        rated = score_yield_spread(fy, r)   # shared ladder — see core.valuation_anchors
-        spread = rated.spread
+    # D-4 ARMED: FCF yield vs the PANEL (MIN across available anchors) rather than the
+    # risk-free rate alone. The rungs are unchanged — measured delta-0 on all five golden
+    # tickers — but the binding denominator may now be sector or own history, and the
+    # rationale names which one it was.
+    ps = _panel_score(yf, fred, panel, "compounder")
+    if ps is not None and ps.panel_score is not None:
+        spread = ps.binding_spread
 
         if _growth_weak and spread >= 1:
             # High FCF yield + no growth = market pricing secular decline, not a bargain
             flags.append("SECULAR-DECLINE-FCF-YIELD")
             parts.append(
-                f"FCF yield {fy:.1f}% vs 10Y {r:.2f}% ({spread:+.1f}% spread). "
-                f"Elevated yield reflects secular-decline pricing, not cheapness — "
-                f"revenue growth is flat/negative."
+                f"FCF yield vs {ps.binding_anchor} ({spread:+.1f}pp). Elevated yield "
+                f"reflects secular-decline pricing, not cheapness — growth flat/negative."
             )
         else:
-            parts.append(f"FCF yield {fy:.1f}% vs 10Y {r:.2f}% (spread {spread:+.1f}%).")
+            parts.append(f"FCF yield vs {ps.binding_anchor} ({spread:+.1f}pp).")
 
-        score = rated.score
-        flags.extend(rated.flags)
+        score = ps.panel_score
+        flags.extend(f for f in ps.flags if f.startswith(("RICH", "VERY-RICH")))
+        flags.extend(_panel_flags(ps))
     elif not yf.ev_to_ebitda.is_missing():
         ev_eb = yf.ev_to_ebitda.value
         parts.append(f"EV/EBITDA {ev_eb:.1f}x.")
@@ -732,7 +787,7 @@ def _valuation_growth(yf: TickerData, fred: FredData) -> PillarResult:
     )
 
 
-def _valuation_standard(yf: TickerData, fred: FredData) -> PillarResult:
+def _valuation_standard(yf: TickerData, fred: FredData, panel=None) -> PillarResult:
     """Standard lens: EV/EBITDA, P/E, FCF yield."""
     flags: List[str] = []
     inputs: List[Prov] = [yf.ev_to_ebitda, yf.trailing_pe, yf.fcf_yield, fred.rate_10y]
@@ -740,7 +795,19 @@ def _valuation_standard(yf: TickerData, fred: FredData) -> PillarResult:
     parts = ["Standard valuation lens."]
     scored = False
 
-    if not yf.ev_to_ebitda.is_missing():
+    # D-4 ARMED: EBITDA yield vs the PANEL. The mapping is an IDENTITY, not a swap —
+    # EV/EBITDA is this lens's own primary input and ebitda_yield is its reciprocal — which
+    # is why arming it was ruled safe on counterfactual evidence alone.
+    ps = _panel_score(yf, fred, panel, "standard")
+    if ps is not None and ps.panel_score is not None:
+        if not yf.ev_to_ebitda.is_missing():
+            parts.append(f"EV/EBITDA {yf.ev_to_ebitda.value:.1f}x.")
+        parts.append(f"EBITDA yield vs {ps.binding_anchor} ({ps.binding_spread:+.1f}pp).")
+        score = ps.panel_score
+        flags.extend(f for f in ps.flags if f.startswith(("RICH", "VERY-RICH")))
+        flags.extend(_panel_flags(ps))
+        scored = True
+    elif not yf.ev_to_ebitda.is_missing():
         ev_eb = yf.ev_to_ebitda.value
         parts.append(f"EV/EBITDA {ev_eb:.1f}x.")
         if ev_eb < 10:
@@ -795,12 +862,19 @@ def score_all(
     edgar: EdgarData,
     fred: FredData,
     lens: str,
+    panel=None,
 ) -> List[PillarResult]:
-    """Score all five pillars. Returns list in canonical order."""
+    """Score all five pillars. Returns list in canonical order.
+
+    `panel` is the D-4 valuation panel, built at the evaluation boundary (it needs the
+    FMP sector snapshot, which this module may not fetch). Omitting it does not break
+    scoring — the armed lenses fall back to a risk-free-only panel and flag the
+    narrowing — but a full-breadth score requires it.
+    """
     return [
         score_business_quality(yf, lens),
         score_financial_health(yf, lens),
         score_management(yf, lens),
         score_growth(yf, edgar, lens),
-        score_valuation(yf, fred, lens),
+        score_valuation(yf, fred, lens, panel=panel),
     ]

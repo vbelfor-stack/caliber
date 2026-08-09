@@ -421,6 +421,19 @@ class TestEdgarXbrlExtraction:
 # ── E-2: canonical field resolution ──────────────────────────────────────────
 
 GOLDEN_CIKS = ("MU", "GOOG", "V", "NOW", "WU")
+
+# JPM — sixth golden ticker, added 2026-08-09 by ruling as the BANK-LENS CALIBRATION
+# INSTRUMENT. Explicitly NOT a holding: it is absent from tickers.txt (the batch universe)
+# on purpose, and exists so the bank lens has a real bank to calibrate against instead of
+# the counterfactual forced-lens cells D-3 had to argue from.
+#
+# It is held to the resolved-xor-reason invariant like every other golden name, but NOT to
+# test_core_fields_resolve, because its `cash` is withheld — see the E-2 onboarding
+# findings in docs/d4-arming.md. That is an OPEN FINDING awaiting a ruling on the synonym
+# chain, deliberately not patched here: adding a bank-specific tag changes EDGAR field
+# resolution for every ticker, which is E-2 work, not D-4 work.
+CALIBRATION_CIKS = ("JPM",)
+ALL_EDGAR_CIKS = GOLDEN_CIKS + CALIBRATION_CIKS
 _REASONS = {
     REASON_NO_TAG, REASON_STALE_TAG, REASON_SYNONYM_CONFLICT,
     REASON_AMBIGUOUS_PERIOD, REASON_TTM_UNAVAILABLE, REASON_DERIVE_INCOMPLETE,
@@ -443,7 +456,7 @@ class TestEdgarFieldResolution:
         fields = _fields("MU")
         assert set(fields) == {s.name for s in FIELD_SPECS}
 
-    @pytest.mark.parametrize("ticker", GOLDEN_CIKS)
+    @pytest.mark.parametrize("ticker", ALL_EDGAR_CIKS)
     def test_resolved_xor_reason(self, ticker):
         """The core invariant: a field carries a value or a typed reason, never both,
         never neither. A withheld field is never a partial or fabricated figure."""
@@ -726,3 +739,50 @@ class TestEdgarFieldResolution:
             if spec.derive and rf.concept and rf.concept.startswith("derived:"):
                 continue
             assert len(rf.trail) == len(spec.synonyms), f"{ticker}/{spec.name}"
+
+
+# ── JPM onboarding (D-4): the bank-lens calibration instrument ───────────────
+
+class TestJpmOnboarding:
+    def test_jpm_selects_the_bank_lens(self):
+        """The whole point of adding it. SIC 6021, Banks - Diversified."""
+        from core.lens_select import select_lens
+        from adapters.fmp_adapter import fetch_fmp
+        yf = fetch_fmp("JPM", fixture_path=FMP / "JPM.json")
+        edgar = fetch_edgar("JPM", fixture_path=EDGAR / "JPM.json")
+        assert edgar.sic == "6021"
+        assert select_lens(yf.sector, yf.industry, edgar.sic) == "bank"
+
+    def test_jpm_is_not_in_the_batch_universe(self):
+        """Calibration instrument, NOT a holding — ruled 2026-08-09. If it ever appears
+        in tickers.txt it starts consuming synthesis budget and producing E(R) for a
+        position nobody holds."""
+        universe = Path("tickers.txt").read_text(encoding="utf-8")
+        lines = [l.split("#")[0].strip().upper()
+                 for l in universe.splitlines() if l.split("#")[0].strip()]
+        assert "JPM" not in lines
+
+    def test_jpm_cash_is_withheld_by_the_stale_gate(self):
+        """OPEN FINDING, pinned so it cannot regress silently: JPM abandoned
+        CashAndCashEquivalentsAtCarryingValue in 2018 and now files the bank-specific
+        CashAndDueFromBanks. The gate correctly withholds rather than serving a
+        seven-year-old figure wearing a fresh label. This test SHOULD start failing when
+        the synonym chain is extended — that failure is the signal the fix landed."""
+        cash = _fields("JPM")["cash"]
+        assert not cash.is_resolved()
+        assert cash.reason == REASON_STALE_TAG
+
+    def test_jpm_unclassified_balance_sheet_yields_no_current_ratio(self):
+        """Same accepted data limit as WU: banks do not file AssetsCurrent /
+        LiabilitiesCurrent, so there is no working-capital view to compute."""
+        fields = _fields("JPM")
+        for name in ("current_assets", "current_liabilities"):
+            assert not fields[name].is_resolved()
+            assert fields[name].reason == REASON_NO_TAG
+
+    def test_jpm_core_earnings_fields_still_resolve(self):
+        """The bank instrument needs ROE and equity; those must be present even though
+        the balance-sheet and cash chains are not."""
+        fields = _fields("JPM")
+        for name in ("revenue", "net_income", "equity", "total_assets"):
+            assert fields[name].is_resolved(), f"JPM/{name}: {fields[name].reason}"

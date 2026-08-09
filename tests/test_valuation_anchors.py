@@ -19,7 +19,7 @@ from core.valuation_anchors import (
     ANCHOR_OWN_HISTORY, ANCHOR_RISK_FREE, ANCHOR_SECTOR, METRIC_EARNINGS_YIELD,
     METRIC_FCF_YIELD, METRIC_FORWARD_EARNINGS_YIELD, MIN_HISTORY_POINTS,
     _yield_from_multiple, compute_panel, own_history_earnings_yields, render_panel,
-    run_dark_panel, score_yield_spread,
+    build_panel, score_yield_spread,
 )
 
 FIXTURES = Path("tests/fixtures")
@@ -56,7 +56,8 @@ class TestDarkInvariant:
         assert edgar.financials.fields == edgar_before
 
     def test_runner_contains_its_own_failures(self):
-        """D-0 has no reach into any score, so a bug in it must not kill an evaluation."""
+        """D-4: build_panel is load-bearing, so a failure must degrade to the risk-free-
+        only fallback (flagged PANEL-NARROWED) rather than kill the evaluation."""
         class Exploding:
             ticker = "BOOM"
 
@@ -64,9 +65,9 @@ class TestDarkInvariant:
                 raise ValueError(f"boom on {name}")
 
         lines = []
-        assert run_dark_panel(Exploding(), None, None, {}, "cyclical",
-                              log=lines.append) is None
-        assert lines and "FAILED" in lines[0] and "evaluation unaffected" in lines[0]
+        assert build_panel(Exploding(), None, None, {}, "cyclical",
+                           log=lines.append) is None
+        assert lines and "FAILED" in lines[0] and "risk-free-only" in lines[0]
 
     def test_table_says_nothing_is_applied(self):
         assert "APPLIED=NOTHING" in render_panel(_panel("MU"))
