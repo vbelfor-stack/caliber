@@ -120,6 +120,16 @@ def _sum_debt(v: Dict[str, float]) -> Optional[float]:
     return v["long_term_debt"] + v["current_debt"]
 
 
+def _sum_debt_lease_inclusive(v: Dict[str, float]) -> Optional[float]:
+    """Debt on FMP's basis: filed debt plus the OPERATING lease liability.
+
+    Finance leases are deliberately excluded — they already sit inside the reported debt
+    totals, and adding them overshoots (MU 15.3% high, GOOG 13.9%).
+    """
+    base = _sum_debt(v)
+    return None if base is None else base + v.get("operating_lease_liability", 0.0)
+
+
 def _ratio(num: str, den: str) -> Callable[[Dict[str, float]], Optional[float]]:
     def f(v: Dict[str, float]) -> Optional[float]:
         return v[num] / v[den] if v[den] else None
@@ -164,9 +174,12 @@ COMPARISONS: Tuple[Comparison, ...] = (
     # R3(a) DARK: the same field satisfied by a directly-reported debt total where the
     # issuer files one. This is the only route to a total_debt row for WU, which files no
     # fresh current-portion tag at all.
-    Comparison("total_debt", ("total_debt_reported",), _sum_debt,
+    Comparison("total_debt", ("total_debt_reported",), _sum_debt_lease_inclusive,
                label="total_debt(reported)",
                input_alternatives=(("total_debt_reported",),),
+               optional=("operating_lease_liability",),
+               optional_missing_note="no operating-lease tag filed; gross debt vs FMP "
+                                     "lease-inclusive totalDebt",
                dark=True,
                basis_note="FMP totalDebt is annual balance-sheet; EDGAR is MRQ"),
     # R3(b), ARMED 2026-08-09: the same field read at the issuer's latest fiscal
@@ -181,10 +194,14 @@ COMPARISONS: Tuple[Comparison, ...] = (
                optional_missing_note="no ST-investment tag filed; cash-only vs FMP "
                                      "cash+ST-investments",
                period_basis="annual_fy", age_basis="alignment"),
-    Comparison("total_debt", ("long_term_debt", "current_debt"), _sum_debt,
+    Comparison("total_debt", ("long_term_debt", "current_debt"),
+               _sum_debt_lease_inclusive,
                label="total_debt@FY",
                input_alternatives=(("total_debt_reported",),
                                    ("long_term_debt", "current_debt")),
+               optional=("operating_lease_liability",),
+               optional_missing_note="no operating-lease tag filed; gross debt vs FMP "
+                                     "lease-inclusive totalDebt",
                period_basis="annual_fy", age_basis="alignment", dark=True),
     Comparison("operating_cashflow", ("operating_cashflow",),
                lambda v: v["operating_cashflow"],

@@ -336,7 +336,13 @@ class TestDarkComparisons:
         fields = edgar.financials.fields
         assert by_label["total_debt"].period_end == min(
             fields["long_term_debt"].period_end, fields["current_debt"].period_end)
-        assert by_label["total_debt(reported)"].period_end == fields["cash"].period_end
+        # The reported row is sourced independently — and ages from the oldest of ITS
+        # own inputs, which for MU is the lagging operating-lease tag, not the debt one.
+        assert by_label["total_debt(reported)"].period_end == min(
+            fields["total_debt_reported"].period_end,
+            fields["operating_lease_liability"].period_end)
+        assert "long_term_debt=" in by_label["total_debt"].edgar_inputs
+        assert "total_debt_reported=" in by_label["total_debt(reported)"].edgar_inputs
 
 
 class TestGoldenFiveOffline:
@@ -397,7 +403,8 @@ class TestGoldenFiveOffline:
         by_label = {(d.label or d.fmp_field): d
                     for d in compute_cross_check(edgar, yf, today="2026-08-09").deltas}
         assert by_label["total_debt"].verdict == VERDICT_NO_EDGAR
-        assert by_label["total_debt(reported)"].edgar_value == pytest.approx(2_697_200_000)
+        # Lease-inclusive per R-B: reported debt 2,697.2M + operating lease 225.7M.
+        assert by_label["total_debt(reported)"].edgar_value == pytest.approx(2_922_900_000)
 
     @pytest.mark.parametrize("ticker", ("MU", "GOOG", "NOW"))
     def test_matched_period_cash_is_identical_to_fmp(self, ticker):

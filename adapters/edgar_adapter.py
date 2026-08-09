@@ -136,6 +136,14 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
         ("DebtAndCapitalLeaseObligations", "us-gaap"),
         ("DebtLongtermAndShorttermCombinedAmount", "us-gaap"),
     ), conflict_check=False),
+    # R-B: FMP's totalDebt is lease-inclusive for most issuers. Measured at the fiscal
+    # year-end across the golden five, the gap between FMP and gross filed debt equals
+    # the OPERATING lease liability almost exactly (NOW and WU to the dollar, MU to
+    # 0.5%) — finance leases are already inside the reported debt totals and adding them
+    # overshoots. Same playbook as short_term_investments: an optional aligning leg.
+    FieldSpec("operating_lease_liability", "instant", (
+        ("OperatingLeaseLiability", "us-gaap"),
+    )),
     FieldSpec("equity", "instant", (
         ("StockholdersEquity", "us-gaap"),
         ("StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "us-gaap"),

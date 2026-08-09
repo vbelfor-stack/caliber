@@ -1,5 +1,5 @@
 {
-  "probed_at": "2026-08-09T00:08:27.467884+00:00",
+  "probed_at": "2026-08-09T00:30:48.979463+00:00",
   "ticker": "V",
   "cik": "0001403161",
   "submissions_shape": {
@@ -5893,6 +5893,98 @@
           "fp": "Q3",
           "form": "10-Q",
           "accession": "0001403161-17-000037"
+        }
+      ],
+      "OperatingLeaseLiability": [
+        {
+          "value": 913000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2025-09-30",
+          "fy": 2025,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-25-000089"
+        },
+        {
+          "value": 835000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2024-09-30",
+          "fy": 2024,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-24-000058"
+        },
+        {
+          "value": 518000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2023-09-30",
+          "fy": 2023,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-23-000099"
+        },
+        {
+          "value": 520000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2022-09-30",
+          "fy": 2022,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-22-000081"
+        },
+        {
+          "value": 574000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2021-09-30",
+          "fy": 2021,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-21-000060"
+        },
+        {
+          "value": 570000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-09-30",
+          "fy": 2020,
+          "fp": "FY",
+          "form": "10-K",
+          "accession": "0001403161-20-000070"
+        },
+        {
+          "value": 583000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-06-30",
+          "fy": 2020,
+          "fp": "Q3",
+          "form": "10-Q",
+          "accession": "0001403161-20-000048"
+        },
+        {
+          "value": 587000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2020-03-31",
+          "fy": 2020,
+          "fp": "Q2",
+          "form": "10-Q",
+          "accession": "0001403161-20-000028"
+        },
+        {
+          "value": 574000000.0,
+          "unit": "USD",
+          "start": null,
+          "end": "2019-12-31",
+          "fy": 2020,
+          "fp": "Q1",
+          "form": "10-Q",
+          "accession": "0001403161-20-000012"
         }
       ],
       "StockholdersEquity": [
