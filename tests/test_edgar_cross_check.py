@@ -18,7 +18,8 @@ from core.edgar_cross_check import (
     VERDICT_CONFLICT, VERDICT_NO_EDGAR, VERDICT_STALE_CAPPED,
     apply_report, compute_cross_check, run_cross_check,
     filing_freshness_flags, freshness_watch, issuer_filing_lag, issuer_period_cadence,
-    latest_fiscal_year_end, newest_filed_period, render_report, run_dark_cross_check,
+    _tracks_matched_period, latest_fiscal_year_end, newest_filed_period, render_report,
+    run_dark_cross_check,
 )
 
 FIXTURES = Path("tests/fixtures")
@@ -117,14 +118,17 @@ class TestArmedApplication:
                   if isinstance(p, Prov)}
         report = compute_cross_check(edgar, yf, today="2026-08-08")
         apply_report(report, yf)
-        for d in report.deltas:
-            if d.dark:
-                continue                        # covered by TestDarkComparisons
-            now = getattr(yf, d.fmp_field).confidence
-            if d.verdict in APPLICABLE_VERDICTS:
-                assert now == d.would_be_confidence
+        armed = [d for d in report.deltas if not d.dark]   # dark: TestDarkComparisons
+        for name in {d.fmp_field for d in armed}:
+            # A field may carry several armed rows (total_cash has an MRQ advisory and
+            # an @FY test); only an applicable one may have moved it.
+            movers = [d for d in armed if d.fmp_field == name
+                      and d.verdict in APPLICABLE_VERDICTS and d.would_change]
+            now = getattr(yf, name).confidence
+            if movers:
+                assert now == movers[0].would_be_confidence
             else:
-                assert now == before[d.fmp_field], f"{d.fmp_field} moved on {d.verdict}"
+                assert now == before[name], f"{name} moved with no applicable verdict"
 
     def test_symmetric_gate_survives_arming(self):
         """R1 is not merely a reporting nicety: with everything stale, arming writes
@@ -190,10 +194,11 @@ class TestDarkComparisons:
         """A dark row is marked 'd', never '*' — it cannot change anything yet."""
         _, _, report, _ = self._report("MU")
         rows = [ln for ln in render_report(report, applied=[]).splitlines()
-                if "total_cash@FY" in ln]
+                if "total_debt@FY" in ln]
         assert len(rows) == 1 and rows[0].startswith(" d")
 
-    @pytest.mark.parametrize("ticker,fy", [("MU", "2025-08-28"), ("GOOG", "2025-12-31")])
+    @pytest.mark.parametrize("ticker,fy", [("MU", "2025-08-28"), ("GOOG", "2025-12-31"),
+                                           ("V", "2025-09-30")])
     def test_matched_period_reads_the_fiscal_year_end(self, ticker, fy):
         """52/53-week filers drift, so the FY period is matched on proximity to the
         issuer's declared fiscal year-end, not on equality (MU lands 2025-08-28).
@@ -201,25 +206,90 @@ class TestDarkComparisons:
         The EDGAR side is asserted against the fixture's own facts at that period. The
         0.0%-vs-FMP identity this comparison exists for is a property of LIVE FMP, which
         serves the annual balance sheet; the recorded ticker fixtures hold MRQ values, so
-        it is verified in the live dark run rather than here."""
+        it is verified in the live run rather than here."""
         edgar, _, _, by_label = self._report(ticker)
         assert latest_fiscal_year_end(edgar) == fy
         row = by_label["total_cash@FY"]
         assert row.period_end == fy
-        assert row.age_days > FRESHNESS_THRESHOLD_DAYS      # yet not stale_capped:
-        assert row.verdict != VERDICT_STALE_CAPPED          # alignment gating
-        assert "gated on alignment" in row.note
 
         def at_fy(concept):
             return next(r["value"] for r in edgar.financials.concepts[concept]
                         if r["end"] == fy and not r.get("start"))
         fields = edgar.financials.fields
-        expected = at_fy(fields["cash"].concept) + at_fy(
-            fields["short_term_investments"].concept)
+        sti = fields["short_term_investments"]
+        expected = at_fy(fields["cash"].concept) + (
+            at_fy(sti.concept) if sti.is_resolved() else 0.0)
+        mrq = fields["cash"].value + (sti.value if sti.is_resolved() else 0.0)
         assert row.edgar_value == pytest.approx(expected)
-        assert row.edgar_value != pytest.approx(
-            fields["cash"].value + fields["short_term_investments"].value), \
+        assert row.edgar_value != pytest.approx(mrq), \
             "matched row must not be reading the MRQ figures"
+
+    def test_alignment_holds_when_the_primary_tracks_the_matched_period(self):
+        """R-A condition 3, satisfied: GOOG's recorded total_cash is its FY figure, so
+        the annual-vs-annual premise is live and the row is aged on alignment despite
+        being 220d old in absolute terms."""
+        _, _, _, by_label = self._report("GOOG")
+        row = by_label["total_cash@FY"]
+        assert row.age_days > FRESHNESS_THRESHOLD_DAYS
+        assert row.verdict == VERDICT_AGREE
+        assert "gated on alignment" in row.note
+
+    def test_alignment_revoked_when_the_primary_switches_to_mrq(self):
+        """R-A condition 3, violated — and caught at runtime rather than assumed.
+
+        MU's recorded total_cash is the MRQ figure, not the fiscal year-end one. The
+        annual-vs-annual premise is therefore false for it, alignment is revoked, the row
+        ages absolutely (345d) and caps. This is the exact failure the scope exists to
+        stop: corroborating an annual EDGAR figure against a quarterly FMP one."""
+        _, _, _, by_label = self._report("MU")
+        row = by_label["total_cash@FY"]
+        assert row.verdict == VERDICT_STALE_CAPPED
+        assert not row.would_change
+        assert "alignment revoked" in row.note and "aged absolutely" in row.note
+
+    def test_alignment_needs_the_two_periods_to_be_distinguishable(self):
+        """Fails closed: if the FY and MRQ figures are identical there is no evidence
+        about which one the primary is serving, so alignment is withheld."""
+        assert _tracks_matched_period(100.0, 100.0, 100.0) is False
+        assert _tracks_matched_period(100.0, None, 90.0) is False
+        assert _tracks_matched_period(100.0, 99.0, 80.0) is True
+        assert _tracks_matched_period(100.0, 80.0, 99.0) is False
+
+    def test_newer_fiscal_year_filed_revokes_alignment(self):
+        """The XBRL-LAG check still applies to alignment rows: matched periods say
+        nothing about whether a fresher matched PAIR already exists."""
+        edgar, yf = _pair("GOOG")
+        edgar.recent_10k = [FilingRef("10-K", "2027-02-04", "x", "d.htm",
+                                      report_date="2026-12-31")]
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        row = by_label["total_cash@FY"]
+        assert row.verdict == VERDICT_STALE_CAPPED
+        assert "FY 2026-12-31 filed but not yet in companyfacts" in row.note
+
+    def test_quarterly_lag_does_not_revoke_alignment(self):
+        """V is a quarter behind, which does NOT make its FY-2025 figures the wrong ones
+        to compare against an annual FMP field."""
+        edgar, yf = _pair("GOOG")
+        edgar.recent_10q = [FilingRef("10-Q", "2026-07-29", "x", "d.htm",
+                                      report_date="2026-06-30")]
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-08").deltas}
+        assert by_label["total_cash@FY"].verdict == VERDICT_AGREE
+
+    def test_contradicting_rows_on_one_field_apply_nothing(self):
+        """Two armed rows disagreeing about one field has no defensible answer, so it
+        takes neither and says so — resolving it by row order would be silent."""
+        edgar, yf = _pair("GOOG")
+        report = compute_cross_check(edgar, yf, today="2026-08-08")
+        by_label = {(d.label or d.fmp_field): d for d in report.deltas}
+        before = getattr(yf, "total_cash").confidence
+        # force the MRQ row to disagree with the armed @FY row
+        mrq = by_label["total_cash"]
+        mrq.verdict, mrq.would_be_confidence, mrq.dark = VERDICT_CONFLICT, "low", False
+        applied = apply_report(report, yf)
+        assert any(a.startswith("!CONTRADICTION total_cash") for a in applied)
+        assert getattr(yf, "total_cash").confidence == before
 
     def test_matched_period_input_not_filed_then_is_withheld(self):
         """Never silently substitute the MRQ figure for a period the issuer skipped."""
@@ -546,5 +616,9 @@ class TestFilingFreshnessFlags:
             edgar, yf, today="2026-08-08", lag_aware=True).deltas if not d.dark]
         assert any(d.would_be_confidence == "high" for d in aged_only)
         assert all(d.would_be_confidence != "high" for d in lag_aware)
-        assert all(d.age_days is None or d.age_days < FRESHNESS_THRESHOLD_DAYS
-                   for d in lag_aware if d.age_days is not None)
+        # Every cap here was the lag's doing, not the day-count's: each capped row is
+        # comfortably inside the 150d backstop.
+        capped = [d for d in lag_aware if d.verdict == VERDICT_STALE_CAPPED]
+        assert capped
+        assert all(d.age_days < FRESHNESS_THRESHOLD_DAYS
+                   for d in capped if d.age_days is not None)

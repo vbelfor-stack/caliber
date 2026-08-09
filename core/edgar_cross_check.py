@@ -83,11 +83,23 @@ class Comparison:
     re-read at the issuer's latest FISCAL YEAR END, for FMP fields served off the annual
     statements. Converts a permanent as-of advisory into a real like-for-like test."""
     age_basis: str = "absolute"
-    """'absolute' — days from the input's period-end to today (the armed semantic).
+    """'absolute' — days from the input's period-end to today (the default semantic).
     'alignment' — days between the two SIDES' periods, which is 0 for a matched-period
-    comparison. PROPOSED, dark pending ruling: it says a correctly-labelled annual figure
-    corroborating an annual FMP field launders nothing, since neither side claims to be
-    more recent than it is."""
+    comparison: a correctly-labelled annual figure corroborating an annual FMP field
+    launders nothing, since neither side claims to be more recent than it is.
+
+    APPROVED 2026-08-09, SCOPED (R-A). Alignment aging holds only while all three
+    conditions do:
+      1. the periods are matched          — period_basis == 'annual_fy'
+      2. the bases are proven identical   — any missing aligning input makes the row
+                                            advisory before the gate is ever reached
+      3. the primary's IN-USE value is still the matched-period figure
+    Condition 3 is a premise about someone else's feed, so it is re-checked at runtime on
+    every evaluation rather than trusted (see _tracks_matched_period). If FMP switches
+    total_cash to the MRQ balance sheet, the row silently reverts to absolute aging and
+    starts capping — which is the safe direction — instead of quietly corroborating an
+    annual figure against a quarterly one.
+    """
     dark: bool = False
     """Computed and logged, never applied. New comparison surface stays dark until the
     delta table it produces has been reviewed."""
@@ -157,17 +169,18 @@ COMPARISONS: Tuple[Comparison, ...] = (
                input_alternatives=(("total_debt_reported",),),
                dark=True,
                basis_note="FMP totalDebt is annual balance-sheet; EDGAR is MRQ"),
-    # R3(b): the same two fields read at the issuer's latest fiscal year-end, which is
-    # the basis FMP actually serves. The measures are proven identical there (EDGAR
-    # cash+ST-investments matched FMP to 0.0% for GOOG/MU/NOW), so a like-for-like test
-    # is possible where only an advisory was before. DARK pending ruling — both the
-    # comparison and its alignment-based age gate are new surface.
+    # R3(b), ARMED 2026-08-09: the same field read at the issuer's latest fiscal
+    # year-end, which is the basis FMP actually serves. The measures are proven identical
+    # there — EDGAR cash+ST-investments matched FMP to 0.0% on MU, GOOG and NOW — so this
+    # is a real like-for-like test where only a permanent advisory was possible before.
+    # Issuers with no ST-investment tag (V, WU) fall to the cash-only advisory and are
+    # never compared here.
     Comparison("total_cash", ("cash",),
                lambda v: v["cash"] + v.get("short_term_investments", 0.0),
                label="total_cash@FY", optional=("short_term_investments",),
                optional_missing_note="no ST-investment tag filed; cash-only vs FMP "
                                      "cash+ST-investments",
-               period_basis="annual_fy", age_basis="alignment", dark=True),
+               period_basis="annual_fy", age_basis="alignment"),
     Comparison("total_debt", ("long_term_debt", "current_debt"), _sum_debt,
                label="total_debt@FY",
                input_alternatives=(("total_debt_reported",),
@@ -483,6 +496,44 @@ def latest_fiscal_year_end(edgar: EdgarData) -> Optional[str]:
     return best
 
 
+def _tracks_matched_period(
+    fmp_value: float, matched_value: Optional[float], mrq_value: Optional[float]
+) -> bool:
+    """Is the primary's in-use value the MATCHED-period figure rather than the current one?
+
+    The runtime half of the alignment scope (R-A condition 3). Non-circular: it does not
+    ask whether FMP agrees with EDGAR, it asks WHICH OF TWO EDGAR PERIODS the FMP value
+    tracks. A feed serving the annual balance sheet sits closer to the fiscal year-end
+    figure than to the most recent quarter; one that has switched to MRQ does the
+    opposite, and that flip revokes alignment aging.
+
+    Fails CLOSED: when the two periods cannot be told apart — either counterpart missing,
+    or the two EDGAR figures identical — the premise is unverifiable and alignment is
+    withheld.
+    """
+    if matched_value is None or mrq_value is None:
+        return False
+    if matched_value == mrq_value:
+        return False
+    return abs(fmp_value - matched_value) < abs(fmp_value - mrq_value)
+
+
+def _newer_fiscal_year_filed(edgar: EdgarData, matched_fy: Optional[str]) -> Optional[str]:
+    """A 10-K covering a LATER fiscal year than the one we matched, per the submissions
+    index — i.e. newer annual data exists that companyfacts has not published.
+
+    The XBRL-LAG check still applies to alignment rows (R-A): matching periods says
+    nothing about whether a fresher matched pair is already available. A quarterly lag is
+    correctly ignored here — V being a quarter behind does not make its FY-2025 figures
+    the wrong ones to compare against an annual FMP field.
+    """
+    if not matched_fy:
+        return None
+    later = [ref.report_date for ref in edgar.recent_10k
+             if ref.report_date and ref.report_date > matched_fy]
+    return max(later) if later else None
+
+
 def _instant_at(
     concepts: Dict[str, List[Dict[str, Any]]], rf: ResolvedField, target_end: str
 ) -> Optional[float]:
@@ -617,6 +668,17 @@ def compute_cross_check(
         values, oldest, trail, missing, missing_opt = _gather_inputs(
             comp, fields, edgar.financials.concepts, match_period)
 
+        # The MRQ counterpart of a matched-period row, used only to re-check the
+        # alignment scope below — never compared against, never shown as the value.
+        mrq_counterpart: Optional[float] = None
+        if match_period is not None:
+            mrq_values, *_ = _gather_inputs(comp, fields, edgar.financials.concepts)
+            if mrq_values is not None:
+                try:
+                    mrq_counterpart = comp.compute(mrq_values)
+                except (KeyError, TypeError, ZeroDivisionError):
+                    mrq_counterpart = None
+
         if values is None:
             report.deltas.append(FieldDelta(
                 fmp_field=comp.fmp_field, label=label, dark=comp.dark,
@@ -670,12 +732,31 @@ def compute_cross_check(
             fmp_prov, edgar_value, SECONDARY_SOURCE, oldest,
             tolerance_pct=DIVERGENCE_TOLERANCE_PCT,
         )
-        # 'alignment' gating: the two sides cover the SAME period by construction, so the
-        # gate sees a zero gap. The absolute age is still recorded in the row.
-        days_for_gate = 0 if comp.age_basis == "alignment" else (
-            age if age is not None else 10**6)
-        stale_by_lag = bool(behind and (oldest or "") < behind
-                            and comp.age_basis != "alignment")
+        # R-A: alignment aging is re-earned on every evaluation, never assumed. Scope
+        # conditions 1 and 2 are structural (matched period; a missing aligning input
+        # made the row advisory above); condition 3 is checked here against the feed as
+        # it actually behaves today.
+        aligned = False
+        scope_note = ""
+        if comp.age_basis == "alignment" and match_period is not None:
+            newer_fy = _newer_fiscal_year_filed(edgar, match_period)
+            if newer_fy:
+                scope_note = (f"alignment revoked — FY {newer_fy} filed but not yet in "
+                              f"companyfacts (matched {match_period})")
+            elif not _tracks_matched_period(
+                    float(fmp_prov.value), edgar_value, mrq_counterpart):
+                scope_note = ("alignment revoked — FMP value no longer tracks the "
+                              f"matched period (FMP {float(fmp_prov.value):.4g} vs "
+                              f"matched {edgar_value:.4g} vs MRQ "
+                              f"{mrq_counterpart if mrq_counterpart is None else format(mrq_counterpart, '.4g')})"
+                              "; aged absolutely")
+            else:
+                aligned = True
+
+        # Aligned rows see a zero gap; everything else ages absolutely. The absolute age
+        # is recorded in the row either way.
+        days_for_gate = 0 if aligned else (age if age is not None else 10**6)
+        stale_by_lag = bool(behind and (oldest or "") < behind and not aligned)
         if stale_by_lag:
             days_for_gate = max(days_for_gate, threshold_days + 1)
 
@@ -710,8 +791,10 @@ def compute_cross_check(
         else:
             verdict, would_be = VERDICT_STALE_CAPPED, current
 
-        if comp.age_basis == "alignment" and not note:
-            note = f"matched period {oldest} (abs age {age}d); gated on alignment"
+        if comp.age_basis == "alignment":
+            basis = (f"matched period {oldest} (abs age {age}d); gated on alignment"
+                     if aligned else scope_note)
+            note = "; ".join(filter(None, [basis, note]))
 
         report.deltas.append(FieldDelta(
             fmp_field=comp.fmp_field, label=label, dark=comp.dark, verdict=verdict,
@@ -782,17 +865,34 @@ def apply_report(report: CrossCheckReport, ticker_data: Any) -> List[str]:
 
     Returns the fields actually changed, for the log.
     """
-    applied: List[str] = []
+    movers: Dict[str, List[FieldDelta]] = {}
     for d in report.deltas:
         if d.dark or d.verdict not in APPLICABLE_VERDICTS or not d.would_change:
             continue
-        prov: Optional[Prov] = getattr(ticker_data, d.fmp_field, None)
-        if prov is None or d.would_be_confidence is None:
+        if d.would_be_confidence is not None:
+            movers.setdefault(d.fmp_field, []).append(d)
+
+    applied: List[str] = []
+    for field_name, deltas in movers.items():
+        prov: Optional[Prov] = getattr(ticker_data, field_name, None)
+        if prov is None:
             continue
-        prov.confidence = d.would_be_confidence
+        # A field can carry several armed rows (total_cash has an MRQ and an @FY row).
+        # If they disagree there is no defensible answer, so take none of them and say
+        # so — a contradiction resolved by row order would be silent degradation.
+        verdicts = {d.would_be_confidence for d in deltas}
+        if len(verdicts) > 1:
+            applied.append(
+                f"!CONTRADICTION {field_name}: "
+                + ", ".join(f"{d.label or d.fmp_field}→{d.would_be_confidence}"
+                            for d in deltas)
+                + " — nothing applied")
+            continue
+        d = deltas[0]
+        prov.confidence = d.would_be_confidence     # type: ignore[assignment]
         if d.would_be_source:
             prov.source = d.would_be_source
-        applied.append(f"{d.fmp_field}→{d.would_be_confidence}")
+        applied.append(f"{field_name}→{d.would_be_confidence}")
     return applied
 
 
