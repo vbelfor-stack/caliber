@@ -8,6 +8,25 @@
 - Never add duplicate logic. If existing behavior already satisfies the order, leave it and say so.
 - Manual mode (per-action approval) is the default.
 
+## SESSION-CLOSE PROTOCOL (standing rule, 2026-08-09)
+- EVERY session ends with a PUSH TO ORIGIN after the session-close commit. Unpushed local
+  commits are a single-container-failure loss — committing is NOT backing up. The close is
+  not done until `git rev-list --count origin/master..master` reads 0.
+- DATABASE FILES NEVER GO TO THE REMOTE (ruling 2026-08-09). caliber.db, *.bak and any DB
+  artifact stay local. Verified already covered by .gitignore (`*.db`, `caliber.db.*`,
+  `*.bak`) and never committed in any branch's history — no remediation was needed.
+- Before a push, run the secrets pass: no hardcoded keys (all creds must be os.environ.get),
+  .env.example placeholders empty, no fixture embedding a keyed URL. Public SEC/FMP fixture
+  payloads are fine to push.
+- KNOWN BLOCKER (2026-08-09, OPEN): origin push fails — "Password authentication is not
+  supported". The container wipe takes GitHub credentials with it; ~/.claude is not the only
+  thing that does not persist. gh is installed but logged out; no credential helper, no token
+  env var. Re-auth (`gh auth login`) is a MANUAL VIC STEP at session start, and it is now a
+  precondition of the close protocol, not a surprise at the end.
+- The `gitsafe-backup` remote is NOT a usable fallback: its pre-receive hook allows pushes to
+  `main` ONLY, and its `main` (88cd9fd) is an UNRELATED history line. Reaching it would mean
+  force-pushing over unrelated commits — destructive, never done unattended.
+
 ## Core disciplines (non-negotiable)
 - LOUD FAILURE BEATS SILENT DEGRADATION. Failures raise a typed signal — never swallowed,
   never masked as success. (yfinance fallback was removed for this reason.)
