@@ -123,7 +123,7 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
   E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
   reachability): the note is NOT revived, see the E-4 finding below. See EDGAR section.
-- Phase D — after EDGAR. # TODO Vic: scope
+- Phase D — VALUATION PANEL (scoped 2026-08-09). IN PROGRESS at D-0. See Phase D section.
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. Non-urgent — FMP price integrity exonerated by the MU
   investigation (the ~$881 price was correct). Stays behind EDGAR.
@@ -287,6 +287,55 @@ predict, so MU's estimate lands ~7d early.
 - Three fixture sets: tests/fixtures/edgar (all five), tests/fixtures/fmp (all five, the
   pairing production runs), tests/fixtures/ticker (older yfinance-shaped recording, kept
   for the historical pipeline). Golden-five invariants run against edgar+fmp.
+
+## Phase D — VALUATION PANEL (scoped + rulings 2026-08-09)
+Ethos rule 10 ("judge multiples relative to the risk-free regime") is one-fifth built:
+_valuation_compounder scores an FCF-yield-vs-10Y spread; cyclical, bank, growth and
+standard use FIXED ABSOLUTE ladders and only PRINT the rate. A 22x multiple scores the
+same at a 1% and a 7% 10Y.
+- FRAMING RULING: not a "floor" — a PANEL. "Cheap" needs a denominator and there is no
+  single safe one. THREE anchors, each answering a different question:
+    risk-free (FRED 10Y)   — should I own equities at all?      blind to market-wide re-rating
+    sector P/E (FMP)       — is this the better equity?          blind to whole-market bubbles
+    own history            — cheap vs what it usually trades at? blind to structural re-ratings
+- WHY A PANEL, not a pick: MU at the 2018 cycle peak was cheap on trailing P/E, cheap vs
+  its own history AND cheap vs semis. Three anchors said buy; only the margin-trajectory
+  read caught that the E was about to halve. The anchors are independent checks and their
+  DISAGREEMENT IS THE SIGNAL.
+- AGGREGATION (PROVISIONAL, final ruling after D-0 data): MIN across available anchors —
+  "never look cheaper than your least flattering defensible denominator". Dispersion is
+  FLAGGED as signal, never averaged away.
+- MISSING ANCHORS: the panel narrows and provenance says so — EXCEPT the rate anchor,
+  which is MANDATORY. No FRED rate → the valuation pillar REFUSES TO SCORE, loudly. No
+  rate-blind scoring (that is silent degradation).
+- PEER ANCHOR — REJECTED 2026-08-09, on evidence. FMP `stock-peers` resolves, 8-10 names,
+  but the competitive sets are WRONG: V -> ALLY/AXP/BAC/JPM/MA/PYPL/SEZL/SLM (one true
+  comp, the rest are LENDERS — V takes no credit risk); WU -> BFH/BHF/ENVA/NMIH/TBBK/WSBC
+  (subprime lenders and insurers, not money transfer); MU -> AMAT/ARM/CRM/CSCO/IBM/KLAC/
+  LRCX/QCOM/SAP/TXN (equipment and enterprise software; the real comps, Samsung and SK
+  Hynix, are foreign filers and absent). A wrong-competitive-set anchor MANUFACTURES FALSE
+  CORROBORATION, which is worse than no anchor. Cost compounds it: peers return price and
+  market cap only, so peer multiples would need 8-10 extra ratios-ttm calls per eval.
+  Peers re-enter ONLY with hand-curated per-ticker lists — Vic's call later, never an
+  adapter's inference.
+- PHASES (STOP between each; dark before arm):
+  D-0 log all three anchors' spreads per lens per eval, trailing AND forward where
+      estimates exist. Applied to nothing. Report distributions + inter-anchor
+      disagreement across the golden five.   <- IN PROGRESS
+  D-1 extract the compounder's spread logic into one shared helper; behaviour asserted
+      unchanged (no golden score may move).
+  D-2 fix the FRED fixture (it records no value, so offline runs are rate-blind) AND make
+      a missing rate a loud refusal per the ruling above.
+  D-3 DARK per-lens application + per-lens ladder proposals, hard-gate vs shifted-ladder
+      argued from D-0 data. Includes the BANK-LENS MECHANISM QUESTION: P/B may not fit a
+      yield-spread frame; propose P/B vs ROE-minus-cost-of-equity instead. Vic rules per
+      lens.
+  D-4 arm per lens on those rulings; golden-five re-baseline as a REVIEWED DIFF, not an
+      equality assertion — unlike EDGAR, "no score moved" cannot be the success criterion.
+- BLAST RADIUS, why this is not EDGAR: this is the first change that can move a SCORE.
+  score -> avg_score -> synthesis prompt -> E(R) -> grade. EDGAR could only ever move a
+  confidence label and a failure there degraded to 'medium'. A failure here moves grades.
+  Touches the MU golden test (cyclical peak-earnings warning) directly.
 
 ## AlphaVantage teardown (2026-07-19)
 AV cross-check removed; FMP is sole source, no re-adding a cross-check (decision closed).
