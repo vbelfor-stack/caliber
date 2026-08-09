@@ -18,11 +18,15 @@
 - Before a push, run the secrets pass: no hardcoded keys (all creds must be os.environ.get),
   .env.example placeholders empty, no fixture embedding a keyed URL. Public SEC/FMP fixture
   payloads are fine to push.
-- KNOWN BLOCKER (2026-08-09, OPEN): origin push fails — "Password authentication is not
-  supported". The container wipe takes GitHub credentials with it; ~/.claude is not the only
-  thing that does not persist. gh is installed but logged out; no credential helper, no token
-  env var. Re-auth (`gh auth login`) is a MANUAL VIC STEP at session start, and it is now a
-  precondition of the close protocol, not a surprise at the end.
+- CONTAINER-WIPE AUTH (2026-08-09, RESOLVED — expect it again every new container): origin
+  push fails with "Password authentication is not supported". The wipe takes GitHub
+  credentials with it; ~/.claude is not the only thing that does not persist.
+  TWO steps, and the second is the one that gets missed:
+    1. `gh auth login`      — MANUAL VIC STEP (interactive; Code cannot do it)
+    2. `gh auth setup-git`  — wires gh as git's credential helper. WITHOUT THIS, gh reads
+       "logged in" and `git push` STILL FAILS: gh's token does not reach git on its own.
+  Do NOT read a successful `git ls-remote origin` as proof push will work — the repo is
+  public, so reads succeed anonymously while pushes reject. Only a real push proves auth.
 - The `gitsafe-backup` remote is NOT a usable fallback: its pre-receive hook allows pushes to
   `main` ONLY, and its `main` (88cd9fd) is an UNRELATED history line. Reaching it would mean
   force-pushing over unrelated commits — destructive, never done unattended.
