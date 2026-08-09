@@ -1,0 +1,637 @@
+{
+  "as_of": "2026-08-09",
+  "rate_10y": 4.69,
+  "lens_metric_map": {
+    "compounder": "fcf_yield",
+    "cyclical": "earnings_yield_trailing",
+    "standard": "ebitda_yield",
+    "growth": "ebitda_yield",
+    "bank": null
+  },
+  "results": [
+    {
+      "ticker": "MU",
+      "native_lens": "cyclical",
+      "sector": "Technology",
+      "exchange": "NASDAQ",
+      "peak_warning": "peak",
+      "rows": [
+        {
+          "lens": "cyclical",
+          "is_native": true,
+          "metric": "earnings_yield_trailing",
+          "live_score": 2,
+          "live_flags": [
+            "CYCLE-PEAK-MARGINS",
+            "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"
+          ],
+          "panel_score": 2,
+          "haircut_score": 2,
+          "delta": 0,
+          "binding_anchor": "own_history",
+          "binding_spread": -0.6481038841816815,
+          "anchor_count": 3,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": "peak",
+          "panel_flags": [
+            "CYCLE-GATE-CAP-PEAK"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "compounder",
+          "is_native": false,
+          "metric": "fcf_yield",
+          "live_score": 2,
+          "live_flags": [
+            "RICH-VS-RISK-FREE"
+          ],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": -2.0493477928785695,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "RICH-VS-RISK-FREE",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "growth",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 4,
+          "live_flags": [
+            "RULE40=115"
+          ],
+          "panel_score": 5,
+          "haircut_score": 4,
+          "delta": 1,
+          "binding_anchor": "risk_free",
+          "binding_spread": 2.354525998553532,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "standard",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 4,
+          "live_flags": [],
+          "panel_score": 4,
+          "haircut_score": 3,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": 2.354525998553532,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "bank",
+          "is_native": false,
+          "metric": null,
+          "live_score": 1,
+          "live_flags": [],
+          "panel_score": null,
+          "haircut_score": null,
+          "delta": null,
+          "binding_anchor": null,
+          "binding_spread": null,
+          "anchor_count": 0,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": "lens has no yield metric \u2014 see bank_instrument_reading()"
+        }
+      ],
+      "bank_instrument": {
+        "price_to_book": 9.82783606687582,
+        "roe_pct": 70.55361798192583,
+        "beta": 2.189,
+        "rate_10y": 4.69,
+        "cost_of_equity_pct": 14.540500000000002,
+        "excess_roe_pp": 56.013117981925824,
+        "justified_pb": 4.852214021658527,
+        "pb_vs_justified": 4.975622045217293
+      }
+    },
+    {
+      "ticker": "GOOG",
+      "native_lens": "compounder",
+      "sector": "Communication Services",
+      "exchange": "NASDAQ",
+      "peak_warning": "peak",
+      "rows": [
+        {
+          "lens": "cyclical",
+          "is_native": false,
+          "metric": "earnings_yield_trailing",
+          "live_score": 2,
+          "live_flags": [
+            "CYCLE-PEAK-MARGINS",
+            "LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP"
+          ],
+          "panel_score": 2,
+          "haircut_score": 2,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": 0.9944482077335586,
+          "anchor_count": 3,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": "peak",
+          "panel_flags": [
+            "CYCLE-GATE-CAP-PEAK"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "compounder",
+          "is_native": true,
+          "metric": "fcf_yield",
+          "live_score": 1,
+          "live_flags": [
+            "VERY-RICH-VS-RISK-FREE"
+          ],
+          "panel_score": 1,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": -3.4475616171292014,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "VERY-RICH-VS-RISK-FREE",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "growth",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 3,
+          "live_flags": [
+            "RULE40=48"
+          ],
+          "panel_score": 5,
+          "haircut_score": 4,
+          "delta": 2,
+          "binding_anchor": "risk_free",
+          "binding_spread": 2.8075664828328417,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "standard",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 4,
+          "live_flags": [],
+          "panel_score": 4,
+          "haircut_score": 3,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": 2.8075664828328417,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "bank",
+          "is_native": false,
+          "metric": null,
+          "live_score": 1,
+          "live_flags": [],
+          "panel_score": null,
+          "haircut_score": null,
+          "delta": null,
+          "binding_anchor": null,
+          "binding_spread": null,
+          "anchor_count": 0,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": "lens has no yield metric \u2014 see bank_instrument_reading()"
+        }
+      ],
+      "bank_instrument": {
+        "price_to_book": 6.7216763989507875,
+        "roe_pct": 50.84008289969907,
+        "beta": 1.234,
+        "rate_10y": 4.69,
+        "cost_of_equity_pct": 10.243,
+        "excess_roe_pp": 40.59708289969907,
+        "justified_pb": 4.963397725246419,
+        "pb_vs_justified": 1.7582786737043685
+      }
+    },
+    {
+      "ticker": "V",
+      "native_lens": "compounder",
+      "sector": "Financial Services",
+      "exchange": "NYSE",
+      "peak_warning": "rollover",
+      "rows": [
+        {
+          "lens": "cyclical",
+          "is_native": false,
+          "metric": "earnings_yield_trailing",
+          "live_score": 2,
+          "live_flags": [
+            "CYCLE-PEAK-MARGINS",
+            "MARGINS-CONTRACTING-EARNINGS-DECLINING"
+          ],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "sector",
+          "binding_spread": -2.3738337865152808,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": "rollover",
+          "panel_flags": [
+            "RICH-VS-SECTOR",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "compounder",
+          "is_native": true,
+          "metric": "fcf_yield",
+          "live_score": 2,
+          "live_flags": [
+            "RICH-VS-RISK-FREE"
+          ],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "sector",
+          "binding_spread": -2.515993821125106,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "RICH-VS-SECTOR",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "growth",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 4,
+          "live_flags": [
+            "RULE40=72"
+          ],
+          "panel_score": 3,
+          "haircut_score": 2,
+          "delta": -1,
+          "binding_anchor": "sector",
+          "binding_spread": -1.3932354640795248,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "standard",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 2,
+          "live_flags": [],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "sector",
+          "binding_spread": -1.3932354640795248,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "RICH-VS-SECTOR",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "bank",
+          "is_native": false,
+          "metric": null,
+          "live_score": 1,
+          "live_flags": [],
+          "panel_score": null,
+          "haircut_score": null,
+          "delta": null,
+          "binding_anchor": null,
+          "binding_spread": null,
+          "anchor_count": 0,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": "lens has no yield metric \u2014 see bank_instrument_reading()"
+        }
+      ],
+      "bank_instrument": {
+        "price_to_book": 19.717607240320657,
+        "roe_pct": 61.256058295204205,
+        "beta": 0.754,
+        "rate_10y": 4.69,
+        "cost_of_equity_pct": 8.083,
+        "excess_roe_pp": 53.17305829520421,
+        "justified_pb": 7.5783815780284804,
+        "pb_vs_justified": 12.139225662292176
+      }
+    },
+    {
+      "ticker": "NOW",
+      "native_lens": "growth",
+      "sector": "Technology",
+      "exchange": "NYSE",
+      "peak_warning": "rollover",
+      "rows": [
+        {
+          "lens": "cyclical",
+          "is_native": false,
+          "metric": "earnings_yield_trailing",
+          "live_score": 2,
+          "live_flags": [
+            "CYCLE-PEAK-MARGINS",
+            "MARGINS-CONTRACTING-EARNINGS-DECLINING"
+          ],
+          "panel_score": 1,
+          "haircut_score": 1,
+          "delta": -1,
+          "binding_anchor": "risk_free",
+          "binding_spread": -3.400762331838566,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": "rollover",
+          "panel_flags": [
+            "VERY-RICH-VS-RISK-FREE",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "compounder",
+          "is_native": false,
+          "metric": "fcf_yield",
+          "live_score": 2,
+          "live_flags": [
+            "RICH-VS-RISK-FREE"
+          ],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 0,
+          "binding_anchor": "risk_free",
+          "binding_spread": -1.1426011982380753,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "RICH-VS-RISK-FREE",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "growth",
+          "is_native": true,
+          "metric": "ebitda_yield",
+          "live_score": 2,
+          "live_flags": [
+            "RULE40=32"
+          ],
+          "panel_score": 3,
+          "haircut_score": 2,
+          "delta": 1,
+          "binding_anchor": "risk_free",
+          "binding_spread": -2.1066785648030075,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "standard",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 1,
+          "live_flags": [],
+          "panel_score": 2,
+          "haircut_score": 1,
+          "delta": 1,
+          "binding_anchor": "risk_free",
+          "binding_spread": -2.1066785648030075,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "RICH-VS-RISK-FREE",
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "bank",
+          "is_native": false,
+          "metric": null,
+          "live_score": 1,
+          "live_flags": [],
+          "panel_score": null,
+          "haircut_score": null,
+          "delta": null,
+          "binding_anchor": null,
+          "binding_spread": null,
+          "anchor_count": 0,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": "lens has no yield metric \u2014 see bank_instrument_reading()"
+        }
+      ],
+      "bank_instrument": {
+        "price_to_book": 10.306890380313199,
+        "roe_pct": 13.770640499701086,
+        "beta": 0.93,
+        "rate_10y": 4.69,
+        "cost_of_equity_pct": 8.875,
+        "excess_roe_pp": 4.895640499701086,
+        "justified_pb": 1.551621464755052,
+        "pb_vs_justified": 8.755268915558148
+      }
+    },
+    {
+      "ticker": "WU",
+      "native_lens": "compounder",
+      "sector": "Financial Services",
+      "exchange": "NYSE",
+      "peak_warning": null,
+      "rows": [
+        {
+          "lens": "cyclical",
+          "is_native": false,
+          "metric": "earnings_yield_trailing",
+          "live_score": 5,
+          "live_flags": [],
+          "panel_score": 4,
+          "haircut_score": 4,
+          "delta": -1,
+          "binding_anchor": "own_history",
+          "binding_spread": 1.3833567726841949,
+          "anchor_count": 3,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": ""
+        },
+        {
+          "lens": "compounder",
+          "is_native": true,
+          "metric": "fcf_yield",
+          "live_score": 5,
+          "live_flags": [
+            "SECULAR-DECLINE-FCF-YIELD"
+          ],
+          "panel_score": 5,
+          "haircut_score": 4,
+          "delta": 0,
+          "binding_anchor": "sector",
+          "binding_spread": 12.612112135816549,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "growth",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 3,
+          "live_flags": [
+            "RULE40=12"
+          ],
+          "panel_score": 5,
+          "haircut_score": 4,
+          "delta": 2,
+          "binding_anchor": "sector",
+          "binding_spread": 17.886583983351006,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "standard",
+          "is_native": false,
+          "metric": "ebitda_yield",
+          "live_score": 5,
+          "live_flags": [],
+          "panel_score": 5,
+          "haircut_score": 4,
+          "delta": 0,
+          "binding_anchor": "sector",
+          "binding_spread": 17.886583983351006,
+          "anchor_count": 2,
+          "narrowed": true,
+          "independence_narrowed": true,
+          "gate_applied": null,
+          "panel_flags": [
+            "PANEL-NARROWED-MARKET-ONLY"
+          ],
+          "reason": ""
+        },
+        {
+          "lens": "bank",
+          "is_native": false,
+          "metric": null,
+          "live_score": 2,
+          "live_flags": [],
+          "panel_score": null,
+          "haircut_score": null,
+          "delta": null,
+          "binding_anchor": null,
+          "binding_spread": null,
+          "anchor_count": 0,
+          "narrowed": false,
+          "independence_narrowed": false,
+          "gate_applied": null,
+          "panel_flags": [],
+          "reason": "lens has no yield metric \u2014 see bank_instrument_reading()"
+        }
+      ],
+      "bank_instrument": {
+        "price_to_book": 2.4211479173499506,
+        "roe_pct": 42.64912091468018,
+        "beta": 0.519,
+        "rate_10y": 4.69,
+        "cost_of_equity_pct": 7.025500000000001,
+        "excess_roe_pp": 35.62362091468018,
+        "justified_pb": 6.07061716812756,
+        "pb_vs_justified": -3.6494692507776096
+      }
+    }
+  ],
+  "failures": []
+}

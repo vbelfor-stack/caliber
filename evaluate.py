@@ -26,13 +26,13 @@ except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
 from adapters.fmp_adapter import fetch_fmp, fetch_sector_pe
-from core.valuation_anchors import run_dark_panel
+from core.valuation_anchors import run_dark_panel, run_dark_lens
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
-from core.pillars import score_all, RateUnavailable
+from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals, TechnicalOverlay
 from synthesis.client import run_synthesis
 from synthesis.schema import (
@@ -171,9 +171,9 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
 
     # Phase D-0 DARK: measure the three valuation anchors and log the spreads.
     # Applies nothing — no Prov, score, E(R) or grade can move.
-    run_dark_panel(yf, fred, edgar,
-                   fetch_sector_pe(yf.exchange or "NASDAQ") if not fixture_mode else {},
-                   lens)
+    _panel = run_dark_panel(yf, fred, edgar,
+                            fetch_sector_pe(yf.exchange or "NASDAQ") if not fixture_mode else {},
+                            lens)
 
     # ── Five pillars ──────────────────────────────────────────────────────────
     print(f"\n{_divider('=')}")
@@ -197,6 +197,12 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     except Exception as e:
         print(f"\nFATAL: pillar scoring failed: {e}", file=sys.stderr)
         raise
+
+    # Phase D-3 DARK: what the valuation score WOULD be under panel anchoring, logged
+    # beside the live fixed-ladder score. Applies nothing — D-4 arms per lens on ruling.
+    _val = next((p for p in pillars if p.name == "Valuation"), None)
+    run_dark_lens(_panel, lens, _val.score if _val else None,
+                  peak_warning=_cycle_position_from_trajectory(yf)[1])
 
     for pillar in pillars:
         _print_pillar(pillar)

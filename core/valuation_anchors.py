@@ -408,3 +408,227 @@ def run_dark_panel(
         emit(f"[VAL-PANEL D-0] FAILED for {getattr(ticker_data, 'ticker', '?')}: "
              f"{type(e).__name__}: {e} (measurement only; evaluation unaffected)")
         return None
+
+
+# ── D-3 DARK: per-lens panel application (APPLIES NOTHING) ───────────────────
+# Everything below computes what a panel-anchored score WOULD be, alongside the live
+# fixed-ladder score. Nothing here is wired into score_valuation; D-4 arms per lens on
+# Vic's rulings. The point of the dark pass is to make the deltas arguable from data
+# rather than from the shape of the code.
+
+# Which yield metric each lens would be anchored on, and why that basis.
+#   cyclical  — TRAILING, deliberately. MU's forward yield reads 30.16% (+25.47pp cheap,
+#               all anchors agreeing) at a cycle peak; forward is the number that lies
+#               exactly when the cyclical lens matters most. See D-0 §6.1.
+#   compounder— FCF, unchanged: the prototype, already live and already spread-based.
+#   standard  — EBITDA yield, matching the lens's own primary input (EV/EBITDA).
+#   growth    — EBITDA yield, but see GROWTH_SPREAD_LADDER: the mechanism is a SHIFTED
+#               ladder, not a spread verdict, because a SaaS multiple is a duration asset.
+#   bank      — none. P/B is not a yield; see bank_instrument_reading().
+LENS_METRIC = {
+    "compounder": METRIC_FCF_YIELD,
+    "cyclical": METRIC_EARNINGS_YIELD,
+    "standard": METRIC_EBITDA_YIELD,
+    "growth": METRIC_EBITDA_YIELD,
+    "bank": None,
+}
+
+# Growth lens: same rung geometry, shifted DOWN one notch of generosity. A high-growth
+# name is bought for duration, so it can carry a negative current yield spread and still
+# be correctly priced; demanding a positive spread would score every SaaS name 1-2 and
+# make the lens useless. This is the "shifted ladder" option, measured.
+GROWTH_SPREAD_LADDER = (
+    (1.0, 5, None),
+    (-1.0, 4, None),
+    (-3.0, 3, None),
+    (-5.0, 2, "RICH"),
+    (None, 1, "VERY-RICH"),
+)
+
+LENS_LADDER = {
+    "compounder": RATE_SPREAD_LADDER,
+    "cyclical": RATE_SPREAD_LADDER,
+    "standard": RATE_SPREAD_LADDER,
+    "growth": GROWTH_SPREAD_LADDER,
+}
+
+# Anchors that reference the MARKET rather than the issuer's own past. When own-history
+# is absent the surviving pair is both of these — two views of the same market, not two
+# independent checks (binding condition 1 of the aggregation ruling).
+_MARKET_REFERENCED = (ANCHOR_RISK_FREE, ANCHOR_SECTOR)
+
+
+@dataclass
+class DarkLensScore:
+    """What a panel-anchored valuation score WOULD be. Applied to nothing."""
+    lens: str
+    metric: Optional[str]
+    live_score: Optional[int] = None
+    panel_score: Optional[int] = None
+    binding_anchor: Optional[str] = None
+    binding_spread: Optional[float] = None
+    anchor_count: int = 0
+    narrowed: bool = False              # <3 anchors
+    independence_narrowed: bool = False  # surviving anchors are all market-referenced
+    haircut_score: Optional[int] = None  # panel_score under the one-rung narrowed haircut
+    gate_applied: Optional[str] = None
+    flags: List[str] = field(default_factory=list)
+    reason: str = ""
+
+    @property
+    def delta(self) -> Optional[int]:
+        if self.live_score is None or self.panel_score is None:
+            return None
+        return self.panel_score - self.live_score
+
+
+def dark_lens_score(
+    panel: ValuationPanel,
+    lens: str,
+    live_score: Optional[int] = None,
+    peak_warning: Optional[str] = None,
+) -> DarkLensScore:
+    """The would-be panel score for one lens. PURE — applies nothing, persists nothing.
+
+    peak_warning ('peak' | 'rollover' | None) comes from the cyclical lens's existing
+    trajectory read. It is passed in rather than recomputed so the dark score gates on
+    exactly the same signal the live lens already trusts.
+    """
+    metric = LENS_METRIC.get(lens)
+    out = DarkLensScore(lens=lens, metric=metric, live_score=live_score)
+
+    if metric is None:
+        out.reason = "lens has no yield metric — see bank_instrument_reading()"
+        return out
+
+    readings = panel.by_metric(metric)
+    rated = [
+        score_yield_spread(r.ticker_yield, r.anchor_yield, anchor=r.anchor,
+                           ladder=LENS_LADDER.get(lens, RATE_SPREAD_LADDER),
+                           flag_scope=r.anchor.upper().replace("_", "-"))
+        for r in readings if r.spread is not None
+    ]
+    rated = [r for r in rated if r is not None]
+    out.anchor_count = len(rated)
+
+    if not rated:
+        out.reason = f"no available anchor for {metric}"
+        return out
+
+    # AGGREGATION: MIN across available anchors (RULED 2026-08-09, permanent).
+    worst = min(rated, key=lambda s: s.spread)
+    out.panel_score = worst.score
+    out.binding_anchor = worst.anchor
+    out.binding_spread = worst.spread
+    out.flags = list(worst.flags)
+
+    out.narrowed = out.anchor_count < 3
+    present = {r.anchor for r in rated}
+    out.independence_narrowed = out.narrowed and present.issubset(set(_MARKET_REFERENCED))
+    if out.independence_narrowed:
+        out.flags.append("PANEL-NARROWED-MARKET-ONLY")
+    elif out.narrowed:
+        out.flags.append("PANEL-NARROWED")
+
+    # Independence haircut, MEASURED not applied: one rung off a cheap verdict when the
+    # only surviving anchors are market-referenced. Never makes a stock look cheaper.
+    out.haircut_score = out.panel_score
+    if out.independence_narrowed and out.panel_score is not None and out.panel_score > 1:
+        out.haircut_score = out.panel_score - 1
+
+    # CYCLICAL HARD GATE: at peak/rollover margins a cheap multiple is a sell signal, not
+    # a discount. The gate CAPS; it never raises. This is the MU-2018 guard, kept as a
+    # gate rather than folded into the ladder because peak earnings break the yield's
+    # meaning outright — no rung geometry can express "this E is about to halve".
+    if lens == "cyclical" and peak_warning in ("peak", "rollover"):
+        out.gate_applied = peak_warning
+        if out.panel_score is not None and out.panel_score > 2:
+            out.panel_score = 2
+            out.flags.append(f"CYCLE-GATE-CAP-{peak_warning.upper()}")
+        if out.haircut_score is not None and out.haircut_score > 2:
+            out.haircut_score = 2
+
+    return out
+
+
+def bank_instrument_reading(ticker_data: Any, fred: Any) -> Dict[str, Any]:
+    """The bank lens's ALTERNATIVE instrument, measured dark: P/B against excess ROE.
+
+    A yield spread does not fit a bank. Book value IS the asset base, so the question is
+    not "what does this earn against the risk-free rate" but "does it earn more on its
+    book than shareholders require" — and P/B is the market's answer to exactly that.
+    Excess ROE = ROE - cost of equity, with CoE = 10Y + beta x ERP (ERP fixed at 4.5pp).
+
+    Returns the measurement only; no score, no ladder. The mechanism question goes to Vic.
+    """
+    def val(name):
+        p = getattr(ticker_data, name, None)
+        return None if p is None or p.is_missing() else p.value
+
+    roe, beta, ptb = val("roe"), val("beta"), val("price_to_book")
+    rate = None if fred.rate_10y.is_missing() else fred.rate_10y.value
+    coe = None if (rate is None or beta is None) else rate + beta * 4.5
+    excess = None if (roe is None or coe is None) else roe * 100.0 - coe
+    return {
+        "price_to_book": ptb,
+        "roe_pct": None if roe is None else roe * 100.0,
+        "beta": beta,
+        "rate_10y": rate,
+        "cost_of_equity_pct": coe,
+        "excess_roe_pp": excess,
+        # Justified P/B under the Gordon identity: (ROE - g) / (CoE - g), g = 0 for the
+        # measurement. Reduces to ROE/CoE, which is the whole point — a bank earning its
+        # cost of equity is worth book, and the ratio says how far off that it trades.
+        "justified_pb": None if (roe is None or not coe) else (roe * 100.0) / coe,
+        "pb_vs_justified": (None if (ptb is None or roe is None or not coe)
+                            else ptb - (roe * 100.0) / coe),
+    }
+
+
+def render_dark_lens(scores: List[DarkLensScore], ticker: str) -> str:
+    """The D-3 delta table for one ticker. Nothing here is applied."""
+    lines = [f"[VAL-LENS D-3 DARK] {ticker} — live vs would-be panel score (APPLIES NOTHING)"]
+    lines.append(f"  {'lens':<11} {'metric':<24} {'live':>4} {'panel':>5} {'cut':>4} "
+                 f"{'Δ':>3}  {'binding':<12} {'spread':>8}  flags")
+    for s in scores:
+        if s.panel_score is None:
+            lines.append(f"  {s.lens:<11} {'—':<24} {'—':>4} {'—':>5} {'—':>4} {'—':>3}  "
+                         f"{'—':<12} {'—':>8}  {s.reason}")
+            continue
+        d = s.delta
+        lines.append(
+            f"  {s.lens:<11} {(s.metric or '—'):<24} "
+            f"{(s.live_score if s.live_score is not None else '—'):>4} "
+            f"{s.panel_score:>5} {s.haircut_score:>4} "
+            f"{(f'{d:+d}' if d is not None else '—'):>3}  "
+            f"{(s.binding_anchor or '—'):<12} "
+            f"{(f'{s.binding_spread:+.2f}pp' if s.binding_spread is not None else '—'):>8}  "
+            f"{','.join(s.flags) if s.flags else '—'}"
+        )
+    return "\n".join(lines)
+
+
+def run_dark_lens(
+    panel: Optional[ValuationPanel],
+    lens: str,
+    live_score: Optional[int],
+    peak_warning: Optional[str] = None,
+    log: Optional[Any] = None,
+) -> Optional[DarkLensScore]:
+    """Compute and log the would-be panel score for the ACTIVE lens. Applies nothing.
+
+    Same containment contract as run_dark_panel: D-3 has no reach into any score, so a
+    bug here must not be able to take down an evaluation it cannot influence.
+    """
+    emit = log or print
+    if panel is None:
+        return None
+    try:
+        dark = dark_lens_score(panel, lens, live_score=live_score,
+                               peak_warning=peak_warning)
+        emit(render_dark_lens([dark], panel.ticker))
+        return dark
+    except Exception as e:                              # noqa: BLE001 — see docstring
+        emit(f"[VAL-LENS D-3] FAILED for {panel.ticker}: {type(e).__name__}: {e} "
+             f"(measurement only; evaluation unaffected)")
+        return None

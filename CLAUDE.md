@@ -454,14 +454,43 @@ same at a 1% and a 7% 10Y.
       removed; 15 in test_batch.py were MODIFIED to name a db_path, because they were
       exercising the exact route the new guard blocks — that file was the original
       contamination source, so it relying on conftest's backstop was the smell.
-  D-3 DARK per-lens application + per-lens ladder proposals, hard-gate vs shifted-ladder
-      argued from D-0 data. Includes the BANK-LENS MECHANISM QUESTION: P/B may not fit a
-      yield-spread frame; propose P/B vs ROE-minus-cost-of-equity instead. Vic rules per
-      lens.
-      D-3 AGENDA, carried by ruling — bring a proposal for each, Vic rules:
-      (a) INDEPENDENCE-NARROWED mechanism (binding condition 1 above).
-      (b) EXCHANGE-SCOPED SECTOR P/E: primary-listing-convention vs cap-weighted-blend.
-          BIAS TO THE SIMPLEST DEFENSIBLE option.
+  D-3 DARK DONE 2026-08-09 — AWAITING VIC'S RULINGS, NOTHING ARMED.
+      Report docs/d3-lenses.md, raw record docs/d3-lenses.json, re-runnable via
+      `python -m tools.probe_d3_lenses MU GOOG V NOW WU --json OUT`. Probe is read-only
+      by construction; tests/test_d0_probe_readonly.py now pins BOTH probes. Dark score
+      also logs at both eval boundaries beside the live score. caliber.db unchanged.
+      HEADLINE: on NATIVE lenses only 1 of 5 cells moves (NOW growth 2->3). Compounder
+      is Delta-0 on all five — MIN over three anchors changed the BINDING denominator on
+      V and WU (sector, not risk-free) without changing a rung. 8 of 20 cells move
+      overall; 5 of those 8 are the growth lens.
+      PROPOSALS AWAITING RULING (one per lens + two agenda items):
+      - compounder: CONFIRM as-is (prototype, Delta-0).
+      - cyclical: TRAILING basis + keep the peak/rollover HARD GATE as a cap at 2.
+        Load-bearing evidence: on FORWARD, MU scores 5 (maximally cheap, all anchors
+        agreeing) at a cycle peak — the 2018 signature; on TRAILING it scores 3 raw with
+        own-history already dissenting. Both end at 2 once the gate fires, so the basis
+        choice is about the FAILURE MODE: with no trajectory read, forward hands the
+        model a 5 and trailing a 3.
+      - growth: DO NOT ARM on this mapping. Live lens scores EV/Revenue gated by
+        Rule-of-40 (a growth-QUALITY instrument); the panel scores EBITDA yield (a
+        PROFITABILITY instrument). 4 of 5 move up, two by two rungs. That is an
+        instrument swap, not a recalibration. Preferred alternative: keep Rule-of-40 x
+        EV/Rev and let the rate shift the EV/Rev THRESHOLD. Needs its own dark pass.
+      - standard: CONFIRM (EBITDA yield, default ladder, Delta-0 on 4 of 5) — but NO
+        golden ticker is natively standard-lens, so all evidence is counterfactual.
+      - bank: THE PANEL DOES NOT FIT. Recommend a different instrument: P/B vs justified
+        P/B = ROE/CoE, CoE = 10Y + beta x ERP(4.5pp). Still rate-anchored via CoE. No
+        bank name exists in the golden five; recommend ruling the mechanism now and
+        NOT arming in D-4 until a bank ticker is added and dark-calibrated.
+      - (a) INDEPENDENCE-NARROWED: recommend FLAG ONLY, no score effect. Decisive
+        measurement: 17 of 20 cells (85%) are independence-narrowed, so a one-rung
+        haircut would be a global ladder recalibration through a side door, not a
+        degraded-case adjustment. Narrowing means WE KNOW LESS, and the honest response
+        is to say so — same shape as the R1 symmetric-gating ruling.
+      - (b) EXCHANGE-SCOPED SECTOR P/E: recommend PRIMARY-LISTING CONVENTION (current
+        behaviour, documented). The ~0.33pp artifact is a third of the narrowest rung and
+        flips ZERO scores in the golden five; a cap-weighted blend needs constituent data
+        FMP does not serve in the snapshot.
   D-4 arm per lens on those rulings; golden-five re-baseline as a REVIEWED DIFF, not an
       equality assertion — unlike EDGAR, "no score moved" cannot be the success criterion.
 - BLAST RADIUS, why this is not EDGAR: this is the first change that can move a SCORE.

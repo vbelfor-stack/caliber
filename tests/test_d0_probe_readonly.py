@@ -18,6 +18,10 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 PROBE = REPO / "tools" / "probe_valuation_panel.py"
+PROBES = {
+    "tools.probe_valuation_panel": REPO / "tools" / "probe_valuation_panel.py",
+    "tools.probe_d3_lenses": REPO / "tools" / "probe_d3_lenses.py",   # D-3, same rule
+}
 PERSISTENCE_MODULES = ("store.models", "store", "batch.runner", "batch")
 
 
@@ -96,3 +100,39 @@ def test_probe_reports_a_failed_ticker_loudly_and_exits_nonzero(monkeypatch, cap
     assert exc.value.code == 1
     out = capsys.readouterr().out
     assert "FAILED ZZZZ" in out and "RuntimeError: no feed" in out
+
+
+# ── D-3 probe: the same structural guarantee, same reasons ───────────────────
+# The D-3 probe scores every ticker on every lens live. It reaches core.pillars (the
+# real scorer) as well as the adapters, which is a wider import surface than D-0's —
+# so the closure check matters MORE here, not less.
+
+@pytest.mark.parametrize("module,path", sorted(PROBES.items()))
+def test_every_probe_import_closure_is_write_free(module, path):
+    code = (
+        "import importlib, sys, json\n"
+        f"importlib.import_module({module!r})\n"
+        f"print(json.dumps([m for m in {PERSISTENCE_MODULES!r} if m in sys.modules]))\n"
+    )
+    proc = subprocess.run([sys.executable, "-c", code], cwd=REPO,
+                          capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    leaked = proc.stdout.strip().splitlines()[-1]
+    assert leaked == "[]", (
+        f"{module} pulled persistence module(s) into its import closure: {leaked}"
+    )
+
+
+@pytest.mark.parametrize("module,path", sorted(PROBES.items()))
+def test_every_probe_names_no_persistence_module(module, path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+            imported.update(f"{node.module}.{a.name}" for a in node.names)
+    offenders = {m for m in imported
+                 if m.split(".")[0] in ("store", "batch") or "save_evaluation" in m}
+    assert not offenders, f"{module} imports persistence: {sorted(offenders)}"
