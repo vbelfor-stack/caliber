@@ -47,6 +47,11 @@ METRIC_EBITDA_YIELD = "ebitda_yield"
 # noise dressed as a baseline and the anchor is withheld instead.
 MIN_HISTORY_POINTS = 8
 
+# Adjacent-quarter share-count ratio beyond which a corporate action, not issuance or
+# buyback, is the only explanation. Real buybacks and issuance move a share count by low
+# single-digit percents a quarter; GOOG's 2022 split moved it 20x.
+_SPLIT_RATIO_TOLERANCE = 1.5
+
 
 @dataclass
 class AnchorReading:
@@ -158,17 +163,41 @@ def own_history_earnings_yields(
     def shares_as_of(target: str) -> Optional[float]:
         return next((v for d, v in share_points if d <= target), None)
 
-    out = []
+    out: List[Dict[str, Any]] = []
+    dropped_loss = 0
+    prev_shares: Optional[float] = None
     for period_end, ni in sorted(ni_points.items(), reverse=True):
         shares = shares_as_of(period_end)
         price = _price_on_or_before(price_history, period_end)
         if not shares or not price or ni is None:
             continue
+
+        # SPLIT BOUNDARY (Phase G dependency). FMP prices are split-adjusted back to
+        # today's basis; EDGAR share counts are AS FILED and are not restated. Across a
+        # split the two disagree by the split ratio, which put GOOG's pre-2022 quarters
+        # at an 81% earnings yield against a ~4% norm — a 20x artifact, not a valuation.
+        # The series is only self-consistent back to the most recent discontinuity, so it
+        # is truncated there rather than silently averaging the artifact into the median.
+        if prev_shares is not None:
+            ratio = shares / prev_shares if prev_shares else 1.0
+            if ratio > _SPLIT_RATIO_TOLERANCE or ratio < 1 / _SPLIT_RATIO_TOLERANCE:
+                break
+        prev_shares = shares
+
         mkt_cap = price * shares
         if mkt_cap <= 0:
             continue
+        # A loss-making period has no earnings yield to rank against the 10Y, exactly as
+        # a negative P/E has none today. Excluded from the series, and counted so the
+        # exclusion is visible rather than a silently shorter history.
+        if ni <= 0:
+            dropped_loss += 1
+            continue
         out.append({"period_end": period_end, "earnings_yield": ni / mkt_cap * 100.0,
-                    "price": price, "net_income_ttm": ni, "shares": shares})
+                    "price": price, "net_income_ttm": ni, "shares": shares,
+                    "loss_periods_excluded": dropped_loss})
+    if out:
+        out[0]["loss_periods_excluded"] = dropped_loss
     return out
 
 
@@ -215,13 +244,15 @@ def _own_history_reading(metric: str, ticker_yield: Optional[float],
             metric, ANCHOR_OWN_HISTORY, ticker_yield,
             reason=f"only {len(history)} historical points (<{MIN_HISTORY_POINTS})")
     median = statistics.median(h["earnings_yield"] for h in history)
+    losses = history[0].get("loss_periods_excluded", 0)
+    note = (f"median of {len(history)} quarters, "
+            f"{history[-1]['period_end']}→{history[0]['period_end']}"
+            + (f"; {losses} loss period(s) excluded" if losses else ""))
     if ticker_yield is None:
         return AnchorReading(metric, ANCHOR_OWN_HISTORY, anchor_yield=median,
                              reason=f"{metric} unavailable or non-positive")
-    return AnchorReading(
-        metric, ANCHOR_OWN_HISTORY, ticker_yield, median, available=True,
-        note=(f"median of {len(history)} quarters, "
-              f"{history[-1]['period_end']}→{history[0]['period_end']}"))
+    return AnchorReading(metric, ANCHOR_OWN_HISTORY, ticker_yield, median,
+                         available=True, note=note)
 
 
 def compute_panel(

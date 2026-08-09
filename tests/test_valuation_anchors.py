@@ -120,7 +120,7 @@ class TestAnchorAvailability:
 
 
 class TestOwnHistoryAnchor:
-    @pytest.mark.parametrize("ticker", ["MU", "GOOG", "NOW", "WU"])
+    @pytest.mark.parametrize("ticker", ["MU", "GOOG", "WU"])
     def test_series_is_built_from_the_price_actually_paid(self, ticker):
         yf, edgar = _load(ticker)
         history = own_history_earnings_yields(edgar, yf.price_history)
@@ -128,6 +128,37 @@ class TestOwnHistoryAnchor:
         for h in history:
             assert h["earnings_yield"] == pytest.approx(
                 h["net_income_ttm"] / (h["price"] * h["shares"]) * 100.0)
+
+    def test_series_truncates_at_a_split_boundary(self):
+        """FMP prices are split-adjusted to today's basis; EDGAR share counts are AS
+        FILED. Across GOOG's 2022 split the two disagree by the split ratio, which put
+        its pre-split quarters at an ~81% earnings yield against a ~4% norm."""
+        yf, edgar = _load("GOOG")
+        history = own_history_earnings_yields(edgar, yf.price_history)
+        assert history[-1]["period_end"] >= "2022-06-30"
+        assert max(h["earnings_yield"] for h in history) < 10.0
+
+    def test_a_recent_split_can_cost_the_anchor_entirely(self):
+        """NOW split 5:1 (208M -> 1,046M shares), leaving too few consistent quarters.
+        The anchor is withheld rather than computed across the discontinuity — a
+        Phase-G (split-adjustment) dependency, recorded as such."""
+        yf, edgar = _load("NOW")
+        assert len(own_history_earnings_yields(edgar, yf.price_history)) < MIN_HISTORY_POINTS
+        panel = compute_panel(yf, _fred(), edgar, SECTOR_PE, "growth", today=AS_OF)
+        own = next(r for r in panel.readings if r.anchor == ANCHOR_OWN_HISTORY)
+        assert not own.available and "historical points" in own.reason
+
+    def test_loss_periods_are_excluded_and_counted(self):
+        """A loss-making period has no earnings yield to rank against the 10Y, exactly
+        as a negative P/E has none today. MU's FY2023 losses are excluded, not folded
+        into the median as negative yields."""
+        yf, edgar = _load("MU")
+        history = own_history_earnings_yields(edgar, yf.price_history)
+        assert all(h["earnings_yield"] > 0 for h in history)
+        assert history[0]["loss_periods_excluded"] > 0
+        panel = compute_panel(yf, _fred(), edgar, SECTOR_PE, "cyclical", today=AS_OF)
+        own = next(r for r in panel.readings if r.anchor == ANCHOR_OWN_HISTORY)
+        assert "loss period(s) excluded" in own.note
 
     def test_share_counts_are_matched_as_of_not_exactly(self):
         """MU resolves its share count from the dei cover-page tag, whose dates are
