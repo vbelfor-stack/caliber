@@ -583,10 +583,23 @@ class TestEdgarFieldResolution:
         assert reported.concept == "DebtAndCapitalLeaseObligations"
         assert reported.value == pytest.approx(2_697_200_000)
 
-    @pytest.mark.parametrize("ticker", ("GOOG", "NOW"))
-    def test_reported_debt_total_absent_is_typed(self, ticker):
-        """Most issuers file only the components; withheld, never zero-filled."""
-        assert _fields(ticker)["total_debt_reported"].reason == REASON_NO_TAG
+    @pytest.mark.parametrize("ticker,reason", (
+        # GOOG DOES file LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities,
+        # but abandoned it in 2024 — the 450d gate withholds it, so stale_tag is the
+        # accurate code. It read no_tag only until the D-5 chain extension; the fixture
+        # caught up at the G-4 re-record. The field is DARK either way.
+        ("GOOG", REASON_STALE_TAG),
+        ("NOW", REASON_NO_TAG),
+    ))
+    def test_reported_debt_total_absent_is_typed(self, ticker, reason):
+        """Most issuers file only the components; withheld, never zero-filled.
+
+        The DISTINCTION is the point: no_tag means never filed, stale_tag means filed and
+        abandoned. Both withhold; conflating them would lose the tag-migration signal that
+        makes onboarding a new ticker diagnosable."""
+        field = _fields(ticker)["total_debt_reported"]
+        assert not field.is_resolved()
+        assert field.reason == reason
 
     def test_unclassified_balance_sheet_is_typed_not_zero_filled(self):
         """WU files no classified current section (its balance sheet is unclassified —

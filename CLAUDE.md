@@ -110,19 +110,61 @@ Suite 577 -> 612. caliber.db md5 unchanged 54aa42e5.
   truncated series stands. THE FIX WAS CORRECT ON BOTH TICKERS IT WAS BUILT FOR AND WOULD
   STILL HAVE REGRESSED THE PIPELINE ON THE THIRD.
 
-**NEXT ORDER: G-4 ARM GATE — awaiting Vic. Do NOT arm unprompted.** Open items (g-build §5):
-(1) arm at all, given the expected diff is ZERO score movement on all nine; (2) fixture-mode
-contract at arm — recommend pass None -> refused -> truncation, so offline is UNCHANGED but
-diverges from live for GOOG/NOW; recommend accepting and recording that rather than
-re-recording EDGAR fixtures (a baseline move) to close a gap in a degraded mode; (3) V stays
-refused under 2-of-3 — conservative and per the ruling, consequence on record; (4) two tests
-flip at arm (test_series_truncates_at_a_split_boundary,
-test_a_recent_split_can_cost_the_anchor_entirely).
-AFTER G-4: G-5 (zero-with-coverage sentinels, >5x EPS jump) under its own ruling — different
-defect class, recommended NOT to ride along. Then Phase H sequencing vs EDGAR expansion:
-docs/g-build.md §6 recommends H'S FCF LEG FIRST (compounder lens gains its first own-history
-anchor — GOOG/V/WU; operating_cashflow and capex are already flow specs, 24 overlapping
-quarters measured for MU/GOOG/NOW/WU), with the EBITDA leg behind EDGAR (no D&A spec).
+**G-4 ARMED 2026-08-11 — PHASE G IS CLOSED.** Report docs/g-build.md (G-4 section).
+Ruled ARM on CORRECTNESS, not score movement: GOOG's series was known-wrong and feeds the
+binding anchor class. restatement_blocked RATIFIED (empty list != safe default). Scope
+horizon RATIFIED (alarm desensitization is a correctness problem; V's warning must stay the
+only one). Suite 613. caliber.db md5 unchanged 54aa42e5.
+- ARMED DIFF, live, all nine: **ZERO SCORES MOVED** — exactly the scoping prediction.
+  Per-quarter reviewed: GOOG all 17 pre-existing +0.00 and 3 recovered (4.05/3.97/3.99);
+  NOW both pre-existing +0.00 and 17 recovered (0.18-1.10). IDENTICAL TO THE DARK DIFF.
+- own_history_series() picks the basis AND RETURNS IT; the basis is stamped on the anchor
+  reading (basis=split_restated | truncated (<reason>)). A panel anchor on a truncated
+  series is a DIFFERENT MEASUREMENT from one on a restated series and provenance says so.
+- fetch_splits returns None for UNKNOWN, [] for "none exist" — the distinction is the whole
+  contract. `splits` joined fetch_payload so the recorder captures it through the one path
+  production requests.
+- FIXTURE RE-RECORD (ruled: recorder discipline beats recorded divergence): GOOG + NOW
+  re-recorded, offline now reproduces live EXACTLY (GOOG 20q @4.34, NOW 19q @0.78).
+  Resolution diff REVIEWED, 1 field of 38 moved: GOOG total_debt_reported no_tag ->
+  stale_tag — withheld either way, field is DARK, and it is the same movement already
+  recorded live at D-5 (the fixture predated that chain extension). NOW: zero movement.
+  MU/V/WU/banks deliberately NOT re-recorded: no split data -> None -> refused ->
+  truncated, which already equals their restated series. No drift to close.
+- V STAYS REFUSED (1/3 witnesses), flag retained.
+- Tests flipped: test_the_truncating_series_is_now_the_FALLBACK_and_still_truncates (the
+  truncating function is unchanged and still pinned — it is the only thing between an
+  unknown split and GOOG's ~81% quarters) and test_a_recent_split_no_longer_costs_the_anchor.
+  Added test_without_a_split_report_the_panel_keeps_the_truncated_basis.
+
+**NEXT ORDER: SCOPE PHASE H-FCF — REPORT ONLY, no implementation. Ruled 2026-08-11.**
+H-FCF = extend the own-history anchor from trailing-earnings-only to an FCF yield series.
+- WHY IT IS NEXT: own-history reaches a score ONLY through the cyclical lens today (MU
+  alone of the nine). An FCF own-history series gives the COMPOUNDER lens — GOOG, V, WU,
+  the MAJORITY LENS — its first issuer-referenced denominator, turning MIN from a
+  two-market-anchor rule into a genuine three-anchor one for most of the universe.
+- CEILING NOTE (Vic, ruled): H-FCF is the MOST DIRECT PATH TO VERDICT-HIGH REACHABILITY.
+  The E-4 finding pins the medium ceiling on four structural blockers; free_cashflow is
+  one of them, currently PERMANENT ADVISORY on an FMP-annual-vs-EDGAR-TTM basis mismatch.
+  A proper EDGAR TTM FCF series is exactly the missing basis. **VERIFY THIS AT SCOPING —
+  it is the reasoning, not yet a measurement**: does an EDGAR TTM FCF resolve the basis
+  mismatch enough to move free_cashflow from advisory to ARMED, and does it give the
+  Valuation pillar's fcf_yield a corroborant? If yes, H-FCF closes blockers in TWO of the
+  four pillars and test_verdict_high_is_still_blocked (ruling R-D, LEFT PINNED
+  DELIBERATELY) becomes the signal that fires.
+- FEASIBILITY ALREADY MEASURED: operating_cashflow and capex are BOTH already flow specs,
+  so ttm_series works on them today — 24 overlapping quarters for MU/GOOG/NOW/WU. V has no
+  capex tag (its existing accepted limit), so V gains nothing and stays 0.
+- SCOPE BOUNDARY, BIAS AGAINST CREEP: the EBITDA leg is DEFERRED BEHIND EDGAR EXPANSION
+  (no D&A spec, EV build-out needed, EBITDA tagging varies far more than cash-flow
+  tagging). Forward-earnings own-history is worth NOTHING (no lens is anchored on it).
+  H is TWO legs, and this order is the FIRST ONE ONLY.
+- The report MUST state expected own-history coverage after H-FCF (today 4/20) and which
+  lenses gain a discriminator, and MUST carry a blast-radius audit — unlike G, this one
+  CAN move compounder scores, which is three of the golden five.
+- DARK BEFORE ARM. Per-point validation, not medians (standing ruling from G).
+AFTER H-FCF: G-5 (zero-with-coverage sentinels, >5x adjacent-year EPS jump) under its own
+ruling — DIFFERENT DEFECT CLASS, ruled not to ride along with G. Then EDGAR expansion.
 
 **STANDING SEQUENCE AFTER G:** EDGAR expansion resumes ONLY after G. Then the recorded
 roadmap items: β cross-check, ttm_summed synthetic-only coverage, dark total_debt variants,
@@ -319,7 +361,13 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   DARK, validated PER-POINT not on medians -> G-4 arm on ruling -> G-5 (separate ruling)
   sentinels + EPS-jump flagging. Two tests flip when G lands, the JPM-cash-tag pattern:
   test_series_truncates_at_a_split_boundary, test_a_recent_split_can_cost_the_anchor_entirely.
-  G-1/G-2/G-3 BUILT AND DARK 2026-08-11 (docs/g-build.md). G-4 NOT ARMED.
+  **CLOSED 2026-08-11 — G-4 ARMED on a zero-score-movement diff** (docs/g-build.md).
+  Delivered: mixed-basis rule (basis at FILING date) · 2-of-3 witness corroboration with
+  the DATE FROM FMP · scope horizon for pre-XBRL splits · restatement_blocked · the
+  limit=365 pin. Own-history coverage 3/20 -> 4/20 readings, 7/9 -> 8/9 tickers. No score,
+  E(R) or grade moved. PRECEDENT SET: first corroborated-by-design input, and the ruled
+  TEMPLATE FOR THE BETA CROSS-CHECK (which lifts D's tripwire 3).
+  G-1/G-2/G-3 built dark first; the arm diff matched the dark diff exactly.
   New surfaces: core/corporate_actions.py (witnesses, corroboration, scope horizon,
   split_factor, restatement_blocked); adapters/fmp_adapter.fetch_splits; EDGAR gained
   `first_filed` on every fact + the tagged-ratio concept, the latter kept OUT of

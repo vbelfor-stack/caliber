@@ -223,3 +223,73 @@ are captured through the adapter's own live fetch path, so the day a re-record b
 a one-year series this fails — at the deliberate baseline-move gate, which is where it
 should surface. A second test pins the 4-year threshold to `MIN_HISTORY_POINTS` rather than
 to a magic number.
+
+---
+
+# G-4 — ARMED (2026-08-11). PHASE G CLOSED.
+
+Ruled ARM on correctness, not score movement: GOOG's series was known-wrong and feeds the
+binding anchor class. `restatement_blocked` and the scope horizon both **RATIFIED**.
+
+## What arming changed
+
+`own_history_series(edgar, price_history, split_report)` now selects the basis and
+**returns it**: the restated series when the split state is established, the truncated one
+otherwise. `compute_panel`/`build_panel` take the split report; both boundaries pass it.
+The basis is stamped on the anchor reading's note (`basis=split_restated` /
+`basis=truncated (<reason>)`) — a panel anchor built on a truncated series is a different
+measurement from one built on a restated series, and provenance has to say which.
+
+`fetch_splits` returns **`None` for UNKNOWN and `[]` for "none exist"**, and `splits` joined
+`fetch_payload` so the recorder captures it through the one path production requests.
+
+## ARMED DIFF — live, all nine. **ZERO SCORES MOVED.**
+
+| Ticker | lens | quarters pre → armed | basis | own-hist pre → armed | score | binding anchor |
+|---|---|---|---|---|---|---|
+| MU | cyclical | 15 → 15 | split_restated | 5.75 → 5.75 | **3 → 3** | own_history |
+| GOOG | compounder | **17 → 20** | split_restated | **4.43 → 4.34** | **1 → 1** | risk_free |
+| V | compounder | 0 → 0 | **truncated (refused)** | — | **2 → 2** | sector |
+| NOW | growth | **2 → 19** | split_restated | **— → 0.78** | **3 → 3** | risk_free |
+| WU | compounder | 20 → 20 | split_restated | 16.27 → 16.27 | **5 → 5** | sector |
+| JPM / BK / USB / C | bank | unchanged | split_restated | unchanged | **unchanged** | n/a (no panel) |
+
+Matches the scoping prediction (`docs/g-scoping.md` §6) exactly: own-history reaches a score
+only through the cyclical lens, and MU — the only cyclical name — had no truncation.
+
+**Per-quarter, reviewed (standing per-point ruling):** GOOG — all 17 pre-existing quarters
+`+0.00`, three recovered at 4.05 / 3.97 / 3.99. NOW — both pre-existing quarters `+0.00`,
+seventeen recovered spanning 0.18–1.10. **Identical to the dark diff**, as expected.
+
+## Fixture re-record (ruled: recorder discipline wins over recorded divergence)
+
+GOOG and NOW re-recorded through `tools.record_edgar_fixture` and `tools.record_fmp_fixture`.
+Offline now reproduces live exactly — GOOG 20 quarters @ 4.34, NOW 19 @ 0.78.
+
+**Resolution diff reviewed, 1 field of 38 moved:** GOOG `total_debt_reported`
+`no_tag → stale_tag`. Value withheld either way, the field is DARK, and the movement is the
+one already recorded live at D-5 — GOOG does file
+`LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities` but abandoned it in 2024,
+so the 450d gate withholds it and `stale_tag` is strictly more accurate. The fixture had
+predated the D-5 chain extension; it has now caught up. NOW: zero movement.
+`test_reported_debt_total_absent_is_typed` updated to pin the distinction per ticker —
+`no_tag` (never filed) vs `stale_tag` (filed and abandoned) must not be conflated or the
+tag-migration signal is lost.
+
+MU, V, WU and the four banks were deliberately **not** re-recorded: their fixtures carry no
+split data, so they return `None` → refused → truncated, and their truncated series already
+equals their restated one (no in-scope discontinuity). No drift to close.
+
+## Tests flipped
+
+- `test_series_truncates_at_a_split_boundary` → **`test_the_truncating_series_is_now_the_FALLBACK_and_still_truncates`**. The truncating function is unchanged and still pinned, because it is the only thing standing between an unknown split and GOOG's ~81% quarters.
+- `test_a_recent_split_can_cost_the_anchor_entirely` → **`test_a_recent_split_no_longer_costs_the_anchor`**. NOW's anchor is now AVAILABLE and stamped `split_restated`.
+- Added `test_without_a_split_report_the_panel_keeps_the_truncated_basis` — `None` is UNKNOWN, never "no splits".
+
+Suite **613 passed**. `caliber.db` md5 unchanged `54aa42e5`.
+
+## Phase G closed — what it delivered
+
+Mixed-basis rule (basis at filing date) · 2-of-3 witness corroboration with the date from FMP
+· scope horizon for pre-XBRL splits · `restatement_blocked` · the `limit=365` pin. Own-history
+coverage **3/20 → 4/20 readings, 7/9 → 8/9 tickers**. No score, E(R) or grade moved.

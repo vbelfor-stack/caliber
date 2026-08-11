@@ -114,11 +114,34 @@ def fetch_sector_pe(exchange: str, as_of: Optional[str] = None) -> Dict[str, flo
     return out
 
 
-_SPLITS_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+_SPLITS_CACHE: Dict[str, Optional[List[Dict[str, Any]]]] = {}
 
 
-def fetch_splits(ticker: str) -> List[Dict[str, Any]]:
-    """[{ex_date, ratio}, ...] newest first, or [] when unavailable.
+def _splits_from_rows(rows: Any) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for row in rows or []:
+        num, den = coerce(row.get("numerator")), coerce(row.get("denominator"))
+        ex = str(row.get("date", ""))[:10]
+        if not ex or not num or not den:
+            continue
+        out.append({"ex_date": ex, "ratio": num / den,
+                    "numerator": num, "denominator": den})
+    out.sort(key=lambda r: r["ex_date"], reverse=True)
+    return out
+
+
+def fetch_splits(ticker: str,
+                 fixture_path: Optional[Path] = None) -> Optional[List[Dict[str, Any]]]:
+    """[{ex_date, ratio}, ...] newest first. **None means UNKNOWN, [] means none exist.**
+
+    That distinction is the whole contract. The restated own-history series has no
+    truncation to fall back on, so an empty list read as "this issuer never split" when it
+    really meant "we could not find out" reintroduces the artifact Phase G removes (GOOG
+    2022-03-31 at 81.02%). Callers pass None straight through to a refusal.
+
+    A fixture recorded BEFORE splits joined the payload has no `splits` key and therefore
+    returns None — genuinely no split data, so the offline run refuses and keeps the
+    truncated series. A re-recorded fixture carries the key and behaves exactly as live.
 
     THE EX-DATE IS WHY THIS CALL EXISTS AT ALL. EDGAR corroborates the RATIO better than
     FMP does (see core/corporate_actions), but it dates a split to a declaration or record
@@ -126,23 +149,23 @@ def fetch_splits(ticker: str) -> List[Dict[str, Any]]:
     FMP's ex-date. Pairing an EDGAR date with an FMP-adjusted price would reintroduce the
     basis mismatch Phase G exists to remove.
 
-    Returns empty rather than raising: a missing split record must degrade to the existing
-    truncation behaviour (flagged), never take down an evaluation.
+    Never raises: a lookup failure degrades to None, i.e. to the truncation behaviour
+    (flagged), rather than taking down an evaluation.
     """
     t = ticker.upper()
+    if fixture_path is not None:
+        if not fixture_path.exists():
+            raise RuntimeError(f"[fmp] fixture not found: {fixture_path}")
+        raw = json.loads(fixture_path.read_text(encoding="utf-8"))
+        if "splits" not in raw:
+            return None            # fixture predates the splits capture — UNKNOWN
+        return _splits_from_rows(raw["splits"])
     if t in _SPLITS_CACHE:
         return _SPLITS_CACHE[t]
     key = os.environ.get("FMP_API_KEY", "")
-    out: List[Dict[str, Any]] = []
-    if key:
-        for row in _safe_get(f"splits?symbol={t}", key, []) or []:
-            num, den = coerce(row.get("numerator")), coerce(row.get("denominator"))
-            ex = str(row.get("date", ""))[:10]
-            if not ex or not num or not den:
-                continue
-            out.append({"ex_date": ex, "ratio": num / den,
-                        "numerator": num, "denominator": den})
-    out.sort(key=lambda r: r["ex_date"], reverse=True)
+    if not key:
+        return None
+    out = _splits_from_rows(_safe_get(f"splits?symbol={t}", key, []))
     _SPLITS_CACHE[t] = out
     return out
 
@@ -391,6 +414,9 @@ def fetch_payload(ticker: str) -> Dict[str, Any]:
                 f"analyst-estimates?symbol={ticker}&limit=3&period=annual", key, []),
             "price_target": _safe_get(f"price-target-summary?symbol={ticker}", key, []),
             "shares_float": _safe_get(f"shares-float?symbol={ticker}", key, []),
+            # Phase G: part of the ONE payload production requests, so the recorder
+            # captures it and an offline run cannot drift from what live asks for.
+            "splits": _safe_get(f"splits?symbol={ticker}", key, []),
         }
     except Exception as e:
         raise RuntimeError(

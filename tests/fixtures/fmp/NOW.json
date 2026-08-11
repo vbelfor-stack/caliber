@@ -2,15 +2,15 @@
   "profile": [
     {
       "symbol": "NOW",
-      "price": 124.88,
-      "marketCap": 129108686560,
-      "beta": 0.959,
+      "price": 127.54,
+      "marketCap": 131858759480,
+      "beta": 0.93,
       "lastDividend": 0,
       "range": "81.24-194.726",
-      "change": 7.53,
-      "changePercentage": 6.4167,
-      "volume": 25474844,
-      "averageVolume": 27442972,
+      "change": 0.1,
+      "changePercentage": 0.0784683,
+      "volume": 12575407,
+      "averageVolume": 27492969,
       "companyName": "ServiceNow, Inc.",
       "currency": "USD",
       "cik": "0001373715",
@@ -59,15 +59,15 @@
       "quickRatioTTM": 0.7005677610466552,
       "solvencyRatioTTM": 0.1431331592689295,
       "cashRatioTTM": 0.20595737677939605,
-      "priceToEarningsRatioTTM": 77.56521739130436,
-      "priceToEarningsGrowthRatioTTM": 124.10434782608962,
-      "forwardPriceToEarningsGrowthRatioTTM": 3.338379476301403,
-      "priceToEarningsDilutedRatioTTM": 78.05,
-      "priceToEarningsDilutedGrowthRatioTTM": 124.09950000000002,
-      "priceToBookRatioTTM": 10.306890380313199,
-      "priceToSalesRatioTTM": 8.763826130871573,
-      "priceToFreeCashFlowRatioTTM": 28.189669554585155,
-      "priceToOperatingCashFlowRatioTTM": 24.30313489073097,
+      "priceToEarningsRatioTTM": 79.21739130434784,
+      "priceToEarningsGrowthRatioTTM": 126.74782608695925,
+      "forwardPriceToEarningsGrowthRatioTTM": 3.4094884561777783,
+      "priceToEarningsDilutedRatioTTM": 79.7125,
+      "priceToEarningsDilutedGrowthRatioTTM": 126.74287500000004,
+      "priceToBookRatioTTM": 10.526431767337808,
+      "priceToSalesRatioTTM": 8.950499557426012,
+      "priceToFreeCashFlowRatioTTM": 28.790122157205243,
+      "priceToOperatingCashFlowRatioTTM": 24.820802562170307,
       "debtToAssetsRatioTTM": 0.2669424619465673,
       "debtToEquityRatioTTM": 0.6753755193352509,
       "debtToCapitalRatioTTM": 0.4031188897896895,
@@ -85,7 +85,7 @@
       "dividendPaidAndCapexCoverageRatioTTM": 7.291208791208791,
       "dividendPayoutRatioTTM": 0,
       "dividendYieldTTM": 0,
-      "enterpriseValueTTM": 135058686560,
+      "enterpriseValueTTM": 137808759480,
       "revenuePerShareTTM": 14.26137463697967,
       "netIncomePerShareTTM": 1.6166505324298162,
       "interestDebtPerShareTTM": 8.263310745401743,
@@ -98,22 +98,22 @@
       "freeCashFlowPerShareTTM": 4.433688286544046,
       "netIncomePerEBTTTM": 0.711849957374254,
       "ebtPerEbitTTM": 1.3964285714285714,
-      "priceToFairValueTTM": 10.306890380313199,
-      "debtToMarketCapTTM": 0.05822226373983492,
+      "priceToFairValueTTM": 10.526431767337808,
+      "debtToMarketCapTTM": 0.057007968447785676,
       "effectiveTaxRateTTM": 0.28815004262574595,
-      "enterpriseValueMultipleTTM": 38.70985570650616,
+      "enterpriseValueMultipleTTM": 39.498068065348235,
       "dividendPerShareTTM": 0
     }
   ],
   "key_metrics_ttm": [
     {
       "symbol": "NOW",
-      "marketCap": 129108686560,
-      "enterpriseValueTTM": 135058686560,
-      "evToSalesTTM": 9.167708835188705,
-      "evToOperatingCashFlowTTM": 25.444364461190656,
-      "evToFreeCashFlowTTM": 29.48879619213974,
-      "evToEBITDATTM": 38.70985570650616,
+      "marketCap": 131858759480,
+      "enterpriseValueTTM": 137808759480,
+      "evToSalesTTM": 9.354382261743144,
+      "evToOperatingCashFlowTTM": 25.96246410700829,
+      "evToFreeCashFlowTTM": 30.089248794759826,
+      "evToEBITDATTM": 39.498068065348235,
       "netDebtToEBITDATTM": 1.705359701920321,
       "currentRatioTTM": 0.7005677610466552,
       "incomeQualityTTM": 3.178443113772455,
@@ -129,8 +129,8 @@
       "returnOnEquityTTM": 0.13770640499701087,
       "returnOnInvestedCapitalTTM": 0.05508811683581679,
       "returnOnCapitalEmployedTTM": 0.08609644852149849,
-      "earningsYieldTTM": 0.012945632066222103,
-      "freeCashFlowYieldTTM": 0.03547398801761925,
+      "earningsYieldTTM": 0.012675635349143925,
+      "freeCashFlowYieldTTM": 0.03473413535863488,
       "capexToOperatingCashFlowTTM": 0.13715146948003015,
       "capexToDepreciationTTM": 0.663023679417122,
       "capexToRevenueTTM": 0.04941623676350801,
@@ -765,6 +765,30 @@
     }
   ],
   "price_history": [
+    {
+      "symbol": "NOW",
+      "date": "2026-08-11",
+      "open": 126.26,
+      "high": 128.97,
+      "low": 125.16,
+      "close": 127.54,
+      "volume": 13257522,
+      "change": 1.28,
+      "changePercent": 1.01,
+      "vwap": 126.9825
+    },
+    {
+      "symbol": "NOW",
+      "date": "2026-08-10",
+      "open": 124.72,
+      "high": 127.89,
+      "low": 123.28,
+      "close": 127.44,
+      "volume": 17216100,
+      "change": 2.72,
+      "changePercent": 2.18,
+      "vwap": 125.8325
+    },
     {
       "symbol": "NOW",
       "date": "2026-08-07",
@@ -15788,42 +15812,6 @@
       "change": 2.46,
       "changePercent": 2.16074,
       "vwap": 115.37
-    },
-    {
-      "symbol": "NOW",
-      "date": "2021-08-11",
-      "open": 115.69,
-      "high": 116.23,
-      "low": 113.32,
-      "close": 114.04,
-      "volume": 4541100,
-      "change": -1.65,
-      "changePercent": -1.42623,
-      "vwap": 114.53
-    },
-    {
-      "symbol": "NOW",
-      "date": "2021-08-10",
-      "open": 117.6,
-      "high": 117.89,
-      "low": 114.56,
-      "close": 115.16,
-      "volume": 4148190,
-      "change": -2.44,
-      "changePercent": -2.07483,
-      "vwap": 115.87
-    },
-    {
-      "symbol": "NOW",
-      "date": "2021-08-09",
-      "open": 117.99,
-      "high": 118.46,
-      "low": 117.06,
-      "close": 117.59,
-      "volume": 4004660,
-      "change": -0.4,
-      "changePercent": -0.33901178,
-      "vwap": 117.7
     }
   ],
   "earnings": [
@@ -15834,7 +15822,7 @@
       "epsEstimated": 1.03,
       "revenueActual": null,
       "revenueEstimated": 4095640000,
-      "lastUpdated": "2026-08-08"
+      "lastUpdated": "2026-08-11"
     },
     {
       "symbol": "NOW",
@@ -15843,7 +15831,7 @@
       "epsEstimated": 0.86,
       "revenueActual": 3987000000,
       "revenueEstimated": 3927173000,
-      "lastUpdated": "2026-08-08"
+      "lastUpdated": "2026-08-11"
     },
     {
       "symbol": "NOW",
@@ -15977,8 +15965,8 @@
   "price_target": [
     {
       "symbol": "NOW",
-      "lastMonthCount": 11,
-      "lastMonthAvgPriceTarget": 153,
+      "lastMonthCount": 10,
+      "lastMonthAvgPriceTarget": 155.3,
       "lastQuarterCount": 14,
       "lastQuarterAvgPriceTarget": 148.79,
       "lastYearCount": 80,
@@ -15991,11 +15979,20 @@
   "shares_float": [
     {
       "symbol": "NOW",
-      "date": "2026-08-07 22:41:12",
+      "date": "2026-08-10 15:39:06",
       "freeFloat": 99.75399995357213,
       "floatShares": 1031318699,
       "outstandingShares": 1033862000,
       "source": "https://www.sec.gov/Archives/edgar/data/1373715/000137371526000076/now-20260630.htm"
+    }
+  ],
+  "splits": [
+    {
+      "symbol": "NOW",
+      "date": "2025-12-18",
+      "numerator": 5,
+      "denominator": 1,
+      "splitType": "stock-split"
     }
   ]
 }

@@ -373,24 +373,50 @@ def _sector_reading(metric: str, ticker_yield: Optional[float], sector: Optional
 
 
 def _own_history_reading(metric: str, ticker_yield: Optional[float],
-                         history: List[Dict[str, Any]]) -> AnchorReading:
+                         history: List[Dict[str, Any]],
+                         basis: str = "truncated") -> AnchorReading:
     if metric != METRIC_EARNINGS_YIELD:
         return AnchorReading(metric, ANCHOR_OWN_HISTORY, ticker_yield,
                              reason="own-history series is trailing-earnings only")
     if len(history) < MIN_HISTORY_POINTS:
         return AnchorReading(
             metric, ANCHOR_OWN_HISTORY, ticker_yield,
-            reason=f"only {len(history)} historical points (<{MIN_HISTORY_POINTS})")
+            reason=f"only {len(history)} historical points (<{MIN_HISTORY_POINTS}); "
+                   f"basis={basis}")
     median = statistics.median(h["earnings_yield"] for h in history)
     losses = history[0].get("loss_periods_excluded", 0)
     note = (f"median of {len(history)} quarters, "
             f"{history[-1]['period_end']}→{history[0]['period_end']}"
-            + (f"; {losses} loss period(s) excluded" if losses else ""))
+            + (f"; {losses} loss period(s) excluded" if losses else "")
+            + f"; basis={basis}")
     if ticker_yield is None:
         return AnchorReading(metric, ANCHOR_OWN_HISTORY, anchor_yield=median,
                              reason=f"{metric} unavailable or non-positive")
     return AnchorReading(metric, ANCHOR_OWN_HISTORY, ticker_yield, median,
                          available=True, note=note)
+
+
+def own_history_series(
+    edgar: Optional[EdgarData], price_history: List[Dict], split_report: Any = None
+) -> tuple:
+    """(series, basis) — the own-history series and which basis produced it.
+
+    ARMED G-4. The split-restated series is preferred; the truncated one is the fallback
+    whenever the split state is not established (restatement_blocked). The basis is
+    RETURNED, not hidden, because a panel anchor built on a truncated series is a
+    different measurement from one built on a restated series and provenance must say so.
+    """
+    if edgar is None:
+        return [], "none"
+    from core.corporate_actions import restatement_blocked
+
+    blocked = restatement_blocked(split_report)
+    if blocked is None:
+        restated = own_history_restated(edgar, price_history, split_report)
+        if restated:
+            return restated, "split_restated"
+    return (own_history_earnings_yields(edgar, price_history),
+            "truncated" if blocked is None else f"truncated ({blocked})")
 
 
 def compute_panel(
@@ -400,6 +426,7 @@ def compute_panel(
     sector_pe: Dict[str, float],
     lens: str,
     today: Optional[str] = None,
+    split_report: Any = None,
 ) -> ValuationPanel:
     """Measure every anchor against every yield metric. Pure — mutates nothing."""
     today = today or date.today().isoformat()
@@ -418,19 +445,21 @@ def compute_panel(
         METRIC_EBITDA_YIELD: _yield_from_multiple(val("ev_to_ebitda")),
     }
 
-    history = (own_history_earnings_yields(edgar, ticker_data.price_history)
-               if edgar is not None else [])
+    history, basis = own_history_series(edgar, ticker_data.price_history, split_report)
     if edgar is not None and not history:
         panel.notes.append(
             "own-history anchor unavailable: no overlapping TTM earnings, share count "
             "and price series")
+    if basis.startswith("truncated ("):
+        panel.notes.append(f"own-history on the TRUNCATED basis — {basis}")
 
     for metric, ticker_yield in metrics.items():
         panel.readings.append(_risk_free_reading(metric, ticker_yield, fred))
         panel.readings.append(
             _sector_reading(metric, ticker_yield, getattr(ticker_data, "sector", None),
                             sector_pe))
-        panel.readings.append(_own_history_reading(metric, ticker_yield, history))
+        panel.readings.append(
+            _own_history_reading(metric, ticker_yield, history, basis))
 
     return panel
 
@@ -517,6 +546,7 @@ def build_panel(
     ticker_data: Any, fred: Any, edgar: Optional[EdgarData],
     sector_pe: Dict[str, float], lens: str,
     log: Optional[Any] = None,
+    splits: Optional[List[Dict]] = None,
 ) -> Optional[ValuationPanel]:
     """Compute and log the valuation panel.
 
@@ -532,7 +562,17 @@ def build_panel(
     """
     emit = log or print
     try:
-        panel = compute_panel(ticker_data, fred, edgar, sector_pe, lens)
+        # G-4 ARMED: the split report decides which own-history basis the panel gets.
+        # `splits is None` means UNKNOWN (no live record, or a fixture predating the
+        # capture) and must NOT be read as "never split" — see restatement_blocked.
+        report = None
+        if edgar is not None and splits is not None:
+            from core.corporate_actions import build_split_report, render_split_report
+            report = build_split_report(getattr(ticker_data, "ticker", "?"), splits,
+                                        edgar.financials)
+            emit(render_split_report(report))
+        panel = compute_panel(ticker_data, fred, edgar, sector_pe, lens,
+                              split_report=report)
         emit(render_panel(panel))
         return panel
     except Exception as e:                              # noqa: BLE001 — see docstring

@@ -13,11 +13,13 @@ import pytest
 
 from adapters.base import Prov
 from adapters.edgar_adapter import fetch_edgar
-from adapters.fmp_adapter import fetch_fmp
+from adapters.fmp_adapter import fetch_fmp, fetch_splits
+from core.corporate_actions import build_split_report
 from adapters.fred_adapter import FredData
 from core.valuation_anchors import (
     ANCHOR_OWN_HISTORY, ANCHOR_RISK_FREE, ANCHOR_SECTOR, METRIC_EARNINGS_YIELD,
     METRIC_FCF_YIELD, METRIC_FORWARD_EARNINGS_YIELD, MIN_HISTORY_POINTS,
+    METRIC_EBITDA_YIELD,
     _yield_from_multiple, compute_panel, own_history_earnings_yields, render_panel,
     build_panel, score_yield_spread,
 )
@@ -25,6 +27,10 @@ from core.valuation_anchors import (
 FIXTURES = Path("tests/fixtures")
 AS_OF = "2026-08-09"
 SECTOR_PE = {"Technology": 48.1, "Financial Services": 21.0}
+
+
+def _FMP_FX(ticker: str) -> Path:
+    return FIXTURES / "fmp" / f"{ticker}.json"
 
 
 def _load(ticker: str):
@@ -130,23 +136,47 @@ class TestOwnHistoryAnchor:
             assert h["earnings_yield"] == pytest.approx(
                 h["net_income_ttm"] / (h["price"] * h["shares"]) * 100.0)
 
-    def test_series_truncates_at_a_split_boundary(self):
-        """FMP prices are split-adjusted to today's basis; EDGAR share counts are AS
-        FILED. Across GOOG's 2022 split the two disagree by the split ratio, which put
-        its pre-split quarters at an ~81% earnings yield against a ~4% norm."""
+    def test_the_truncating_series_is_now_the_FALLBACK_and_still_truncates(self):
+        """FLIPPED AT G-4 (was test_series_truncates_at_a_split_boundary).
+
+        own_history_earnings_yields is unchanged and still truncates — it is what the
+        panel falls back to when the split state is not established. Pinned because the
+        fallback has to keep working: it is the only thing standing between an unknown
+        split and GOOG's pre-2022 quarters at an ~81% yield against a ~4% norm.
+        """
         yf, edgar = _load("GOOG")
         history = own_history_earnings_yields(edgar, yf.price_history)
         assert history[-1]["period_end"] >= "2022-06-30"
         assert max(h["earnings_yield"] for h in history) < 10.0
 
-    def test_a_recent_split_can_cost_the_anchor_entirely(self):
-        """NOW split 5:1 (208M -> 1,046M shares), leaving too few consistent quarters.
-        The anchor is withheld rather than computed across the discontinuity — a
-        Phase-G (split-adjustment) dependency, recorded as such."""
+    def test_a_recent_split_no_longer_costs_the_anchor(self):
+        """FLIPPED AT G-4 (was test_a_recent_split_can_cost_the_anchor_entirely).
+
+        NOW's 5:1 split used to leave 2 consistent quarters and cost the anchor outright.
+        Armed, the series is restated onto today's basis instead of truncated, and the
+        anchor is AVAILABLE. This is the whole point of Phase G.
+        """
         yf, edgar = _load("NOW")
+        report = build_split_report("NOW", fetch_splits("NOW", fixture_path=_FMP_FX("NOW")),
+                                    edgar.financials)
+        assert [e.ratio for e in report.usable] == [5.0]
+        panel = compute_panel(yf, _fred(), edgar, SECTOR_PE, "growth", today=AS_OF,
+                              split_report=report)
+        own = next(r for r in panel.readings
+                   if r.anchor == ANCHOR_OWN_HISTORY
+                   and r.metric == METRIC_EARNINGS_YIELD)
+        assert own.available and "split_restated" in own.note
+        # ...and the truncated series it replaced was below the withholding floor
         assert len(own_history_earnings_yields(edgar, yf.price_history)) < MIN_HISTORY_POINTS
+
+    def test_without_a_split_report_the_panel_keeps_the_truncated_basis(self):
+        """None means UNKNOWN, never "no splits". An unknown split state must not reach
+        the restated series, which has no truncation to protect it."""
+        yf, edgar = _load("NOW")
         panel = compute_panel(yf, _fred(), edgar, SECTOR_PE, "growth", today=AS_OF)
-        own = next(r for r in panel.readings if r.anchor == ANCHOR_OWN_HISTORY)
+        own = next(r for r in panel.readings
+                   if r.anchor == ANCHOR_OWN_HISTORY
+                   and r.metric == METRIC_EARNINGS_YIELD)
         assert not own.available and "historical points" in own.reason
 
     def test_loss_periods_are_excluded_and_counted(self):
