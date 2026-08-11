@@ -176,10 +176,20 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     )),
 )
 
+# CORPORATE-ACTIONS CORROBORATION (G-2). Pulled for split-ratio corroboration ONLY and
+# deliberately kept OUT of FIELD_SPECS: it is not a canonical field, so it must not appear
+# in the 19-spec coverage counts, the resolved-xor-reason invariant, or the cross-check.
+# Issuers tag the ratio explicitly — GOOG 20 @ 2022-07-15, NOW 5 @ 2025-12-05 — which makes
+# it the third witness, and two of the three then sit inside EDGAR, independent of FMP.
+CORPORATE_ACTION_CONCEPTS: List[Tuple[str, str]] = [
+    ("StockholdersEquityNoteStockSplitConversionRatio1", "us-gaap"),
+]
+_CORPORATE_ACTION_NAMES = {c for c, _ in CORPORATE_ACTION_CONCEPTS}
+
 # The concept-pull list is derived from the spec table — one place to add a tag.
 XBRL_CONCEPTS: List[Tuple[str, str]] = [
     syn for spec in FIELD_SPECS for syn in spec.synonyms
-]
+] + CORPORATE_ACTION_CONCEPTS
 _XBRL_VALID_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
 
 # Per-concept staleness gate: a concept whose newest period-end lags the entity's latest
@@ -230,6 +240,10 @@ class ResolvedField:
     reason: Optional[str] = None     # typed code; None when resolved
     detail: Optional[str] = None     # human-readable amplification of reason
     trail: List[str] = field(default_factory=list)  # per-synonym outcome, in priority order
+    # G-1: filing date this value FIRST appeared under. Populated on SERIES records only —
+    # it identifies which split basis a fact is on, which the single latest-period value
+    # has no use for. Optional so nothing downstream has to care.
+    first_filed: Optional[str] = None
 
     def is_resolved(self) -> bool:
         return self.value is not None and self.reason is None
@@ -257,6 +271,12 @@ def _days_between(earlier: Optional[str], later: Optional[str]) -> Optional[int]
         return (date.fromisoformat(later[:10]) - date.fromisoformat(earlier[:10])).days
     except ValueError:
         return None
+
+
+def _earliest(a: Optional[str], b: Optional[str]) -> Optional[str]:
+    """The earlier of two ISO dates, tolerating either being absent."""
+    present = [d for d in (a, b) if d]
+    return min(present) if present else None
 
 
 def _extract_xbrl_facts(
@@ -294,11 +314,28 @@ def _extract_xbrl_facts(
                     "start": e.get("start"), "end": e.get("end"),
                     "fy": e.get("fy"), "fp": e.get("fp"),
                     "form": e.get("form"), "accession": e.get("accn"),
+                    # G-1: the filing date this exact value FIRST appeared under. A share
+                    # count is on the split basis in effect when it was FILED, not when
+                    # its period ended, so Phase G's restatement needs this and nothing
+                    # else identifies it — the accession YEAR is too coarse (GOOG's
+                    # 2022-03-31 and 2022-06-30 straddle the 2022 split and are both -22-).
+                    "first_filed": e.get("filed"),
                 }
                 key = (rec["start"], rec["end"], unit, val)
                 prior = deduped.get(key)
                 if prior is None or (rec["accession"] or "") > (prior["accession"] or ""):
+                    # EARLIEST wins, deliberately, and it is carried across the accession
+                    # tie-break above. A later filing REPEATING a value verbatim did not
+                    # restate it, so the value still carries its original basis; a genuine
+                    # restatement changes the number and lands in a different dedupe group.
+                    # Taking the latest date instead would read a repeated pre-split value
+                    # as post-split and silently skip its adjustment.
+                    rec["first_filed"] = _earliest(
+                        rec["first_filed"], prior["first_filed"] if prior else None)
                     deduped[key] = rec
+                elif prior is not None:
+                    prior["first_filed"] = _earliest(
+                        prior["first_filed"], rec["first_filed"])
         recs = list(deduped.values())
         if not recs:
             continue
@@ -306,7 +343,10 @@ def _extract_xbrl_facts(
         out[concept] = recs[:per_concept]
         # Staleness clock tracks fiscal PERIOD-END from us-gaap financials only —
         # dei cover-page dates (e.g. shares-outstanding as-of) are not period ends.
-        if ns == "us-gaap":
+        # Corporate-action concepts are excluded too: a split-ratio fact is dated to the
+        # split, not to a reporting period, so letting it into the clock would let a
+        # corporate action move every field's freshness gate.
+        if ns == "us-gaap" and concept not in _CORPORATE_ACTION_NAMES:
             top = out[concept][0]["end"]
             if top and (latest_end is None or top > latest_end):
                 latest_end = top
@@ -489,6 +529,7 @@ def instant_series(
         out.append(ResolvedField(
             name=field_name, value=float(r["value"]), unit=r.get("unit"),
             period_end=end, concept=rf.concept, method="instant",
+            first_filed=r.get("first_filed"),
         ))
         if len(out) >= limit:
             break

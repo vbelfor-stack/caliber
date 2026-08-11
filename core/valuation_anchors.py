@@ -262,6 +262,83 @@ def own_history_earnings_yields(
     return out
 
 
+# ── G-3 DARK: split-basis-restated own history (APPLIES NOTHING) ─────────────
+# Computes the series the FILED-DATE rule produces, alongside the live truncated one, so
+# the two can be diffed PER QUARTER. Median comparison is not sufficient and is not used:
+# a naive detector poisons 2 of GOOG's 20 quarters while moving the median only 4.43% ->
+# 4.26%. See core/corporate_actions and docs/g-scoping.md §3.
+
+
+def own_history_restated(
+    edgar: EdgarData, price_history: List[Dict], report: Any
+) -> List[Dict[str, Any]]:
+    """Own-history earnings yields with the share series put on TODAY's split basis.
+
+    Same construction as own_history_earnings_yields, with ONE difference: instead of
+    truncating at a discontinuity, every share count is multiplied onto today's basis
+    using the filing date it first appeared under. There is therefore no `break` — a
+    split is corrected, not fled from.
+
+    Robust to WHICH duplicate a period-end resolves to: the factor is derived from the
+    chosen record's own filing date, so picking the restated or the as-filed copy of a
+    period-end yields the same adjusted value.
+
+    TAKES THE REPORT, NOT A LIST OF EVENTS, DELIBERATELY. A bare empty list cannot say
+    whether the issuer never split or the lookup failed, and with no truncation to fall
+    back on the second case emits the raw artifact (GOOG 2022-03-31 at 81.02%). Returns
+    EMPTY whenever restatement_blocked says the basis is not established — the caller
+    then keeps the truncated series, which is lossy but honest.
+    """
+    from core.corporate_actions import restatement_blocked, split_factor
+
+    if restatement_blocked(report) is not None:
+        return []
+    events = report.usable
+
+    ni_points = {r.period_end: r.value for r in ttm_series(edgar.financials, "net_income")}
+    share_points = sorted(
+        ((r.period_end, r.value, r.first_filed)
+         for r in instant_series(edgar.financials, "shares_outstanding")
+         if r.period_end and r.value),
+        reverse=True,
+    )
+
+    def shares_as_of(target: str):
+        return next(((v, f) for d, v, f in share_points if d <= target), (None, None))
+
+    out: List[Dict[str, Any]] = []
+    dropped_loss = 0
+    unbased = 0
+    for period_end, ni in sorted(ni_points.items(), reverse=True):
+        raw, first_filed = shares_as_of(period_end)
+        price = _price_on_or_before(price_history, period_end)
+        if not raw or not price or ni is None:
+            continue
+        # No filing date means the basis is UNKNOWN, not "assume today's". Recorded
+        # fixtures predate G-1 and carry none; such a point is dropped rather than
+        # silently priced on an unverified basis.
+        if first_filed is None and events:
+            unbased += 1
+            continue
+        shares = raw * split_factor(first_filed, events)
+        mkt_cap = price * shares
+        if mkt_cap <= 0:
+            continue
+        if ni <= 0:
+            dropped_loss += 1
+            continue
+        out.append({"period_end": period_end, "earnings_yield": ni / mkt_cap * 100.0,
+                    "price": price, "net_income_ttm": ni, "shares": shares,
+                    "raw_shares": raw, "first_filed": first_filed,
+                    "split_factor": split_factor(first_filed, events),
+                    "loss_periods_excluded": dropped_loss,
+                    "unbased_points_dropped": unbased})
+    if out:
+        out[0]["loss_periods_excluded"] = dropped_loss
+        out[0]["unbased_points_dropped"] = unbased
+    return out
+
+
 def _risk_free_reading(metric: str, ticker_yield: Optional[float],
                        fred: Any) -> AnchorReading:
     rate = getattr(fred, "rate_10y", None)
@@ -387,6 +464,53 @@ def render_panel(panel: ValuationPanel) -> str:
     for n in panel.notes:
         lines.append(f"  NOTE {n}")
     return "\n".join(lines)
+
+
+def run_dark_split_restatement(
+    ticker_data: Any, edgar: Optional[EdgarData], splits: Optional[List[Dict]],
+    log: Optional[Any] = None,
+) -> None:
+    """G-3 DARK: log the split-restated own-history series beside the live truncated one.
+
+    APPLIES NOTHING — the live anchor still comes from own_history_earnings_yields. This
+    exists so the arming decision rests on production data rather than only on the scoping
+    probe, and it reports PER QUARTER because a median comparison provably passes a broken
+    implementation (docs/g-scoping.md §3).
+
+    Contained like every other dark surface: a failure here must not be able to touch an
+    evaluation it cannot influence.
+    """
+    emit = log or print
+    if edgar is None:
+        return
+    try:
+        from core.corporate_actions import (build_split_report, render_split_report,
+                                            restatement_blocked)
+
+        report = build_split_report(getattr(ticker_data, "ticker", "?"), splits or [],
+                                    edgar.financials)
+        emit(render_split_report(report))
+        blocked = restatement_blocked(report)
+        if blocked:
+            emit(f"[G-3 DARK] {getattr(ticker_data, 'ticker', '?')} restatement REFUSED: "
+                 f"{blocked} — the truncated series stands")
+            return
+        live = own_history_earnings_yields(edgar, ticker_data.price_history)
+        new = own_history_restated(edgar, ticker_data.price_history, report)
+        lm = {h["period_end"]: h["earnings_yield"] for h in live}
+        nm = {h["period_end"]: h["earnings_yield"] for h in new}
+        moved = [p for p in set(lm) & set(nm) if abs(lm[p] - nm[p]) > 0.005]
+        emit(f"[G-3 DARK] {getattr(ticker_data, 'ticker', '?')} own-history "
+             f"{len(live)} -> {len(new)} quarters, "
+             f"{len(set(nm) - set(lm))} recovered, {len(set(lm) - set(nm))} lost, "
+             f"{len(moved)} existing quarters moved (APPLIES NOTHING)")
+        for p in sorted(set(nm) - set(lm), reverse=True):
+            emit(f"    RECOVERED {p}  ey={nm[p]:.2f}%")
+        for p in sorted(moved, reverse=True):
+            emit(f"    MOVED     {p}  {lm[p]:.2f}% -> {nm[p]:.2f}%")
+    except Exception as e:                              # noqa: BLE001 — see docstring
+        emit(f"[G-3 DARK] FAILED for {getattr(ticker_data, 'ticker', '?')}: "
+             f"{type(e).__name__}: {e} (measurement only; evaluation unaffected)")
 
 
 def build_panel(

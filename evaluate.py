@@ -25,8 +25,9 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
-from adapters.fmp_adapter import fetch_fmp, fetch_sector_pe
-from core.valuation_anchors import build_panel, run_dark_lens
+from adapters.fmp_adapter import fetch_fmp, fetch_sector_pe, fetch_splits
+from core.valuation_anchors import (build_panel, run_dark_lens,
+                                    run_dark_split_restatement)
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
@@ -174,6 +175,12 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     _panel = build_panel(yf, fred, edgar,
                             fetch_sector_pe(yf.exchange or "NASDAQ") if not fixture_mode else {},
                             lens)
+
+    # Phase G-3 DARK: split-restated own history beside the live truncated series.
+    # Skipped offline — fixtures predate G-1's first_filed capture, so their basis is
+    # unknown and reporting on it would be a guess dressed as a measurement.
+    if not fixture_mode:
+        run_dark_split_restatement(yf, edgar, fetch_splits(ticker))
 
     # ── Five pillars ──────────────────────────────────────────────────────────
     print(f"\n{_divider('=')}")

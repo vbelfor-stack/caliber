@@ -41,7 +41,7 @@ from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
-from core.valuation_anchors import build_panel, run_dark_lens
+from core.valuation_anchors import build_panel, run_dark_lens, run_dark_split_restatement
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
@@ -202,6 +202,13 @@ def run_single_ticker(
             from adapters.fmp_adapter import fetch_sector_pe
             sector_pe = fetch_sector_pe(yf.exchange or "NASDAQ")
         _panel = build_panel(yf, fred, edgar, sector_pe, lens, log=_log)
+
+        # Phase G-3 DARK: split-restated own history beside the live truncated series.
+        # Fixture mode has no live split record and its recorded facts predate G-1's
+        # first_filed capture, so it is skipped rather than reported on an unknown basis.
+        if not fixture_mode:
+            from adapters.fmp_adapter import fetch_splits
+            run_dark_split_restatement(yf, edgar, fetch_splits(ticker), log=_log)
 
         # RateUnavailable is deliberately NOT caught here — it must reach the dedicated
         # handler below, not the broad `except Exception` that reports operational DOA.

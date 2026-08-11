@@ -114,6 +114,39 @@ def fetch_sector_pe(exchange: str, as_of: Optional[str] = None) -> Dict[str, flo
     return out
 
 
+_SPLITS_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+
+
+def fetch_splits(ticker: str) -> List[Dict[str, Any]]:
+    """[{ex_date, ratio}, ...] newest first, or [] when unavailable.
+
+    THE EX-DATE IS WHY THIS CALL EXISTS AT ALL. EDGAR corroborates the RATIO better than
+    FMP does (see core/corporate_actions), but it dates a split to a declaration or record
+    date, and the only date that matches the basis FMP adjusted its OWN price series on is
+    FMP's ex-date. Pairing an EDGAR date with an FMP-adjusted price would reintroduce the
+    basis mismatch Phase G exists to remove.
+
+    Returns empty rather than raising: a missing split record must degrade to the existing
+    truncation behaviour (flagged), never take down an evaluation.
+    """
+    t = ticker.upper()
+    if t in _SPLITS_CACHE:
+        return _SPLITS_CACHE[t]
+    key = os.environ.get("FMP_API_KEY", "")
+    out: List[Dict[str, Any]] = []
+    if key:
+        for row in _safe_get(f"splits?symbol={t}", key, []) or []:
+            num, den = coerce(row.get("numerator")), coerce(row.get("denominator"))
+            ex = str(row.get("date", ""))[:10]
+            if not ex or not num or not den:
+                continue
+            out.append({"ex_date": ex, "ratio": num / den,
+                        "numerator": num, "denominator": den})
+    out.sort(key=lambda r: r["ex_date"], reverse=True)
+    _SPLITS_CACHE[t] = out
+    return out
+
+
 def _first(lst: Any, default: Optional[Dict] = None) -> Dict:
     if isinstance(lst, list) and lst:
         return lst[0]

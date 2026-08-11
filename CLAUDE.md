@@ -72,13 +72,57 @@ KEY TECHNICAL FINDINGS (all measured, see the report):
   for `limit=365` but FMP returns 1,255 rows (~5y) and own-history's whole depth rests on
   that. If FMP ever honours the limit, EVERY own-history series silently goes to 0/20.
 
-**NEXT ORDER: AWAITING VIC'S RULINGS ON THE G REPORT — do NOT start a G build unprompted.**
-Open questions, in the report's §7/§8: (1) does G proceed at all given one cell and zero
-score movement; (2) uncorroborated-split withholding rule (recommend: apply FMP's ratio
-FLAGGED single-source, since truncation is strictly worse); (3) whether the trailing-only
-restriction becomes its own phase (ceiling 4/20 -> 16/20); (4) whether the price-depth
-assertion is worth a cheap guard; (5) G-5 (zero-with-coverage sentinels, >5x EPS jump) is
-a DIFFERENT defect class — recommend it does NOT ride along.
+**G RULINGS ISSUED 2026-08-11 (all accepted, permanent unless re-ruled):**
+- G PROCEEDS, scoped small. Fix = MIXED-BASIS RULE (basis in effect at FILING date).
+  NAIVE ADJACENT-RATIO DETECTION REJECTED PERMANENTLY (GOOG: 3 false fires, 2/20 poisoned,
+  median-invisible). The `filed`-field blocker is in scope.
+- PER-POINT ASSERTIONS MANDATORY in G validation; median checks proven insufficient.
+- Split ratio: 2-OF-3 WITNESS CORROBORATION REQUIRED; DATE FROM FMP; declaration-vs-ex-date
+  distinction documented. PRECEDENT: first corroborated-by-design input, TEMPLATE FOR THE
+  FUTURE BETA CROSS-CHECK.
+- Pin the limit=365 risk immediately. DONE.
+- Trailing-only expansion = PHASE H CANDIDATE, not scoped. Cost/value paragraph delivered
+  in docs/g-build.md §6.
+- CLAUDE.md per-phase maintenance RATIFIED as a standing rule.
+
+**G-1/G-2/G-3 BUILT AND DARK 2026-08-11 — report docs/g-build.md. NOTHING ARMED.**
+Suite 577 -> 612. caliber.db md5 unchanged 54aa42e5.
+- G-1 GATE PASSED: `first_filed` captured, EARLIEST-WINS across the accession tie-break
+  (a later filing repeating a value verbatim did not restate it). Resolution diff EMPTY —
+  171 fields (9 tickers x 19 specs) on identical cached companyfacts, 0 diffs.
+- G-2 GATE PASSED: GOOG 3/3, NOW 3/3, C 2/3 corroborated; V 1/3 REFUSED AND FLAGGED.
+  Agreement is exact — GOOG 20 vs 19.99937, NOW 5 vs 5.00001.
+  NEW DESIGN ELEMENT — SCOPE HORIZON: EDGAR XBRL starts ~2009, so pre-XBRL splits can
+  NEVER earn a second witness (MU 1994-2000, JPM 1982-2000, USB 1979-2001). Splits
+  predating the oldest share filing are OUT-OF-SCOPE, not uncorroborated, and are silent.
+  Without it the report emitted 33 alarming NOTEs across nine tickers and would have
+  desensitised the one warning that matters.
+- G-3 GATE PASSED PER QUARTER: GOOG 17 -> 20 (all 17 existing IDENTICAL, recovered points
+  3.97/4.05/3.99 vs a ~4% norm — the naive rule's 0.25%/0.20% signature ABSENT),
+  NOW 2 -> 19, all seven others identical point-for-point. ZERO existing quarters moved
+  anywhere. Dark surface wired at BOTH boundaries, live-only (fixtures predate G-1).
+- **TRAP FOUND AND CLOSED BY THE DARK PASS — the build's own headline.** The restated
+  series has NO truncation to fall back on, so an EMPTY split list is not a safe default:
+  run on GOOG with events=[] it emits 2022-03-31 at 81.02% — the exact artifact G exists
+  to remove. An empty list is ambiguous between "never split" and "could not find out".
+  `restatement_blocked` refuses unless the split state is ESTABLISHED; `own_history_restated`
+  takes the REPORT, not a list, so it cannot be called ambiguously. On refusal the
+  truncated series stands. THE FIX WAS CORRECT ON BOTH TICKERS IT WAS BUILT FOR AND WOULD
+  STILL HAVE REGRESSED THE PIPELINE ON THE THIRD.
+
+**NEXT ORDER: G-4 ARM GATE — awaiting Vic. Do NOT arm unprompted.** Open items (g-build §5):
+(1) arm at all, given the expected diff is ZERO score movement on all nine; (2) fixture-mode
+contract at arm — recommend pass None -> refused -> truncation, so offline is UNCHANGED but
+diverges from live for GOOG/NOW; recommend accepting and recording that rather than
+re-recording EDGAR fixtures (a baseline move) to close a gap in a degraded mode; (3) V stays
+refused under 2-of-3 — conservative and per the ruling, consequence on record; (4) two tests
+flip at arm (test_series_truncates_at_a_split_boundary,
+test_a_recent_split_can_cost_the_anchor_entirely).
+AFTER G-4: G-5 (zero-with-coverage sentinels, >5x EPS jump) under its own ruling — different
+defect class, recommended NOT to ride along. Then Phase H sequencing vs EDGAR expansion:
+docs/g-build.md §6 recommends H'S FCF LEG FIRST (compounder lens gains its first own-history
+anchor — GOOG/V/WU; operating_cashflow and capex are already flow specs, 24 overlapping
+quarters measured for MU/GOOG/NOW/WU), with the EBITDA leg behind EDGAR (no D&A spec).
 
 **STANDING SEQUENCE AFTER G:** EDGAR expansion resumes ONLY after G. Then the recorded
 roadmap items: β cross-check, ttm_summed synthetic-only coverage, dark total_debt variants,
@@ -275,6 +319,13 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   DARK, validated PER-POINT not on medians -> G-4 arm on ruling -> G-5 (separate ruling)
   sentinels + EPS-jump flagging. Two tests flip when G lands, the JPM-cash-tag pattern:
   test_series_truncates_at_a_split_boundary, test_a_recent_split_can_cost_the_anchor_entirely.
+  G-1/G-2/G-3 BUILT AND DARK 2026-08-11 (docs/g-build.md). G-4 NOT ARMED.
+  New surfaces: core/corporate_actions.py (witnesses, corroboration, scope horizon,
+  split_factor, restatement_blocked); adapters/fmp_adapter.fetch_splits; EDGAR gained
+  `first_filed` on every fact + the tagged-ratio concept, the latter kept OUT of
+  FIELD_SPECS (so the 19-spec counts and the cross-check are unmoved) and out of the
+  staleness clock (a corporate action must not move every field's freshness gate).
+  own_history_restated takes the REPORT, never a bare event list — see the trap above.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 - BETA CROSS-CHECK — single-source gap, now load-bearing (it moves the bank lens's cost
