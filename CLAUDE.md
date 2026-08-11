@@ -32,14 +32,53 @@ and ARMED, on THREE DIFFERENT MECHANISMS. Ethos rule 10 is fully built.
    cross-check, and moves CoE directly. SELF-RETIRES the day a corroborated second β source
    lands; no code change needed.
 
-**NEXT ORDER (scoped, awaiting an explicit go — do NOT start it unprompted):**
-**PHASE G SCOPING — REPORT ONLY, no implementation.**
-- Root-cause NOW's split-truncated own-history anchor (5:1 split, 208M -> 1,046M shares).
-- SCOPE BOUNDARY, BIAS AGAINST CREEP: G exists to fix OWN-HISTORY COVERAGE, currently 3/20.
-- Split detection, with the SINGLE-SOURCE RISK named.
-- Blast-radius audit across the golden five + the four banks.
-- Phased plan, DARK BEFORE ARM.
-- **The report MUST state expected own-history coverage after the fix.**
+**PHASE G SCOPING — DONE 2026-08-11. Report: docs/g-scoping.md. NOTHING IMPLEMENTED.**
+Root cause confirmed and the fix is exact, but TWO MEASURED FINDINGS CUT AGAINST THE
+PREMISE THAT MOVED G UP THE ROADMAP — both need a ruling before any G build starts:
+- **G'S ENTIRE REACH IS ONE CELL: own-history goes 3/20 -> 4/20 readings.** Of the 17
+  missing, 15 are missing BY CONSTRUCTION (own-history is trailing-earnings-only) and 1
+  is V (no share series at any basis; measured 0 -> 0 under the fix). Only NOW's cell is
+  a split defect. The 15-cell trailing-only restriction is the REAL coverage constraint
+  and is a DIFFERENT piece of work, deliberately not scoped.
+- **ZERO SCORES MOVE** across the golden five + four banks, even with the cyclical lens
+  FORCED. Own-history feeds METRIC_EARNINGS_YIELD only, and cyclical is the only armed
+  panel lens on it — so own-history can move a score through cyclical AND NOWHERE ELSE.
+  NOW is a GROWTH ticker (rate-shifted, no panel), so its restored anchor is INERT; and
+  NOW reads +0.51pp CHEAP vs its own history, so under MIN it would never bind anyway.
+  MU is the only cyclical name and it has no truncation. Per-ticker: NOW 2 -> 19 quarters
+  (anchor restored), GOOG 17 -> 20 (accuracy, median 4.43% -> 4.34%), all others unchanged.
+G IS STILL WORTH DOING — as LATENT-TRAP REMOVAL AND ACCURACY, not coverage recovery.
+KEY TECHNICAL FINDINGS (all measured, see the report):
+- The share series is MIXED-BASIS, not pre/post-split: post-split filings restate SOME
+  prior period-ends (annual comparatives) and not others (original 10-Q cover pages), and
+  instant_series dedupes by period-end keeping whichever sorts first. A naive adjacent-
+  ratio detector fires 3x on GOOG (20:1, 1:20, 20:1) and poisons 2 of 20 quarters — while
+  THE MEDIAN BARELY MOVES (4.43 -> 4.26). **A G validation that compares medians will pass
+  a broken implementation. Per-point assertions are mandatory.**
+- THE WELL-POSED RULE (no discontinuity inference): a fact is on the basis in effect at its
+  FILING date. adjusted = raw x prod{ratio : split.ex_date > fact.filed}. Verified exactly
+  on live SEC data — GOOG's two 2021-12-31 rows reconcile to 0.003%.
+- **BLOCKER: _extract_xbrl_facts DROPS `filed`** (keeps start/end/fy/fp/form/accession).
+  Accession YEAR is not a substitute — it separates GOOG's two 2021-12-31 rows but NOT
+  2022-03-31 from 2022-06-30, which straddle the split and are both `-22-`.
+- SINGLE-SOURCE RISK IS REAL BUT MITIGABLE — three witnesses, all measured, all agreeing:
+  FMP /stable/splits (GOOG 20:1 ex-2022-07-18, NOW 5:1 ex-2025-12-18); the EDGAR
+  RESTATEMENT RATIO, already in the fetched payload at zero cost (GOOG 19.99937, NOW
+  5.00001); and the EDGAR TAGGED RATIO StockholdersEquityNoteStockSplitConversionRatio1
+  (GOOG 20, NOW 5), one concept away. Two of three are INDEPENDENT OF FMP.
+  Take the RATIO corroborated, the DATE from FMP — the EDGAR date is a declaration/record
+  date, not an ex-date (GOOG 07-15 vs 07-18). Disagreement -> WITHHOLD, never pick a side.
+- NEW RISK RECORDED: price-history depth is an UNDOCUMENTED DEPENDENCY. fetch_payload asks
+  for `limit=365` but FMP returns 1,255 rows (~5y) and own-history's whole depth rests on
+  that. If FMP ever honours the limit, EVERY own-history series silently goes to 0/20.
+
+**NEXT ORDER: AWAITING VIC'S RULINGS ON THE G REPORT — do NOT start a G build unprompted.**
+Open questions, in the report's §7/§8: (1) does G proceed at all given one cell and zero
+score movement; (2) uncorroborated-split withholding rule (recommend: apply FMP's ratio
+FLAGGED single-source, since truncation is strictly worse); (3) whether the trailing-only
+restriction becomes its own phase (ceiling 4/20 -> 16/20); (4) whether the price-depth
+assertion is worth a cheap guard; (5) G-5 (zero-with-coverage sentinels, >5x EPS jump) is
+a DIFFERENT defect class — recommend it does NOT ride along.
 
 **STANDING SEQUENCE AFTER G:** EDGAR expansion resumes ONLY after G. Then the recorded
 roadmap items: β cross-check, ttm_summed synthetic-only coverage, dark total_debt variants,
@@ -223,11 +262,19 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Phase G — corporate-actions integrity: split-adjustment, zero-with-coverage sentinels,
   >5x adjacent-year EPS jump flagging. MOVED UP (ruling 2026-08-09): scope it IMMEDIATELY
   AFTER D-4 ARMS, BEFORE any further EDGAR expansion. No longer "stays behind EDGAR".
-  WHY: MIN's value concentrates in the least-covered anchor, and own-history is absent
-  17 of 20 readings — NOW's absence is split-truncation, i.e. a Phase G defect directly
-  starving the aggregation rule that was just locked permanent. FMP price integrity stays
-  exonerated by the MU investigation (~$881 was correct); this is about series coverage,
-  not price correctness.
+  SCOPED 2026-08-11 — docs/g-scoping.md, NOTHING IMPLEMENTED, awaiting rulings. See the
+  pickup section for the findings. THE ORIGINAL RATIONALE IS PARTLY REFUTED ON EVIDENCE:
+  "own-history is absent 17 of 20 readings" is true but is NOT evidence for G — 15 of
+  those 17 are absent by construction (trailing-earnings-only) and 1 is V's accepted data
+  limit. G reaches EXACTLY ONE CELL (3/20 -> 4/20) and moves ZERO scores on all nine
+  tracked tickers. It remains worth doing as latent-trap removal and accuracy. FMP price
+  integrity stays exonerated by the MU investigation (~$881 was correct); this is about
+  series BASIS consistency, not price correctness.
+  Phased plan on record: G-1 capture `filed` (additive, resolution diff must be empty) ->
+  G-2 split acquisition + three-witness corroboration DARK -> G-3 filed-date restatement
+  DARK, validated PER-POINT not on medians -> G-4 arm on ruling -> G-5 (separate ruling)
+  sentinels + EPS-jump flagging. Two tests flip when G lands, the JPM-cash-tag pattern:
+  test_series_truncates_at_a_split_boundary, test_a_recent_split_can_cost_the_anchor_entirely.
 - Provenance relabel — cosmetic: retire the "yfinance*" Prov source strings on live
   FMP-sourced fields (core/technicals, core/pillars, core/datatypes trajectory builders).
 - BETA CROSS-CHECK — single-source gap, now load-bearing (it moves the bank lens's cost
