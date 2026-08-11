@@ -137,7 +137,71 @@ only one). Suite 613. caliber.db md5 unchanged 54aa42e5.
   unknown split and GOOG's ~81% quarters) and test_a_recent_split_no_longer_costs_the_anchor.
   Added test_without_a_split_report_the_panel_keeps_the_truncated_basis.
 
-**NEXT ORDER: SCOPE PHASE H-FCF — REPORT ONLY, no implementation. Ruled 2026-08-11.**
+**H-FCF SCOPED 2026-08-11 — docs/h-fcf-scoping.md. NOTHING IMPLEMENTED. BOTH CLAIMS FAIL
+AS STATED; THE CEILING ARGUMENT DOES NOT SURVIVE.**
+- **CLAIM 1 (free_cashflow advisory -> armed): OPPORTUNITY SURVIVES, ATTRIBUTION DOES NOT.**
+  The basis mismatch IS resolvable and the advisory is doing real work (MU diverges 1469%
+  unmatched). Re-read at FY-END: MU/GOOG/NOW/BK/C all **0.0%**, WU **28.6% CONFLICT**
+  (a genuine disagreement that survives period matching — arming would DOWNGRADE WU),
+  V/JPM/USB no capex tag. BUT the mechanism is extending period_basis='annual_fy' to FLOW
+  inputs — `_instant_at` requires `not rec.get('start')`, so it is INSTANTS-ONLY today and
+  cash-flow rows fall through. The TTM-at-a-target-period helper ALREADY EXISTS
+  (_assemble_ttm(as_of_end=)/ttm_series). **A historical series is neither necessary nor
+  sufficient for it.** Split out as H-X, a SEPARATE order (see below).
+- **CLAIM 1 SECOND FAILURE: arming free_cashflow does NOT unblock Financial Health.**
+  Measured, not reasoned: FH's five inputs are current_ratio (high), total_cash (high),
+  free_cashflow (fixable), total_debt (total_debt@FY is DARK — MU agrees 0.5%, GOOG
+  CONFLICTS 8.8%), and **debt_to_equity, which is FMP-NET vs EDGAR-GROSS — a DEFINITIONAL
+  mismatch no period matching can fix**. Forcing all five high does give FH=high, so the
+  pillar is reachable in principle; debt_to_equity is the binding constraint.
+- **CLAIM 2 (fcf_yield corroborant): FAILS, on principle not on data.** fcf_yield =
+  FCF_TTM / market cap, and market cap = PRICE x shares — the E-4 uncorroborable class.
+  FMP publishes NO plain TTM FCF (only price-denominated ratios + FCFF/FCFE), so the TTM
+  level is reachable only by multiplying a ratio back out by market cap, i.e. by injecting
+  the price term. An EDGAR fcf_yield would share an IDENTICAL denominator with FMP's, so
+  comparing them carries exactly the free_cashflow row's information and adds none;
+  stamping that agreement on fcf_yield would let the uncorroborated price term inherit
+  corroboration it never received. LAUNDERING — the peer-anchor rejection rationale.
+- **CEILING: H-FCF closes blockers in ZERO of four pillars, not two.**
+  test_verdict_high_is_still_blocked STAYS PASSING — do not touch it (ruling R-D).
+  Shortest remaining path to verdict-high is NOT this one: it runs through debt_to_equity,
+  Management's hardcoded medium, and a second source for price/estimate-derived fields.
+- **NEW FINDING — TRANSCRIPTION vs INDEPENDENCE.** EDGAR TTM FCF equals FMP's implied TTM
+  FCF **to 0.000% — exact to the dollar — on MU/GOOG/NOW/BK**. Four unrelated issuers
+  agreeing to the dollar is not two independent sources; FMP's cash-flow fundamentals are
+  evidently SEC-derived. The whole E-3 armed set rests on this same footing. It does NOT
+  invalidate the cross-check (WU diverges 40% and that is where it earns its keep), but
+  for FILED FUNDAMENTALS it is a TRANSCRIPTION check, not an independent measurement —
+  recorded because 'high confidence' is being asked to mean something specific.
+- **H-FCF'S REAL VALUE (survives, and is worth doing):** own-history coverage 4/20 -> 8/20;
+  INDEPENDENCE-NARROWED 16/20 -> 12/20 (directly attacks D-3 ruling 6's 85%). Compounder
+  lens gains its first issuer-referenced denominator.
+- **BLAST RADIUS MEASURED (load-bearing — the universe IS the golden five):** own-history
+  feeds METRIC_FCF_YIELD -> COMPOUNDER ONLY = GOOG, V, WU = 3 OF 5. **Zero scores move**,
+  but **WU's BINDING ANCHOR CHANGES sector -> own_history**, narrowing its read by 8.37pp
+  (+12.67 -> +4.30); it survives at 5 only because +4.30 still clears the +3.0 top rung.
+  A ticker nearer a rung boundary would move.
+- **CORRECTIONS TO MY OWN g-build.md §6:** (a) the useful ceiling is **12/20, not 16/20** —
+  16 counts forward-earnings cells NO LENS CONSUMES; (b) **V gains NOTHING — no capex tag**
+  (its recorded cross-check limit, which I wrongly carried into the lens claim). The
+  compounder beneficiaries are **GOOG and WU**, not GOOG/V/WU.
+- **OPEN RULING FOR H-2 — NEGATIVE-FCF EXCLUSION / SURVIVORSHIP.** MU: 10 of 24 quarters
+  (42%) have negative FCF and are excluded, so its "own FCF history" is the median of the
+  quarters when FCF was POSITIVE, not its typical FCF yield. C: 14 of 21 -> withheld.
+  Bias direction is SAFE (higher median -> looks richer -> MIN takes the worst), but the
+  magnitude wants a ruling, not a default. Options: exclude-and-flag (trailing precedent),
+  withhold above an exclusion threshold, or require positive TTM FCF in a majority.
+
+**NEXT ORDER: AWAITING VIC ON THE H-FCF REPORT.** Phased plan with per-phase blast radius
+in docs/h-fcf-scoping.md §5: H-1 series builder DARK (blast radius NONE) -> H-2 exclusion
+ruling (NONE) -> H-3 ARM on the compounder lens (**REAL: 3 of 5 universe tickers; first H
+phase that can move a score -> E(R) -> grade**) -> H-4 EBITDA leg DEFERRED behind EDGAR.
+**H-X, RECOMMENDED AS A SEPARATE ORDER:** extend annual_fy to FLOW inputs and arm
+free_cashflow. Blast radius CONFIDENCE LABELS ONLY, but it can DOWNGRADE (WU 28.6%).
+Kept out of H deliberately — bundling would mix a confidence-only blast radius with a
+score-moving one in a single arm.
+
+**(superseded order, kept for the record) SCOPE PHASE H-FCF — REPORT ONLY. Ruled 2026-08-11.**
 H-FCF = extend the own-history anchor from trailing-earnings-only to an FCF yield series.
 - WHY IT IS NEXT: own-history reaches a score ONLY through the cyclical lens today (MU
   alone of the nine). An FCF own-history series gives the COMPOUNDER lens — GOOG, V, WU,
