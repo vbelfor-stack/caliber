@@ -192,7 +192,58 @@ AS STATED; THE CEILING ARGUMENT DOES NOT SURVIVE.**
   magnitude wants a ruling, not a default. Options: exclude-and-flag (trailing precedent),
   withhold above an exclusion threshold, or require positive TTM FCF in a majority.
 
-**NEXT ORDER: AWAITING VIC ON THE H-FCF REPORT.** Phased plan with per-phase blast radius
+**H-1 BUILT, DARK, COMMITTED 2026-08-15 (7a8bbf1). H-2 IS RULED. H-3 IS NEXT.**
+Report docs/h1-series.md. Suite 613 -> 644. caliber.db md5 unchanged 54aa42e5; the
+`fundamental_series` table does NOT exist in production (only a full live batch run creates
+it — a fixture/no-synthesis run must name its own destination).
+- THREE SCHEMA-ADDENDUM RULINGS, all encoded: (1) GRAIN — native quarterly TTM + FY rows in
+  ONE ISSUER-KEYED table (never evaluation-keyed), append-never-overwrite with a supersede
+  trail, G-4 basis stamped; per-year is a QUERY, not a second build. (2) NEGATIVE FCF —
+  persisted unfiltered with excluded=1; exclusion is a READ-TIME FILTER for the
+  MIN-of-medians anchor ONLY, storage always carries the full series so Phase M keeps its
+  left tail. **THIS RULES H-2.** (3) REINVESTMENT — column stored, value NULL until the D&A
+  spec lands behind H-4, NO PROXY.
+- **PROVENANCE — ADOPTED, NOT AUTHORED.** The build landed from an orphaned PEER SESSION
+  (c2) sharing this checkout; see the SESSION-OPEN PROTOCOL below for the incident. It was
+  terminated, then the build was audited line-by-line and adopted. FOUR FINDINGS FIXED
+  BEFORE COMMIT:
+  - F3 `exclusion_reason` was carrying BOTH "value rejected" and "value structurally
+    unavailable". SPLIT: `exclusion_reason` IFF excluded=1, new `null_reason` IFF value IS
+    NULL and excluded=0. Verified over 234 rows: 16/16, 48/48, ZERO carrying both.
+  - F4 restatement detector ignored method/unit/components — a TTM method change at an
+    identical value recorded NOTHING. Now compared; a method-only change supersedes without
+    counting as a restated FIGURE.
+  - F5 the `split_restated` path — the one production took — was untested. Pinned.
+  - F1 **the `fcf_yield` leg, WHICH H-3 ARMS, had never produced a value anywhere** (every
+    test passed price_history=[]). Now measured: GOOG 20 points, all basis=split_restated.
+    THE TRAP: raw FMP fixture rows use `close`, `_price_on_or_before` reads `Close` —
+    reading them raw hands every lookup a None and reproduces the hole WHILE LOOKING FIXED.
+    Always go through the adapter's own fetch path.
+  - **G-4's ARTIFACT IS NOW PINNED PER POINT** — GOOG 2022-03-31 restated 3.7493% vs
+    truncated 74.9867%, exactly 20x. Both bases emit THE SAME COUNT of points, so a count
+    comparison would have passed a broken implementation. Only 2 of 20 quarters move,
+    because the share series is MIXED-BASIS (most pre-split period-ends were restated by
+    later filings, so first_filed is already post-split and the factor is 1).
+- **EDGAR ENVIRONMENT FLAG (accepted 2026-08-15, NOT to be worked around):** sec.gov and
+  data.sec.gov return **HTTP 403 from this host** — with and without a declared User-Agent,
+  sandboxed and unsandboxed, via adapter and plain curl. FMP is unaffected. Suspected
+  egress-IP block. FMP is the sole live feed by standing discipline and EDGAR is the
+  cross-check, so an offline fixture-recorded delivery is honest, not degraded.
+  **INVESTIGATE AS A SEPARATE ENVIRONMENT TASK.** Consequence: H-1's per-ticker figures are
+  fixture-recorded, and the live probe has never run.
+- SECOND FIXTURE LIMITATION: `--fixture` batch mode CANNOT exercise the yield leg — the
+  legacy tests/fixtures/ticker/*.json carry 3 price rows with NO `date` key. The FMP
+  fixtures (1,254 dated rows) work. Also tests/fixtures/ticker/{NOW,WU}.json do not exist,
+  so those two cannot complete a fixture batch run at all. Pre-existing.
+- OFFLINE COVERAGE, fcf metric: MU 24 pts (8 neg, 33%), GOOG 24 (0), NOW 24 (0), WU 24 (0),
+  BK 24 (4, 17%), C 21 (14, 67%); V/JPM/USB withheld `no_capex_tag` (no capex concept
+  filed). Counts reconcile exactly with scoping §4c's `quarters − positive`.
+- **H-3 IS NEXT AND IS BLOCKED ON NOTHING.** Arm the fcf_yield leg as the compounder lens's
+  own-history anchor. Blast radius is REAL — 3 of 5 universe tickers (GOOG, V, WU), and WU's
+  BINDING ANCHOR CHANGES sector -> own_history, narrowing its read 8.37pp. Flip
+  `test_no_score_reads_the_series_yet` deliberately when it lands.
+
+**(superseded) NEXT ORDER: AWAITING VIC ON THE H-FCF REPORT.** Phased plan with per-phase blast radius
 in docs/h-fcf-scoping.md §5: H-1 series builder DARK (blast radius NONE) -> H-2 exclusion
 ruling (NONE) -> H-3 ARM on the compounder lens (**REAL: 3 of 5 universe tickers; first H
 phase that can move a score -> E(R) -> grade**) -> H-4 EBITDA leg DEFERRED behind EDGAR.
@@ -247,6 +298,21 @@ provenance relabel.
   overwriting data, or any change beyond what the order specifies.
 - Never add duplicate logic. If existing behavior already satisfies the order, leave it and say so.
 - Manual mode (per-action approval) is the default.
+
+## SESSION-OPEN PROTOCOL (standing rule, 2026-08-15) — PEER-PROCESS CHECK
+On every wake-up: run `ps aux | grep claude` and `ListAgents`. Verify your OWN pid
+EMPIRICALLY (spawn a bash child, read its PPID) — never assert identity from memory or
+prior session notes. If any peer process exists: STOP, report the full ps with self/peer
+labeled, and await ruling before touching the tree. Never execute a kill against a PID not
+verified this session.
+
+WHY THIS EXISTS (2026-08-15, real incident): an orphaned peer session shared this checkout
+and wrote the entire H-1 build into it WHILE a fresh session was re-orienting after an
+interrupt — the tree changed between two `git status` calls minutes apart. The successor
+session then asserted from context that it was PID 243; it was in fact PID 3070, and 243
+was the peer. Acting on that inverted belief would have killed the verifying session and
+LEFT THE WRITER RUNNING. A PPID read settled it in one command. Two sessions on one
+checkout is a data-loss hazard; an unverified kill target is a worse one.
 
 ## SESSION-CLOSE PROTOCOL (standing rule, 2026-08-09)
 - EVERY session ends with a PUSH TO ORIGIN after the session-close commit. Unpushed local
