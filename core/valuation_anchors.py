@@ -372,18 +372,28 @@ def _sector_reading(metric: str, ticker_yield: Optional[float], sector: Optional
                          available=True, note=note)
 
 
+# Which metrics have an issuer-referenced history, and under which key each series
+# carries its yield. H-3 added the FCF leg; before it, own-history reached exactly one
+# metric and therefore exactly one lens (cyclical).
+_OWN_HISTORY_YIELD_KEY = {
+    METRIC_EARNINGS_YIELD: "earnings_yield",
+    METRIC_FCF_YIELD: "fcf_yield",
+}
+
+
 def _own_history_reading(metric: str, ticker_yield: Optional[float],
                          history: List[Dict[str, Any]],
                          basis: str = "truncated") -> AnchorReading:
-    if metric != METRIC_EARNINGS_YIELD:
+    key = _OWN_HISTORY_YIELD_KEY.get(metric)
+    if key is None:
         return AnchorReading(metric, ANCHOR_OWN_HISTORY, ticker_yield,
-                             reason="own-history series is trailing-earnings only")
+                             reason="no own-history series for this metric")
     if len(history) < MIN_HISTORY_POINTS:
         return AnchorReading(
             metric, ANCHOR_OWN_HISTORY, ticker_yield,
             reason=f"only {len(history)} historical points (<{MIN_HISTORY_POINTS}); "
                    f"basis={basis}")
-    median = statistics.median(h["earnings_yield"] for h in history)
+    median = statistics.median(h[key] for h in history)
     losses = history[0].get("loss_periods_excluded", 0)
     note = (f"median of {len(history)} quarters, "
             f"{history[-1]['period_end']}→{history[0]['period_end']}"
@@ -417,6 +427,45 @@ def own_history_series(
             return restated, "split_restated"
     return (own_history_earnings_yields(edgar, price_history),
             "truncated" if blocked is None else f"truncated ({blocked})")
+
+
+def own_history_fcf_yields(
+    ticker: str, edgar: Optional[EdgarData], price_history: List[Dict],
+    split_report: Any = None,
+) -> tuple:
+    """(series, basis) — the FCF-yield own-history series. ARMED H-3.
+
+    Reads the H-1 fundamental_series builder through `anchor_usable`, which is RULING 2's
+    read-time filter: negative-FCF quarters are STORED but never reach the anchor, because
+    a negative FCF has no yield interpretation and a MIN-of-medians rule cannot consume
+    one. Phase M reads the same series unfiltered — the storage is shared, the filter is
+    the consumer's.
+
+    The basis comes back with the series for the same reason it does on the earnings leg:
+    a yield computed on a truncated share series is a DIFFERENT MEASUREMENT from one on a
+    restated series, and the panel must be able to say which it scored.
+
+    Returns ([], reason) rather than raising when the family is withheld — V, JPM and USB
+    file no capex concept at all, so they have no FCF series and the anchor is simply
+    absent. The panel narrows and says so; it does not substitute anything.
+    """
+    if edgar is None:
+        return [], "none"
+    from core.fundamental_series import (METRIC_FCF as _FCF,
+                                         METRIC_FCF_YIELD as _FCF_Y, build_fcf_series)
+
+    result = build_fcf_series(ticker, edgar, price_history, split_report)
+    points = result.anchor_usable(_FCF_Y)
+    if not points:
+        # NAME THE CAUSE. "0 historical points" is true for both a withheld family (V,
+        # JPM, USB file no capex concept) and a series that exists but was entirely
+        # excluded, and those are different facts about the issuer. The reading carries
+        # the basis string into its reason, so whichever it is ends up on the record.
+        why = (result.withheld.get(_FCF) or result.withheld.get("all")
+               or "no usable fcf_yield quarters")
+        return [], f"unavailable ({why})"
+    series = [{"period_end": p.period_end, "fcf_yield": p.value} for p in points]
+    return series, result.basis
 
 
 def compute_panel(
@@ -453,13 +502,28 @@ def compute_panel(
     if basis.startswith("truncated ("):
         panel.notes.append(f"own-history on the TRUNCATED basis — {basis}")
 
+    # H-3: the FCF leg has its own series and its own basis. Kept in a per-metric map
+    # rather than threaded as a second positional argument so a third leg (EBITDA, H-4)
+    # is an entry here and nothing else.
+    fcf_history, fcf_basis = own_history_fcf_yields(
+        panel.ticker, edgar, ticker_data.price_history, split_report)
+    if edgar is not None and not fcf_history:
+        panel.notes.append(
+            "own-history FCF anchor unavailable: no usable FCF-yield quarters "
+            "(no capex concept filed, or every quarter excluded)")
+    own_history = {
+        METRIC_EARNINGS_YIELD: (history, basis),
+        METRIC_FCF_YIELD: (fcf_history, fcf_basis),
+    }
+
     for metric, ticker_yield in metrics.items():
         panel.readings.append(_risk_free_reading(metric, ticker_yield, fred))
         panel.readings.append(
             _sector_reading(metric, ticker_yield, getattr(ticker_data, "sector", None),
                             sector_pe))
+        hist, hist_basis = own_history.get(metric, ([], "none"))
         panel.readings.append(
-            _own_history_reading(metric, ticker_yield, history, basis))
+            _own_history_reading(metric, ticker_yield, hist, hist_basis))
 
     return panel
 
