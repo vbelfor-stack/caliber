@@ -196,6 +196,61 @@ AS STATED; THE CEILING ARGUMENT DOES NOT SURVIVE.**
 Report docs/h1-series.md. Suite 613 -> 644. caliber.db md5 unchanged 54aa42e5; the
 `fundamental_series` table does NOT exist in production (only a full live batch run creates
 it — a fixture/no-synthesis run must name its own destination).
+
+## ▶ PHASE H IS CLOSED EXCEPT H-4 (session close 2026-08-15). NEXT ORDER: AWAITING VIC.
+Commits this session: 7a8bbf1 (H-1) · 6bdd4e8 · 8d9aa95 (D/E scale defect) · 15ab835 ·
+365bc6c (fixture migration) · 3a05a4f (H-3 armed). Suite 613 -> 670. caliber.db md5
+UNCHANGED 54aa42e5 throughout — no session work touched production data.
+- **H-1 BUILT+DARK, H-2 RULED (by ruling 2), H-3 ARMED.** H-4 (EBITDA leg) REMAINS
+  DEFERRED BEHIND EDGAR EXPANSION — no D&A spec exists among the 19, which is the same
+  blocker that makes reinvestment NULL.
+- **H-3 ARMED — compounder lens on the fundamental_series own-history anchor.**
+  ZERO of 25 golden pillar cells moved (measured twice: offline, and against a LIVE FMP
+  sector snapshot, because the fixtures carry none and WU's transition is invisible
+  without one). No score -> no avg_score -> no E(R) -> no grade.
+  **THE ARMING IS VISIBLE IN THE BINDING ANCHOR, NOT THE SCORE:** WU moves
+  sector (+12.62pp) -> own_history (+4.22pp), an **8.40pp narrowing against a predicted
+  8.37pp**. It survives at 5 only because +4.22 still clears the +3.0 top rung; a ticker
+  nearer a boundary WOULD have moved. GOOG gains the anchor (-2.41) but risk-free still
+  binds. V/JPM/USB have NO FCF series (no capex concept) — panel narrows to the
+  market-referenced pair, nothing substituted, missing anchor NEVER scored as 0%, and the
+  reading names the cause (`basis=unavailable (no_capex_tag)`).
+  Pre-arm state in H3_BINDING_ANCHOR_DELTAS + an intentionally EMPTY H3_SCORE_DELTAS.
+- **PRODUCTION SCORING DEFECT FOUND AND FIXED — debt/equity units (8d9aa95).** FMP
+  publishes a RATIO, `score_financial_health` scores a PERCENT ladder. From the yfinance
+  teardown (2026-08-07) to 2026-08-15 every issuer collected maximum leverage points and
+  the component was INERT. Fixed at the adapter boundary (`_ratio_to_percent`).
+  Golden diff: V and WU Financial Health 5 -> 4. WU is the validating case — ~295%
+  leverage now scores ZERO where it scored maximum. ids 216-220 were scored under the
+  defect and are NOT modified (points lost: MU 0, GOOG 0, V -1, NOW -1, WU -3);
+  **RE-RUNNING THE ARMED PASS IS AN OPEN RULING FOR VIC.**
+  New tripwire `_leverage_uniformity_alarm` — advisory, warns when a whole batch sits
+  under the ladder's top rung, which was the visible symptom nobody noticed for 8 days.
+- **FIXTURE MODE MIGRATED TO THE FMP FIXTURES (365bc6c); yfinance remnants deleted**
+  (tests/fixtures/ticker/, adapters/fixture_adapter.py, probe_fmp.py). Offline now calls
+  `fetch_fmp(fixture_path=...)` — the same call production makes. The H-1 yield leg went
+  0 -> 118 points across six tickers, and NOW/WU became runnable in fixture mode at all.
+  Golden re-baseline, measured: GOOG compounder @10Y=0.0 valuation 3 -> 4 (source's own
+  numbers: ev_to_ebitda 26.75 -> 12.91). PRE_D4_SCORES LEFT AS RECORDED; the moved cell
+  lives in SOURCE_MIGRATION_DELTAS. Prov stamps now read "fmp" offline, retiring most of
+  the tracked provenance-relabel follow-up.
+- **LEDGER — THE ELEVEN-TEST SILENT DEPENDENCY (the session's most transferable finding).**
+  The migration broke ELEVEN tests, and the breakage was the only reason a hidden
+  dependency surfaced: **the legacy fixtures were a SECOND, DISAGREEING SOURCE**, and the
+  EDGAR cross-check's entire conflict/downgrade path was covered ONLY because the
+  yfinance-shaped recordings pre-dated the EDGAR ones and happened to diverge. Against the
+  FMP payload those fields AGREE. Had the migration been done without a full-suite diff,
+  the downgrade path would have gone untested SILENTLY — green suite, no signal.
+  REPLACED WITH A DELIBERATE MECHANISM: `_pair_with_forced_conflict(ticker, field)` pushes
+  ONE NAMED field 1.5x out of tolerance, so each test states which field conflicts and by
+  how much instead of inheriting it from a stale recording. Same for the anti-launder
+  downgrade test. Strictly better coverage than the accident it replaces.
+  RELATED: four tests asserted alignment-gated rows are capped by absolute age. They are
+  EXEMPT BY DESIGN (R-A); that was invisible only because MU's legacy fixture served
+  total_cash as MRQ, revoking alignment. The FMP payload serves the FY figure.
+  **THE GENERAL LESSON, twice over this session:** a baseline that disagrees with the feed
+  is doing unadvertised work. Migrating a baseline onto the source it checks retires the
+  check — name what is being given up before doing it.
 - THREE SCHEMA-ADDENDUM RULINGS, all encoded: (1) GRAIN — native quarterly TTM + FY rows in
   ONE ISSUER-KEYED table (never evaluation-keyed), append-never-overwrite with a supersede
   trail, G-4 basis stamped; per-year is a QUERY, not a second build. (2) NEGATIVE FCF —
@@ -239,10 +294,10 @@ it — a fixture/no-synthesis run must name its own destination).
 - OFFLINE COVERAGE, fcf metric: MU 24 pts (8 neg, 33%), GOOG 24 (0), NOW 24 (0), WU 24 (0),
   BK 24 (4, 17%), C 21 (14, 67%); V/JPM/USB withheld `no_capex_tag` (no capex concept
   filed). Counts reconcile exactly with scoping §4c's `quarters − positive`.
-- **H-3 IS NEXT AND IS BLOCKED ON NOTHING.** Arm the fcf_yield leg as the compounder lens's
-  own-history anchor. Blast radius is REAL — 3 of 5 universe tickers (GOOG, V, WU), and WU's
-  BINDING ANCHOR CHANGES sector -> own_history, narrowing its read 8.37pp. Flip
-  `test_no_score_reads_the_series_yet` deliberately when it lands.
+- **H-3 DONE — ARMED 2026-08-15 (3a05a4f).** See the Phase-H close block above.
+  NOTE `test_no_score_reads_the_series_yet` STILL PASSES and was NOT flipped: H-3 wired the
+  anchor through core/valuation_anchors, not core/pillars, so the pin it makes (pillars.py
+  never imports the series module directly) remains true and remains worth holding.
 
 **(superseded) NEXT ORDER: AWAITING VIC ON THE H-FCF REPORT.** Phased plan with per-phase blast radius
 in docs/h-fcf-scoping.md §5: H-1 series builder DARK (blast radius NONE) -> H-2 exclusion
