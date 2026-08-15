@@ -231,10 +231,11 @@ it — a fixture/no-synthesis run must name its own destination).
   cross-check, so an offline fixture-recorded delivery is honest, not degraded.
   **INVESTIGATE AS A SEPARATE ENVIRONMENT TASK.** Consequence: H-1's per-ticker figures are
   fixture-recorded, and the live probe has never run.
-- SECOND FIXTURE LIMITATION: `--fixture` batch mode CANNOT exercise the yield leg — the
-  legacy tests/fixtures/ticker/*.json carry 3 price rows with NO `date` key. The FMP
-  fixtures (1,254 dated rows) work. Also tests/fixtures/ticker/{NOW,WU}.json do not exist,
-  so those two cannot complete a fixture batch run at all. Pre-existing.
+- SECOND FIXTURE LIMITATION — **RESOLVED 2026-08-15 by the fixture migration.** Fixture
+  mode now loads TickerData from tests/fixtures/fmp (the payload production fetches);
+  tests/fixtures/ticker, adapters/fixture_adapter.py and the dead probe_fmp.py recorder
+  are DELETED. The yield leg produces 118 points across six tickers offline, and NOW/WU
+  are runnable in fixture mode for the first time. See docs/h1-series.md §9b.
 - OFFLINE COVERAGE, fcf metric: MU 24 pts (8 neg, 33%), GOOG 24 (0), NOW 24 (0), WU 24 (0),
   BK 24 (4, 17%), C 21 (14, 67%); V/JPM/USB withheld `no_capex_tag` (no capex concept
   filed). Counts reconcile exactly with scoping §4c's `quarters − positive`.
@@ -381,9 +382,12 @@ checkout is a data-loss hazard; an unverified kill target is a worse one.
   - TickerData (core/datatypes.py) is the pipeline's canonical data type (renamed from
     YFinanceData, rehomed out of the adapter in Phase 1). Populated by fmp_adapter (live) or
     fixture_adapter (recorded fixtures, offline/tests).
-  - Fixtures: recorded ticker data lives in tests/fixtures/ticker/ (renamed from yfinance/),
-    loaded by adapters/fixture_adapter.fetch_fixture. The data is in the historical yfinance
-    info-dict shape, so its Prov source stamps read "yfinance" — accurate for recorded data.
+  - Fixtures: recorded ticker data lives in tests/fixtures/fmp/, loaded by
+    adapters/fmp_adapter.fetch_fmp(fixture_path=...) — THE SAME CALL PRODUCTION MAKES, so
+    an offline run cannot exercise a code path production no longer has. The yfinance-shaped
+    tests/fixtures/ticker set and its fixture_adapter loader were DELETED 2026-08-15; their
+    Prov stamps read "yfinance" and offline provenance never matched what production writes.
+    That also retires most of the tracked provenance-relabel follow-up below.
   - TRACKED FOLLOW-UP (provenance relabel): live Prov source strings in core/technicals.py,
     core/pillars.py, and the shared trajectory builders in core/datatypes.py still read
     "yfinance*" while stamping FMP-sourced fields. Cosmetic mislabel, no behavioral/grade
@@ -722,7 +726,7 @@ predict, so MU's estimate lands ~7d early.
 - Re-recording MOVES THE REGRESSION BASELINE — deliberate manual step, never incidental.
   Prior files are backed up to *.json.bak (gitignored).
 - Three fixture sets: tests/fixtures/edgar (all five), tests/fixtures/fmp (all five, the
-  pairing production runs), tests/fixtures/ticker (older yfinance-shaped recording, kept
+  pairing production runs, and now the ONLY ticker-data fixture set), (retired: ticker/
   for the historical pipeline). Golden-five invariants run against edgar+fmp.
 
 ## Phase D — VALUATION PANEL (scoped + rulings 2026-08-09)

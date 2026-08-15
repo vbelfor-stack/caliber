@@ -37,8 +37,9 @@ try:
 except ImportError:
     pass
 
-from adapters.fixture_adapter import fetch_fixture
+
 from core.datatypes import TickerData
+from adapters.fmp_adapter import fetch_fmp
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
 from core.fundamental_series import run_dark_fcf_series
@@ -172,9 +173,8 @@ def run_single_ticker(
     try:
         ed_fx = FX_ROOT / "edgar" / f"{ticker}.json" if fixture_mode else None
         fr_fx = FX_ROOT / "fred" / "DGS10.json" if fixture_mode else None
-        # Split records live in the FMP fixture. The runner's fixture mode loads PRICE
-        # data from the older ticker/ set, but a split record is a property of the issuer,
-        # not of a price series, so the fmp fixture is the right source either way. Absent
+        # Split records live in the FMP fixture, which is now also where fixture mode gets
+        # its TickerData — one recorded payload, one source, no cross-set pairing. Absent
         # file -> None -> UNKNOWN -> the panel keeps the truncated own-history basis.
         _fmp_fx = FX_ROOT / "fmp" / f"{ticker}.json"
         fmp_fx = _fmp_fx if (fixture_mode and _fmp_fx.exists()) else None
@@ -182,7 +182,13 @@ def run_single_ticker(
         # ── Primary data feed ─────────────────────────────────────────────────
         if fixture_mode:
             _log("loading recorded fixture...")
-            yf = fetch_fixture(ticker, fixture_path=FX_ROOT / "ticker" / f"{ticker}.json")
+            # Fixture mode replays the FMP fixture — THE SAME PAYLOAD PRODUCTION FETCHES,
+            # through the same adapter. The retired tests/fixtures/ticker set was a
+            # yfinance-shaped recording whose loader had no live counterpart, so an
+            # offline run exercised a code path production no longer had. It also carried
+            # only 3 undated price rows, which is why the H-1 yield leg could never
+            # produce a point offline.
+            yf = fetch_fmp(ticker, fixture_path=FX_ROOT / "fmp" / f"{ticker}.json")
         else:
             yf = _fetch(ticker, log=_log)
 

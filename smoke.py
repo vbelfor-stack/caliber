@@ -84,11 +84,11 @@ def _chk_store() -> None:
 # ── 2. Adapters (fixture) ─────────────────────────────────────────────────────
 
 def _chk_adapters() -> None:
-    from adapters.fixture_adapter import fetch_fixture
+    from adapters.fmp_adapter import fetch_fmp
     from adapters.edgar_adapter import fetch_edgar
     from adapters.fred_adapter import fetch_fred
 
-    yf = fetch_fixture("MU", fixture_path=_FX / "ticker" / "MU.json")
+    yf = fetch_fmp("MU", fixture_path=_FX / "fmp" / "MU.json")
     assert yf.ticker == "MU"
     assert not yf.current_price.is_missing(), "MU current_price missing from fixture"
 
@@ -134,13 +134,13 @@ def _chk_lens() -> None:
 # ── 5. Pillars (fixture data, no network) ────────────────────────────────────
 
 def _chk_pillars() -> None:
-    from adapters.fixture_adapter import fetch_fixture
+    from adapters.fmp_adapter import fetch_fmp
     from adapters.edgar_adapter import fetch_edgar
     from adapters.fred_adapter import fetch_fred
     from core.lens_select import select_lens
     from core.pillars import score_all
 
-    yf = fetch_fixture("MU", fixture_path=_FX / "ticker" / "MU.json")
+    yf = fetch_fmp("MU", fixture_path=_FX / "fmp" / "MU.json")
     ed = fetch_edgar("MU", fixture_path=_FX / "edgar" / "MU.json")
     fr = fetch_fred(fixture_path=_FX / "fred" / "DGS10.json")
     yf.sic = ed.sic

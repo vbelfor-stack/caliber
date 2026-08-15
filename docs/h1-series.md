@@ -263,16 +263,44 @@ is a **separate environment task**, deliberately not in H-1's scope.
 
 Consequence: the live probe could not run, and every figure in §8b is fixture-recorded.
 
-### 9b. `--fixture` batch mode cannot exercise the yield leg
+### 9b. RESOLVED 2026-08-15 — `--fixture` batch mode now exercises the yield leg
 
-The legacy `tests/fixtures/ticker/*.json` recordings carry **3 price rows with no `date`
-key**, so `_price_on_or_before` can never match and the batch run reports 0 yield points.
-The `tests/fixtures/fmp/*.json` recordings — the pairing production actually runs — carry
-1,254 dated rows and work correctly (§8c). This is a legacy-fixture limitation, not a code
-defect, and it is why the yield leg is proven in the test suite rather than in the batch
-readout.
+*Was:* the legacy `tests/fixtures/ticker/*.json` recordings carried 3 price rows with no
+`date` key, so `_price_on_or_before` never matched and the batch reported 0 yield points.
 
-### 9c. Pre-existing, unrelated to H-1
+Fixture mode was migrated to the `tests/fixtures/fmp/*.json` recordings — the payload
+production actually fetches, 1,254 dated rows — and the legacy set was deleted. The yield
+leg now produces **118 points across six tickers** in a fixture batch run:
 
-`tests/fixtures/ticker/{NOW,WU}.json` do not exist, so those two tickers cannot complete a
-fixture batch run at all.
+| ticker | fcf | FY | neg | %neg | usable | **fcf_yield** | y-excl | yield basis |
+|---|---|---|---|---|---|---|---|---|
+| MU | 24 | 6 | 8 | 33% | 16 | **20** | 6 | truncated |
+| GOOG | 24 | 6 | 0 | 0% | 24 | **20** | 0 | **split_restated** |
+| V | — | — | — | — | — | 0 | 0 | withheld `no_capex_tag` |
+| NOW | 24 | 6 | 0 | 0% | 24 | **20** | 0 | **split_restated** |
+| WU | 24 | 6 | 0 | 0% | 24 | **20** | 0 | truncated |
+| JPM | — | — | — | — | — | 0 | 0 | withheld `no_capex_tag` |
+| BK | 24 | 6 | 4 | 17% | 20 | **20** | 3 | truncated |
+| USB | — | — | — | — | — | 0 | 0 | withheld `no_capex_tag` |
+| C | 21 | 6 | 14 | 67% | 7 | **18** | 13 | truncated |
+
+NOW and WU also became runnable at all — they had no legacy ticker fixture, so they failed
+outright in fixture mode before.
+
+### 9c. What the migration cost — recorded deliberately
+
+The legacy fixtures were a **second, disagreeing source**, and several tests depended on
+that disagreement without saying so: the cross-check's conflict/downgrade path was covered
+because the yfinance-shaped recordings pre-dated the EDGAR ones and happened to diverge.
+Against the FMP payload those fields agree, so the coverage would have evaporated silently.
+
+It is now **deliberate**: `_pair_with_forced_conflict(ticker, field)` pushes one named
+field 1.5× out of tolerance, so the test states which field conflicts and by how much
+instead of inheriting it from a stale recording. Same for the anti-launder downgrade test.
+This is strictly better coverage than the accident it replaces — but the accident was load
+bearing, and losing it unnoticed was the real risk.
+
+Related: `test_alignment_revoked_when_the_primary_switches_to_mrq` now sets the MRQ value
+explicitly. It used to arrive free because MU's legacy fixture served `total_cash` as MRQ;
+the FMP payload serves the FY figure, which activates the R-A alignment path the legacy
+recording had been suppressing.

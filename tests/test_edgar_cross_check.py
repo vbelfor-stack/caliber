@@ -11,7 +11,6 @@ import pytest
 
 from adapters.base import Prov
 from adapters.edgar_adapter import FilingRef, fetch_edgar
-from adapters.fixture_adapter import fetch_fixture
 from adapters.fmp_adapter import fetch_fmp
 from core.edgar_cross_check import (
     APPLICABLE_VERDICTS, COMPARISONS, DIVERGENCE_TOLERANCE_PCT,
@@ -25,7 +24,7 @@ from core.edgar_cross_check import (
 
 FIXTURES = Path("tests/fixtures")
 EDGAR = FIXTURES / "edgar"
-TICKER = FIXTURES / "ticker"
+TICKER = FIXTURES / "fmp"
 
 
 GOLDEN = ("MU", "GOOG", "V", "NOW", "WU")
@@ -33,18 +32,45 @@ GOLDEN = ("MU", "GOOG", "V", "NOW", "WU")
 
 def _pair(ticker: str):
     return (fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json"),
-            fetch_fixture(ticker, fixture_path=TICKER / f"{ticker}.json"))
+            fetch_fmp(ticker, fixture_path=TICKER / f"{ticker}.json"))
 
 
 def _fmp_pair(ticker: str):
-    """EDGAR + the recorded FMP feed, which is the pairing production actually runs.
+    """EDGAR + the recorded FMP feed — the pairing production actually runs.
 
-    The tests/fixtures/ticker set is the older yfinance-shaped recording and exists for
-    the historical pipeline; tests/fixtures/fmp is a verbatim recording of the live FMP
-    payload. Golden-five invariants run against the latter (R-C).
+    Kept as a distinct name from _pair for readability at the call sites that were
+    written to say "this one is the production pairing" (R-C). Since the yfinance-shaped
+    tests/fixtures/ticker set was retired, the two are the same source.
     """
     return (fetch_edgar(ticker, fixture_path=EDGAR / f"{ticker}.json"),
             fetch_fmp(ticker, fixture_path=FIXTURES / "fmp" / f"{ticker}.json"))
+
+
+# Divergence large enough to clear every comparison's tolerance (the widest armed one is
+# 5%). Applied to a single named field so a test says WHICH field conflicts.
+_FORCED_CONFLICT_FACTOR = 1.5
+
+
+def _pair_with_forced_conflict(ticker: str, field: str):
+    """The production pairing, with ONE named field pushed deliberately out of tolerance.
+
+    WHY THIS EXISTS. The conflict path used to be exercised BY ACCIDENT: the retired
+    yfinance-shaped fixtures pre-dated the EDGAR ones, so some field or other happened to
+    disagree and the downgrade path got covered as a side effect of fixture drift. That is
+    not coverage — it is drift that happened to be useful, and it evaporated the moment
+    fixture mode moved to the payload production actually fetches (MU's operating margin
+    now agrees with EDGAR to 0.2%).
+
+    Forcing the divergence states which field conflicts and by how much, so the test
+    documents its own premise instead of inheriting it from a stale recording. It also
+    means these tests keep testing the downgrade path after any future re-record, which
+    the accidental version provably did not.
+    """
+    edgar, yf = _pair(ticker)
+    prov = getattr(yf, field)
+    assert not prov.is_missing(), f"{ticker}.{field} must have a value to perturb"
+    prov.value = prov.value * _FORCED_CONFLICT_FACTOR
+    return edgar, yf
 
 
 class TestComputeIsPure:
@@ -92,14 +118,17 @@ class TestComputeIsPure:
 class TestArmedApplication:
     """E-3 ARMED: agree→high, conflict→low, everything else leaves the field alone."""
 
-    def _armed(self, ticker):
-        edgar, yf = _pair(ticker)
+    def _armed(self, ticker, conflict_field=None):
+        edgar, yf = (_pair_with_forced_conflict(ticker, conflict_field)
+                     if conflict_field else _pair(ticker))
         report = compute_cross_check(edgar, yf, today="2026-08-08")
         applied = apply_report(report, yf)
         return edgar, yf, report, applied
 
     def test_agreement_upgrades_and_conflict_downgrades(self):
-        _, yf, report, applied = self._armed("MU")
+        # gross_margin agrees on the recorded data; operating_margin is pushed out of
+        # tolerance on purpose so BOTH directions are exercised in one report.
+        _, yf, report, applied = self._armed("MU", conflict_field="operating_margin")
         by_field = {(d.label or d.fmp_field): d for d in report.deltas}
         assert by_field["gross_margin"].verdict == VERDICT_AGREE
         assert getattr(yf, "gross_margin").confidence == "high"
@@ -109,7 +138,7 @@ class TestArmedApplication:
 
     def test_source_string_records_corroboration_and_conflict(self):
         """A field that moved must say why on inspection, not just carry a new label."""
-        _, yf, _, _ = self._armed("MU")
+        _, yf, _, _ = self._armed("MU", conflict_field="operating_margin")
         assert getattr(yf, "gross_margin").source.endswith("+EDGAR")
         assert "CONFLICT" in getattr(yf, "operating_margin").source
 
@@ -147,11 +176,19 @@ class TestArmedApplication:
 
     def test_symmetric_gate_survives_arming(self):
         """R1 is not merely a reporting nicety: with everything stale, arming writes
-        nothing at all."""
+        nothing at all.
+
+        total_cash@FY is EXEMPT — it is gated on alignment, not absolute age (R-A), so it
+        legitimately still applies. It is dropped from the report here so the assertion
+        measures R1 rather than R-A. The exemption used to be invisible because MU's
+        retired fixture served total_cash as MRQ, revoking alignment outright.
+        """
         edgar, yf = _pair("MU")
         before = {name: (p.confidence, p.source) for name, p in vars(yf).items()
                   if isinstance(p, Prov)}
         report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
+        report.deltas = [d for d in report.deltas
+                         if "gated on alignment" not in (d.note or "")]
         assert apply_report(report, yf) == []
         after = {name: (p.confidence, p.source) for name, p in vars(yf).items()
                  if isinstance(p, Prov)}
@@ -252,11 +289,20 @@ class TestDarkComparisons:
     def test_alignment_revoked_when_the_primary_switches_to_mrq(self):
         """R-A condition 3, violated — and caught at runtime rather than assumed.
 
-        MU's recorded total_cash is the MRQ figure, not the fiscal year-end one. The
-        annual-vs-annual premise is therefore false for it, alignment is revoked, the row
-        ages absolutely (345d) and caps. This is the exact failure the scope exists to
-        stop: corroborating an annual EDGAR figure against a quarterly FMP one."""
-        _, _, _, by_label = self._report("MU")
+        When the primary's in-use value is the MRQ figure rather than the fiscal year-end
+        one, the annual-vs-annual premise is false, alignment is revoked, the row ages
+        absolutely (345d) and caps. This is the exact failure the scope exists to stop:
+        corroborating an annual EDGAR figure against a quarterly FMP one.
+
+        The MRQ value is now set EXPLICITLY. It used to arrive for free because the
+        retired yfinance-shaped fixture happened to serve MU's total_cash as MRQ; the FMP
+        payload production actually fetches serves the FY figure, so the premise had to
+        become part of the test instead of a property of a stale recording."""
+        edgar, yf = _pair("MU")
+        f = edgar.financials.fields
+        yf.total_cash.value = f["cash"].value + f["short_term_investments"].value
+        by_label = {(d.label or d.fmp_field): d
+                    for d in compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         row = by_label["total_cash@FY"]
         assert row.verdict == VERDICT_STALE_CAPPED
         assert not row.would_change
@@ -541,11 +587,23 @@ class TestPerFieldFreshness:
             fields["long_term_debt"].period_end, fields["current_debt"].period_end)
 
     def test_beyond_threshold_caps_at_medium(self):
+        """ALIGNMENT-GATED ROWS ARE EXEMPT BY DESIGN (R-A) and are excluded here.
+
+        A matched-period row is aged on the gap between the two sides' periods — zero by
+        construction — not on absolute age, because a correctly-labelled annual figure
+        corroborating an annual FMP field launders nothing. The day-count threshold
+        therefore does not apply to it, and asserting otherwise would contradict R-A.
+
+        This exclusion used to be unnecessary: MU's retired fixture served total_cash as
+        MRQ, so alignment was revoked and no alignment row survived to be exempt.
+        """
         edgar, yf = _pair("MU")
         report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
-        for d in report.deltas:
+        absolute_aged = [d for d in report.deltas
+                         if "gated on alignment" not in (d.note or "")]
+        for d in absolute_aged:
             assert d.would_be_confidence != "high", f"{d.fmp_field} upgraded while stale"
-        assert any(d.verdict == VERDICT_STALE_CAPPED for d in report.deltas)
+        assert any(d.verdict == VERDICT_STALE_CAPPED for d in absolute_aged)
 
 
 class TestSymmetricStaleGating:
@@ -557,18 +615,23 @@ class TestSymmetricStaleGating:
     """
 
     def test_stale_data_moves_nothing_in_either_direction(self):
-        """The property, asserted directly: with everything stale, no delta moves."""
-        edgar, yf = _pair("MU")
+        """The property, asserted directly: with everything stale, no delta moves.
+
+        Alignment-gated rows are excluded — they are aged on alignment, not absolute age
+        (R-A), so "stale" is not a claim that can be made about them.
+        """
+        edgar, yf = _pair_with_forced_conflict("MU", "operating_margin")
         report = compute_cross_check(edgar, yf, today="2026-08-08", threshold_days=10)
-        armed = [d for d in report.deltas if not d.dark]
+        armed = [d for d in report.deltas
+                 if not d.dark and "gated on alignment" not in (d.note or "")]
         assert any(d.divergence_pct and d.divergence_pct > 5.0 for d in armed), \
-            "fixture must contain a conflict-sized divergence for this to prove anything"
+            "a conflict-sized divergence must be present for this to prove anything"
         for d in armed:
             assert not d.would_change, f"{d.fmp_field} moved while stale"
             assert d.would_be_confidence == d.current_confidence
 
     def test_conflict_on_stale_data_renders_stale_capped_with_divergence_kept(self):
-        edgar, yf = _pair("MU")
+        edgar, yf = _pair_with_forced_conflict("MU", "operating_margin")
         by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08",
                                         threshold_days=10).deltas}
@@ -581,7 +644,7 @@ class TestSymmetricStaleGating:
     def test_the_gate_is_what_suppressed_it_not_the_tolerance(self):
         """Same field, same data, fresh: it does downgrade. Proves the test above is
         exercising the gate rather than a comparison that never conflicted."""
-        edgar, yf = _pair("MU")
+        edgar, yf = _pair_with_forced_conflict("MU", "operating_margin")
         by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT
@@ -592,7 +655,7 @@ class TestSymmetricStaleGating:
         companyfacts is a full quarter behind its own filings. (Live it was
         current_ratio at 10.4%; against the recorded FMP fixture the conflicting field
         is operating_margin — the gate is field-agnostic.)"""
-        edgar, yf = _pair("V")
+        edgar, yf = _pair_with_forced_conflict("V", "operating_margin")
         edgar.recent_10q = [FilingRef(form="10-Q", date="2026-07-29", accession="x",
                                       primary_doc="d.htm", report_date="2026-06-30")]
         by_field = {(d.label or d.fmp_field): d for d in
@@ -605,7 +668,7 @@ class TestSymmetricStaleGating:
     def test_lag_suppression_needs_the_lag(self):
         """Without the submissions cross-reference V is only 130d old — inside the 150d
         backstop — so the same conflict is live. The lag is doing the work."""
-        edgar, yf = _pair("V")
+        edgar, yf = _pair_with_forced_conflict("V", "operating_margin")
         by_field = {(d.label or d.fmp_field): d for d in
                     compute_cross_check(edgar, yf, today="2026-08-08").deltas}
         assert by_field["operating_margin"].verdict == VERDICT_CONFLICT

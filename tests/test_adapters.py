@@ -5,7 +5,7 @@ All tests run against recorded fixtures — no live network calls.
 from pathlib import Path
 import pytest
 
-from adapters.fixture_adapter import fetch_fixture
+from adapters.fmp_adapter import fetch_fmp
 from core.datatypes import TickerData
 from adapters.edgar_adapter import (
     fetch_edgar, EdgarData, FIELD_SPECS, resolve_financials,
@@ -16,7 +16,7 @@ from adapters.fred_adapter import fetch_fred, FredData
 from adapters.fmp_adapter import fetch_fmp
 
 FIXTURE_ROOT = Path("tests/fixtures")
-YF = FIXTURE_ROOT / "ticker"
+YF = FIXTURE_ROOT / "fmp"
 EDGAR = FIXTURE_ROOT / "edgar"
 FRED_FX = FIXTURE_ROOT / "fred" / "DGS10.json"
 FMP = FIXTURE_ROOT / "fmp"
@@ -24,99 +24,105 @@ FMP = FIXTURE_ROOT / "fmp"
 
 # ── fixture adapter ──────────────────────────────────────────────────────────
 
-class TestFixtureAdapter:
+class TestRecordedFmpPayload:
     def test_mu_loads_from_fixture(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf, TickerData)
         assert yf.ticker == "MU"
 
     def test_mu_sector_is_technology(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert yf.sector == "Technology"
 
     def test_mu_industry_semiconductors(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert yf.industry == "Semiconductors"
 
     def test_mu_gross_margin_is_prov(self):
         from adapters.base import Prov
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.gross_margin, Prov)
         assert not yf.gross_margin.is_missing()
 
     def test_mu_gross_margin_source(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
-        assert yf.gross_margin.source == "yfinance"
+        """The recorded payload is FMP's, so the stamp reads "fmp" — and it is the LIVE
+        label, not a recording artifact. The retired ticker/ fixtures stamped "yfinance",
+        which was accurate for their contents but meant offline provenance never matched
+        what production writes."""
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
+        assert yf.gross_margin.source == "fmp"
 
     def test_mu_gross_margin_confidence_medium(self):
         """Single source → medium (no secondary cross-check feed wired in)."""
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert yf.gross_margin.confidence == "medium"
 
     def test_mu_gross_margin_range(self):
         """MU gross margin is high at cycle peak (>50%)."""
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         gm = yf.gross_margin.value
         assert gm is not None
         assert 0.5 < gm < 1.0, f"Expected >50%, got {gm:.2%}"
 
     def test_mu_forward_pe_positive(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         if not yf.forward_pe.is_missing():
             assert yf.forward_pe.value > 0
 
     def test_mu_revenue_growth_positive(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         if not yf.revenue_growth.is_missing():
             # MU had massive recovery; value should be positive
             assert yf.revenue_growth.value > 0
 
     def test_mu_fcf_yield_computed(self):
         """FCF yield is derived: free_cashflow / market_cap."""
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         if not yf.free_cashflow.is_missing() and not yf.market_cap.is_missing():
             if yf.market_cap.value and yf.market_cap.value > 0:
                 assert not yf.fcf_yield.is_missing()
 
     def test_goog_loads(self):
-        yf = fetch_fixture("GOOG", fixture_path=YF / "GOOG.json")
+        yf = fetch_fmp("GOOG", fixture_path=YF / "GOOG.json")
         assert yf.ticker == "GOOG"
         assert yf.sector == "Communication Services"
 
     def test_goog_industry(self):
-        yf = fetch_fixture("GOOG", fixture_path=YF / "GOOG.json")
+        yf = fetch_fmp("GOOG", fixture_path=YF / "GOOG.json")
         assert yf.industry == "Internet Content & Information"
 
     def test_v_loads(self):
-        yf = fetch_fixture("V", fixture_path=YF / "V.json")
+        yf = fetch_fmp("V", fixture_path=YF / "V.json")
         assert yf.ticker == "V"
         assert yf.sector == "Financial Services"
 
     def test_v_industry_credit_services(self):
-        yf = fetch_fixture("V", fixture_path=YF / "V.json")
-        assert yf.industry == "Credit Services"
+        # FMP's vocabulary is "Financial - Credit Services"; lens_select keys on the
+        # substring, so that is what is pinned.
+        yf = fetch_fmp("V", fixture_path=YF / "V.json")
+        assert "Credit Services" in yf.industry
 
     def test_nan_coerced_to_none(self):
         """NaN fields must become None Provs (not crash)."""
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         # Any field that happens to be None must still be a Prov
         from adapters.base import Prov
         assert isinstance(yf.beta, Prov)
 
     def test_missing_fixture_raises_runtime_error(self):
         with pytest.raises(RuntimeError, match="fixture not found"):
-            fetch_fixture("FAKE", fixture_path=Path("nonexistent.json"))
+            fetch_fmp("FAKE", fixture_path=Path("nonexistent.json"))
 
     def test_earnings_history_is_list(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.earnings_history, list)
 
     def test_insider_transactions_is_list(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.insider_transactions, list)
 
     def test_price_history_is_list(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         assert isinstance(yf.price_history, list)
 
 
@@ -337,7 +343,7 @@ class TestFmpOnlyFetch:
         from unittest.mock import patch
         from batch.runner import _fetch
 
-        fake = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        fake = fetch_fmp("MU", fixture_path=YF / "MU.json")
         with patch("adapters.fmp_adapter.fetch_fmp", return_value=fake):
             result = _fetch("MU", log=lambda msg: None)
 
@@ -360,15 +366,15 @@ class TestProvenanceFeedSource:
     label — the prerequisite for EDGAR's cross-check to see real source diversity."""
 
     def test_fixture_feed_source_and_derived_labels(self):
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
-        assert yf.feed_source == "yfinance"                       # recorded data — accurate
-        assert yf.gross_margin_trajectory.ttm.source == "yfinance"
-        assert yf.gross_margin_trajectory.mrq.source == "yfinance/quarterly_financials"
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
+        assert yf.feed_source == "fmp"
+        assert yf.gross_margin_trajectory.ttm.source == "fmp"
+        assert yf.gross_margin_trajectory.mrq.source == "fmp/quarterly_financials"
 
     def test_derived_sources_follow_feed_source(self):
         from core.technicals import analyze_technicals
         from core.pillars import score_management
-        yf = fetch_fixture("MU", fixture_path=YF / "MU.json")
+        yf = fetch_fmp("MU", fixture_path=YF / "MU.json")
         yf.feed_source = "fmp"    # simulate the live FMP feed
         tech = analyze_technicals(yf.price_history, feed_source=yf.feed_source)
         assert tech.price_vs_ma50_pct.source == "fmp/price_history"

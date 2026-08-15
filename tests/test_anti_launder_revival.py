@@ -26,7 +26,7 @@ import pytest
 
 from adapters.base import PillarResult, Prov, min_conf
 from adapters.edgar_adapter import fetch_edgar
-from adapters.fixture_adapter import fetch_fixture
+from adapters.fmp_adapter import fetch_fmp
 from adapters.fred_adapter import fetch_fred
 from core.edgar_cross_check import apply_report, compute_cross_check
 from core.grading import reason_for_grade
@@ -40,7 +40,7 @@ AS_OF = "2026-08-08"
 
 def _load(ticker: str):
     edgar = fetch_edgar(ticker, fixture_path=FIXTURES / "edgar" / f"{ticker}.json")
-    yf = fetch_fixture(ticker, fixture_path=FIXTURES / "ticker" / f"{ticker}.json")
+    yf = fetch_fmp(ticker, fixture_path=FIXTURES / "fmp" / f"{ticker}.json")
     yf.sic = edgar.sic
     fred = fetch_fred(fixture_path=FIXTURES / "fred" / "DGS10.json")
     return edgar, yf, fred
@@ -158,12 +158,20 @@ class TestChainLink4NoteFires:
 class TestConflictDirection:
     def test_an_edgar_conflict_pins_the_pillar_and_the_verdict_low(self):
         """The other half of arming: EDGAR can also REMOVE confidence. A single
-        contradicted field drags its pillar — and so the verdict — to low."""
+        contradicted field drags its pillar — and so the verdict — to low.
+
+        The contradiction is INTRODUCED DELIBERATELY. It used to arrive for free because
+        the retired yfinance-shaped fixtures pre-dated the EDGAR ones and disagreed in
+        places; against the FMP payload production actually fetches, GOOG's margins agree
+        with EDGAR, so relying on incidental drift would have left the downgrade path
+        silently untested. Naming the field and the size makes the premise the test's own.
+        """
         edgar, yf, fred = _load("GOOG")
         pillars = score_all(yf, edgar, fred,
                             select_lens(yf.sector, yf.industry, edgar.sic))
         assert enforced_verdict_confidence(pillars, "high") == "medium"
 
+        yf.operating_margin.value = yf.operating_margin.value * 1.5   # clears any tolerance
         apply_report(compute_cross_check(edgar, yf, today=AS_OF), yf)
         after = score_all(yf, edgar, fred,
                           select_lens(yf.sector, yf.industry, edgar.sic))
