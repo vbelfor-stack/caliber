@@ -355,6 +355,20 @@ checkout is a data-loss hazard; an unverified kill target is a worse one.
 - status='ok' must mean a COMPLETE eval (see open thread #2).
 - Golden-ticker regression harness: MU, GOOG, V, NOW, WU. Behavior on these must not change
   silently across sessions.   (confirmed current 2026-08-07)
+  **THE HARNESS PAID FOR ITSELF 2026-08-15 — LEDGER ENTRY, PRODUCTION DATA.** It caught a
+  UNIT-CONVENTION PRODUCTION DEFECT that the suite, the grader and a full live armed pass
+  ALL MISSED: FMP's debt/equity RATIO scored against a PERCENT ladder for eight days, so
+  every issuer collected maximum leverage points and the component was inert (see the
+  three-conventions note in the EDGAR section). 654 tests were green throughout; the live
+  armed pass of 2026-08-09 filed V — levered ~67% — as "debt/equity 1%" and nothing
+  objected. **THE ONLY REASON THE DEFECT SURFACED IS THAT THE LEGACY FIXTURES PRESERVED
+  THE OLD UNIT CONVENTION**, so a routine before/after diff put percent beside ratio and
+  the 100x gap became visible. A harness whose baseline had already been migrated to the
+  new feed would have agreed with the bug and shown nothing. THE ARGUMENT FOR KEEPING AN
+  INDEPENDENT BASELINE IS NOW WRITTEN IN PRODUCTION DATA, not in principle.
+  COROLLARY, and the reason the migration below was ordered only AFTER the fix landed:
+  migrating a baseline onto the same source it is meant to check RETIRES THE CHECK. When
+  that is done deliberately, the thing being given up must be named.
 
 ## Stack & repo map
 - Python / SQLite on Replit. Feed reality (2026-08-07): FMP IS THE SOLE LIVE FEED — now TRUE.
@@ -542,11 +556,18 @@ It did NOT revive the anti-launder NOTE — see the E-4 ceiling finding.
   · R-C 3a4ec18 · R-B dark b2dcc30.
 - ARMED SET (moves confidence): gross_margin, operating_margin, profit_margin, roe, roa,
   current_ratio, shares_outstanding, total_cash@FY. agree→high, conflict→low.
-- **debt_to_equity CARRIES TWO INDEPENDENT DISCREPANCIES — keep them separate:**
+- **debt_to_equity CARRIES THREE CONVENTIONS — they live here together deliberately:**
   (a) DEFINITION: FMP is NET of cash, EDGAR/yfinance gross. No period matching fixes it;
-      this is the permanent-advisory reason below. (b) SCALE: FMP publishes a RATIO, the
-      pillar ladder is PERCENT. (b) WAS A LIVE SCORING DEFECT 2026-08-07 -> 2026-08-15,
-      FIXED at the adapter boundary (`_ratio_to_percent`). Fixing (b) does NOT resolve (a).
+      this is the permanent-advisory reason below.
+  (b) SCALE: FMP publishes a RATIO, the pillar ladder is PERCENT. (b) WAS A LIVE SCORING
+      DEFECT 2026-08-07 -> 2026-08-15, FIXED at the adapter boundary (`_ratio_to_percent`,
+      commit 8d9aa95). Fixing (b) does NOT resolve (a).
+  (c) CROSS-CHECK UNITS: core/edgar_cross_check's debt_to_equity comparison computes the
+      EDGAR side x100 so BOTH SIDES SPEAK PERCENT. RULED KEEP 2026-08-15. Without it the
+      row reported a units artifact on every ticker (~99% everywhere); with it the row
+      shows only the genuine net-vs-gross gap — MU 47.8%, GOOG 21.9%, **V 0.0% (exact
+      agreement)**. That is the advisory row doing its job. Row stays permanent-advisory:
+      it moves no confidence and no score either way.
 - PERMANENT ADVISORY (measured, logged, never applied — declared basis mismatch):
   total_cash (MRQ), total_debt (MRQ), debt_to_equity (FMP is NET of cash, EDGAR gross),
   operating_cashflow and free_cashflow (FMP annual, EDGAR TTM).
