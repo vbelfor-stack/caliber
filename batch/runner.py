@@ -101,6 +101,9 @@ class TickerResult:
     # Informational EDGAR staleness notice + predicted next-data date; no confidence
     # effect. Surfaced in the batch summary so a stale run says when it self-heals.
     freshness_watch: Optional[str] = None
+    # Carried ONLY to feed the batch-level leverage uniformity tripwire below. Not scored
+    # here and not persisted from here — the pillar owns the scoring.
+    debt_to_equity: Optional[float] = None
 
 
 class DegradedRunWriteRefused(Exception):
@@ -323,6 +326,8 @@ def run_single_ticker(
             lens=lens,
             eval_status=eval_status,
             freshness_watch=freshness,
+            debt_to_equity=(None if yf.debt_to_equity.is_missing()
+                            else yf.debt_to_equity.value),
         )
 
     except RateUnavailable as exc:
@@ -361,6 +366,47 @@ def run_single_ticker(
             duration_s=time.monotonic() - t0,
             eval_status="failed",
         )
+
+
+# The leverage ladder's top rung (core/pillars.score_financial_health: de <= 30 -> 3 pts).
+# Mirrored, not imported, on purpose: the tripwire must keep firing if someone edits the
+# ladder without thinking about units, which importing the live threshold would mask.
+_DE_TOP_RUNG_PCT = 30.0
+_DE_UNIFORMITY_MIN_TICKERS = 3
+
+
+def _leverage_uniformity_alarm(results: List[TickerResult]) -> Optional[str]:
+    """Warn when EVERY name in a batch collects maximum leverage points.
+
+    THE SYMPTOM THIS WATCHES FOR IS THE ONE WE MISSED. For a week after the yfinance
+    teardown, FMP's D/E RATIO was scored against a PERCENT ladder, so every issuer landed
+    under the top rung and the leverage component contributed nothing to any score. It was
+    visible the whole time — GOOG "debt/equity 0%", V "1%" for a name levered ~67% — and
+    nothing in the system remarked on it.
+
+    A real universe does not agree like that. The golden five alone span ~6% to ~295%, so
+    a whole batch under the top rung is far more likely to be a units regression than a
+    portfolio of debt-free issuers.
+
+    ADVISORY ONLY — it prints, it never changes a score or blocks a run. A tripwire that
+    can withhold an evaluation would be a new failure mode; this one only makes the
+    silence audible.
+    """
+    seen = [r.debt_to_equity for r in results if r.debt_to_equity is not None]
+    if len(seen) < _DE_UNIFORMITY_MIN_TICKERS:
+        return None                       # too few to call uniformity
+    if any(de > _DE_TOP_RUNG_PCT for de in seen):
+        return None                       # the ladder is discriminating; nothing to say
+    return (
+        f"  [!] LEVERAGE UNIFORMITY — all {len(seen)} ticker(s) with a debt/equity "
+        f"reading are at or under the ladder's top rung ({_DE_TOP_RUNG_PCT:.0f}%), so "
+        f"EVERY ONE scored maximum leverage points.\n"
+        f"      max seen {max(seen):.2f}%. This is the signature of a UNITS REGRESSION "
+        f"(a ratio reaching a percent ladder), which is exactly how the 2026-08-07 "
+        f"debt/equity defect hid for a week.\n"
+        f"      Advisory only — no score was changed. Verify the adapter's D/E scale "
+        f"before trusting this batch's Financial Health readings."
+    )
 
 
 def run_batch(
@@ -417,6 +463,11 @@ def run_batch(
         print(f"  {r.ticker:<8}  {status_s:<8}  {score_s:>6}  {conf_s:<8}  {er_s:>8}  {id_s:>6}")
     print(f"  {'-'*56}")
     print(f"  {len(ok)} succeeded  {len(failed)} failed  {total_s:.1f}s total")
+    leverage_alarm = _leverage_uniformity_alarm(results)
+    if leverage_alarm:
+        print()
+        print(leverage_alarm)
+
     watches = [r.freshness_watch for r in results if r.freshness_watch]
     if watches:
         print()

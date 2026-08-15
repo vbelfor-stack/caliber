@@ -209,8 +209,13 @@ COMPARISONS: Tuple[Comparison, ...] = (
     Comparison("free_cashflow", ("operating_cashflow", "capex"),
                lambda v: v["operating_cashflow"] - v["capex"],
                basis_note="FMP cash-flow is annual; EDGAR is TTM"),
+    # x100: the FMP side is normalised to PERCENT at the adapter boundary
+    # (_ratio_to_percent), so the EDGAR side must speak percent too or the comparison
+    # measures the unit difference instead of the definitional one. Both sides percent
+    # -> the reported divergence is the genuine NET-vs-gross gap (~32%) rather than a
+    # units artifact (~99%). The row stays permanently advisory either way.
     Comparison("debt_to_equity", ("long_term_debt", "current_debt", "equity"),
-               lambda v: ((v["long_term_debt"] + v["current_debt"]) / v["equity"]
+               lambda v: ((v["long_term_debt"] + v["current_debt"]) / v["equity"] * 100.0
                           if v["equity"] else None),
                basis_note="FMP debtToEquityRatioTTM is NET debt/equity; EDGAR is gross"),
 )

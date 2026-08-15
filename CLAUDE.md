@@ -542,6 +542,11 @@ It did NOT revive the anti-launder NOTE — see the E-4 ceiling finding.
   · R-C 3a4ec18 · R-B dark b2dcc30.
 - ARMED SET (moves confidence): gross_margin, operating_margin, profit_margin, roe, roa,
   current_ratio, shares_outstanding, total_cash@FY. agree→high, conflict→low.
+- **debt_to_equity CARRIES TWO INDEPENDENT DISCREPANCIES — keep them separate:**
+  (a) DEFINITION: FMP is NET of cash, EDGAR/yfinance gross. No period matching fixes it;
+      this is the permanent-advisory reason below. (b) SCALE: FMP publishes a RATIO, the
+      pillar ladder is PERCENT. (b) WAS A LIVE SCORING DEFECT 2026-08-07 -> 2026-08-15,
+      FIXED at the adapter boundary (`_ratio_to_percent`). Fixing (b) does NOT resolve (a).
 - PERMANENT ADVISORY (measured, logged, never applied — declared basis mismatch):
   total_cash (MRQ), total_debt (MRQ), debt_to_equity (FMP is NET of cash, EDGAR gross),
   operating_cashflow and free_cashflow (FMP annual, EDGAR TTM).

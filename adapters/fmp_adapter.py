@@ -18,8 +18,17 @@ Endpoints used (all under https://financialmodelingprep.com/stable/):
 
 FMP schema notes:
   - All values are Python native types (int/float/str/None) — no string sentinels
-  - debtToEquityRatioTTM is *net* D/E: netDebt/equity — differs from yfinance
-    which uses totalDebt/equity. May trigger CONFLICT in cross-check; expected.
+  - debtToEquityRatioTTM differs from the old yfinance field in TWO INDEPENDENT WAYS.
+    Both must be held in mind; fixing one does not touch the other.
+      (a) DEFINITION — FMP's is *net* D/E (netDebt/equity), yfinance's was gross
+          (totalDebt/equity). May trigger CONFLICT in cross-check; expected. This is
+          the same mismatch E-4 records against EDGAR (FMP-NET vs EDGAR-GROSS), and
+          no period matching can fix it.
+      (b) SCALE — FMP publishes a RATIO (0.672), yfinance published a PERCENT (67.2).
+          The pillar ladder is in PERCENT, so the raw ratio scored as near-zero
+          leverage for every issuer between 2026-08-07 and 2026-08-15. NORMALISED AT
+          THIS BOUNDARY by _ratio_to_percent — see that function for the full defect
+          history. Consumers receive PERCENT.
   - grossProfitMarginTTM is decimal: 0.726 = 72.6%
   - price_history list is sorted newest→oldest by FMP; we keep that order
   - earnings list: epsActual=None for future quarters (not yet reported)
@@ -55,6 +64,31 @@ def _p(val: Any, as_of: str = TODAY_STR, conf: Confidence = _DEFAULT_CONF) -> Pr
     if v is None:
         conf = "low"
     return Prov(value=v, source=SOURCE, as_of=as_of, confidence=conf)
+
+
+def _ratio_to_percent(val: Any) -> Optional[float]:
+    """FMP's D/E is a RATIO; score_financial_health's ladder is in PERCENT. Convert here.
+
+    THE DEFECT THIS EXISTS TO CLOSE (production, 2026-08-07 -> 2026-08-15). The leverage
+    ladder in core/pillars.py reads `de <= 30 -> 3 pts` and renders `f"{de:.0f}%"` — it was
+    calibrated when yfinance was the feed, and yfinance published D/E as a PERCENT (V:
+    67.233). FMP publishes the RATIO (V: 0.672331). When the yfinance teardown made FMP the
+    sole feed the raw ratio started flowing into the percent ladder unchanged, so NOTHING
+    REALISTIC EVER EXCEEDED 30 and every issuer collected the full 3 of 3 leverage points.
+    The whole component was inert for a week, and the recorded evidence is in the live
+    armed pass of 2026-08-09: V's real ~67% leverage is filed as "debt/equity 1%".
+
+    NORMALISE AT THE ADAPTER BOUNDARY, not in the ladder (ruled 2026-08-15): the percent
+    convention is also what the rationale string prints and what the E-4 net-vs-gross note
+    is written in, so the units belong to the field, not to one consumer of it.
+
+    NOTE this is a SCALE fix only. The SEPARATE, KNOWN definitional difference stands:
+    FMP's debtToEquityRatioTTM is NET of cash while yfinance's was gross, so a converted
+    FMP figure still will not equal the old yfinance one (GOOG ~17.6% net vs ~20.0% gross).
+    Two different discrepancies on one field; this closes the units one.
+    """
+    v = coerce(val)
+    return None if v is None else v * 100.0
 
 
 def _get(endpoint: str, key: str) -> Any:
@@ -277,7 +311,7 @@ def _build(
 
     # ── Financial Health ──────────────────────────────────────────────────
     current_ratio = _p(ratios.get("currentRatioTTM"))
-    debt_to_equity = _p(ratios.get("debtToEquityRatioTTM"))
+    debt_to_equity = _p(_ratio_to_percent(ratios.get("debtToEquityRatioTTM")))
     total_debt = _p(balance.get("totalDebt"), as_of=income0_date)
     total_cash = _p(balance.get("cashAndShortTermInvestments"), as_of=income0_date)
     free_cashflow = _p(cashflow.get("freeCashFlow"), as_of=income0_date)
