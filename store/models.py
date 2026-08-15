@@ -102,6 +102,57 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 graded_at       TEXT    NOT NULL,
                 note            TEXT
             );
+
+            -- Phase H-1 (schema addendum, ruled 2026-08-15). Per-period fundamental
+            -- history, for Phase M (Monte Carlo) to derive input distributions from.
+            --
+            -- ISSUER-KEYED, NOT EVALUATION-KEYED. An FY2023 free cash flow is a property
+            -- of the issuer, not of a run; keying it to evaluation_id would duplicate
+            -- ~20 rows per ticker per run and leave Phase M unable to say which eval to
+            -- trust. Every other table here is an evaluation snapshot; this one is not.
+            --
+            -- APPEND, NEVER OVERWRITE. A value is immutable once written. When a later
+            -- run computes a DIFFERENT value for the same key, that is a restatement and
+            -- it lands as a NEW ROW — overwriting would destroy the evidence that a
+            -- historical figure changed, which is the exact defect class Phase G exists
+            -- to catch. `last_confirmed` is the ONLY column ever updated in place, and it
+            -- records re-observation, not a value.
+            --
+            -- `excluded` is a READ-TIME FILTER FOR THE ANCHOR, never a storage filter:
+            -- negative-FCF periods are stored in full so Phase M sees the left tail.
+            --
+            -- TWO REASON COLUMNS, DELIBERATELY SEPARATE (F3, ruled 2026-08-15). A row is
+            -- absent-from-the-anchor for one of two unrelated causes and they must not
+            -- share a column:
+            --   exclusion_reason -- set IFF excluded=1. The value is real but illegal for
+            --                       the MIN-of-medians anchor (a negative FCF has no
+            --                       yield interpretation).
+            --   null_reason      -- set IFF value IS NULL and excluded=0. The value is
+            --                       STRUCTURALLY UNAVAILABLE (no D&A spec), not rejected.
+            -- Overloading one column would make `reason IS NOT NULL` mean two different
+            -- things, and Phase M reads this table. reason-present must never have to be
+            -- cross-checked against `excluded` to be understood.
+            CREATE TABLE IF NOT EXISTS fundamental_series (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker          TEXT    NOT NULL,
+                metric          TEXT    NOT NULL,
+                period_end      TEXT    NOT NULL,
+                period_type     TEXT    NOT NULL,   -- FY | TTM_Q
+                value           REAL,               -- NULL is legal (reinvestment)
+                unit            TEXT,
+                basis           TEXT,               -- G-4 split basis, or not_applicable
+                method          TEXT,               -- TTM assembly method
+                excluded        INTEGER NOT NULL DEFAULT 0,
+                exclusion_reason TEXT,              -- set IFF excluded=1
+                null_reason     TEXT,               -- set IFF value IS NULL, excluded=0
+                components_json TEXT,
+                first_observed  TEXT    NOT NULL,
+                last_confirmed  TEXT    NOT NULL,
+                superseded      INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_fundseries_key
+                ON fundamental_series (ticker, metric, period_end, period_type, basis);
         """)
 
 
@@ -495,5 +546,151 @@ def get_ungradeable_evals(
                  AND julianday('now') - julianday(e.run_at) >= ?
                ORDER BY e.run_at ASC LIMIT 200""",
             (min_age_days,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ── Phase H-1 — fundamental series (schema addendum, ruled 2026-08-15) ────────
+
+# Two runs over identical inputs produce identical floats, so any difference at all means
+# an INPUT changed — a restatement, not arithmetic noise. The tolerance exists only to
+# absorb platform-level last-bit variation, and is deliberately far tighter than any real
+# restatement.
+_SERIES_VALUE_TOLERANCE = 1e-9
+
+
+def _same_series_value(a: Optional[float], b: Optional[float]) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    return abs(a - b) <= _SERIES_VALUE_TOLERANCE * max(1.0, abs(a), abs(b))
+
+
+def save_fundamental_series(
+    points: List[Any], db_path: Path = _DEFAULT_DB,
+) -> tuple:
+    """Persist series points. Returns (rows_written, restatements_detected).
+
+    APPEND, NEVER OVERWRITE (ruled). A stored value is immutable. Three cases per point:
+
+      unseen key          -> INSERT.
+      identical reading   -> no new row; `last_confirmed` is touched so re-observation is
+                             recorded. The value itself is not rewritten.
+      DIFFERENT reading   -> the existing row is marked `superseded` and the new one is
+                             INSERTED ALONGSIDE IT. The old figure stays readable. This is
+                             the restatement trail; overwriting would delete exactly the
+                             evidence that a historical number moved.
+
+    "Identical" means identical in VALUE, `excluded`, both reason columns, `method`,
+    `unit` AND `components` — every field describing the measurement, not the value alone
+    (F4). `restatements_detected` counts only the subset where the VALUE moved, so a
+    method-only change supersedes without being reported as a restated figure.
+
+    `last_confirmed` and `superseded` are the only columns ever updated in place, and
+    neither is a value — both are bookkeeping about observation, not measurement.
+
+    Takes an explicit db_path from its caller. H-1 made this surface a writer, so the
+    destination is named rather than defaulted (degraded-run write guard).
+    """
+    init_db(db_path)
+    written = restatements = 0
+    now = _utc_now()
+    with _conn(db_path) as conn:
+        for p in points:
+            key = (p.ticker, p.metric, p.period_end, p.period_type, p.basis)
+            components_json = json.dumps(p.components or {}, sort_keys=True)
+            existing = conn.execute(
+                """SELECT id, value, excluded, exclusion_reason, null_reason,
+                          method, unit, components_json
+                   FROM fundamental_series
+                   WHERE ticker=? AND metric=? AND period_end=? AND period_type=?
+                     AND basis=? AND superseded=0
+                   ORDER BY id DESC LIMIT 1""",
+                key,
+            ).fetchone()
+
+            if existing is not None:
+                # EVERY field that DESCRIBES THE MEASUREMENT participates (F4, ruled
+                # 2026-08-15) — not just the value. A TTM method moving
+                # ttm_reconstructed -> ttm_summed at an identical value is a different
+                # measurement that happens to agree, and silence about it would hide
+                # exactly the assembly change a later reader would need to explain a
+                # divergence. Same for the components: if a leg moved and the difference
+                # cancelled, that is evidence, not a no-op.
+                unchanged = (
+                    _same_series_value(existing["value"], p.value)
+                    and bool(existing["excluded"]) == bool(p.excluded)
+                    and (existing["exclusion_reason"] or None)
+                    == (p.exclusion_reason or None)
+                    and (existing["null_reason"] or None) == (p.null_reason or None)
+                    and (existing["method"] or None) == (p.method or None)
+                    and (existing["unit"] or None) == (p.unit or None)
+                    and (existing["components_json"] or "{}") == components_json
+                )
+                if unchanged:
+                    conn.execute(
+                        "UPDATE fundamental_series SET last_confirmed=? WHERE id=?",
+                        (now, existing["id"]),
+                    )
+                    continue
+                conn.execute(
+                    "UPDATE fundamental_series SET superseded=1 WHERE id=?",
+                    (existing["id"],),
+                )
+                if not _same_series_value(existing["value"], p.value):
+                    restatements += 1
+
+            conn.execute(
+                """INSERT INTO fundamental_series
+                   (ticker, metric, period_end, period_type, value, unit, basis, method,
+                    excluded, exclusion_reason, null_reason, components_json,
+                    first_observed, last_confirmed, superseded)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)""",
+                (p.ticker, p.metric, p.period_end, p.period_type, p.value, p.unit,
+                 p.basis, p.method, 1 if p.excluded else 0, p.exclusion_reason,
+                 p.null_reason, components_json, now, now),
+            )
+            written += 1
+    return written, restatements
+
+
+def list_fundamental_series(
+    ticker: Optional[str] = None,
+    metric: Optional[str] = None,
+    period_type: Optional[str] = None,
+    include_excluded: bool = True,
+    include_superseded: bool = False,
+    db_path: Path = _DEFAULT_DB,
+) -> List[Dict[str, Any]]:
+    """Read the series back, newest period first.
+
+    The two consumers read this differently and the defaults say which is which:
+      Phase M      — include_excluded=True (the DEFAULT). The full distribution,
+                     negative periods included; that left tail is the point.
+      anchor (H-3) — include_excluded=False. The MIN-of-medians read-time filter.
+
+    period_type='FY' is the per-year series the schema addendum asks for — a query, not a
+    separate build.
+    """
+    init_db(db_path)
+    where, params = [], []
+    if ticker:
+        where.append("ticker=?")
+        params.append(ticker.upper())
+    if metric:
+        where.append("metric=?")
+        params.append(metric)
+    if period_type:
+        where.append("period_type=?")
+        params.append(period_type)
+    if not include_excluded:
+        where.append("excluded=0")
+    if not include_superseded:
+        where.append("superseded=0")
+    clause = ("WHERE " + " AND ".join(where)) if where else ""
+    with _conn(db_path) as conn:
+        rows = conn.execute(
+            f"SELECT * FROM fundamental_series {clause} "
+            f"ORDER BY ticker, metric, period_end DESC",
+            params,
         ).fetchall()
     return [dict(r) for r in rows]

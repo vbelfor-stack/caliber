@@ -41,6 +41,7 @@ from adapters.fixture_adapter import fetch_fixture
 from core.datatypes import TickerData
 from adapters.edgar_adapter import fetch_edgar
 from core.edgar_cross_check import run_cross_check
+from core.fundamental_series import run_dark_fcf_series
 from core.valuation_anchors import build_panel, run_dark_lens
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
@@ -213,6 +214,13 @@ def run_single_ticker(
         _splits = (fetch_splits(ticker, fixture_path=fmp_fx)
                    if (fmp_fx is not None or not fixture_mode) else None)
         _panel = build_panel(yf, fred, edgar, sector_pe, lens, log=_log, splits=_splits)
+
+        # Phase H-1 DARK: build and PERSIST the FCF component series for Phase M.
+        # Applies nothing — no score, E(R), grade or confidence label reads it. The
+        # destination is named explicitly because H-1 makes this surface a writer; the
+        # degraded-run guard at the top of this function has already validated it.
+        run_dark_fcf_series(yf, edgar, splits=_splits, log=_log,
+                            db_path=db_path or _DEFAULT_DB)
 
         # RateUnavailable is deliberately NOT caught here — it must reach the dedicated
         # handler below, not the broad `except Exception` that reports operational DOA.
