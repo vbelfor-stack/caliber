@@ -1,9 +1,40 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (written at close, 2026-08-09)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-15)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
+
+### STATE AT CLOSE 2026-08-15 (second session of the day)
+**NEXT ORDER: AWAITING VIC. Nothing is in flight. The tree is clean and pushed.**
+
+| | |
+|---|---|
+| HEAD | see `git log -1` — session-close commit on master, 0 unpushed |
+| Suite | **682** |
+| caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** (CHANGED this session — authorized production write) |
+| evaluations | 36 rows, max id **225** |
+| Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
+
+- **PHASE H IS FULLY CLOSED EXCEPT H-4.** H-1 built+dark, H-2 ruled, H-3 armed.
+- **H-4 (EBITDA leg) REMAINS DEFERRED behind EDGAR expansion** — no D&A spec exists among
+  the 19, the same blocker that makes reinvestment NULL. **NOTE: EDGAR is now
+  FLAKY-AVAILABLE rather than blocked (see the re-ruling below). That MAY unblock H-4
+  sooner than expected. IT DOES NOT UNBLOCK IT TODAY** — the blocker is the missing D&A
+  spec, not reachability, and reachability is intermittent besides.
+- **PHASES L AND M ARE PARKED, AWAITING VIC'S CALL.** Not scoped, not started.
+- **ids 216-220 — OPEN RULING RESOLVED 2026-08-15.** The armed pass was re-run;
+  **ids 221-225 SUPERSEDE 216-220** via the new `supersedes_id`/`supersede_reason` trail.
+  Both effects verified, WU's HIGH-LEVERAGE flag confirmed correct, attribution clean
+  (lens class empty). 216-220 remain byte-identical — appended and linked, never edited.
+  Order + full terms: `docs/orders/2026-08-15-rerun-armed-pass.md`. Detail below.
+- **EDGAR RE-RULED: INTERMITTENT, NOT BLOCKED.** 403s observed AND cleared within one
+  session; a plain `curl` probe disagreed with the adapter path seconds later. Standing
+  discipline added: pre-flight ALL required endpoints ON THE ADAPTER'S OWN FETCH PATH
+  immediately before any live-EDGAR run — a stale probe is not a pre-flight.
+- **CORRECTION ON RECORD: EDGAR IS SCORE-BEARING.** It selects the lens via SIC
+  (`batch/runner.py`: `yf.sic = edgar.sic; lens = select_lens(...)`). The long-standing
+  "EDGAR can only move a confidence label" framing was WRONG and is corrected throughout.
 
 **WHERE WE ARE — PHASE D IS CLOSED (2026-08-09).** All five valuation lenses are rate-aware
 and ARMED, on THREE DIFFERENT MECHANISMS. Ethos rule 10 is fully built.
@@ -196,8 +227,11 @@ AS STATED; THE CEILING ARGUMENT DOES NOT SURVIVE.**
 Report docs/h1-series.md. Suite 613 -> 644. caliber.db md5 unchanged 54aa42e5; the
 `fundamental_series` table does NOT exist in production (only a full live batch run creates
 it — a fixture/no-synthesis run must name its own destination).
+**SUPERSEDED 2026-08-15 (later session): `fundamental_series` NOW EXISTS in production,
+557 rows, created by the ids 221-225 re-run — the first full live batch run since H-1
+landed. It behaved exactly as designed: 153/121/…/152 new rows per ticker, 0 restatements.**
 
-## ▶ PHASE H IS CLOSED EXCEPT H-4 (session close 2026-08-15). NEXT ORDER: AWAITING VIC.
+## ▶ PHASE H CLOSED EXCEPT H-4 — first session of 2026-08-15 (SUPERSEDED BY THE PICKUP BLOCK ABOVE)
 Commits this session: 7a8bbf1 (H-1) · 6bdd4e8 · 8d9aa95 (D/E scale defect) · 15ab835 ·
 365bc6c (fixture migration) · 3a05a4f (H-3 armed). Suite 613 -> 670. caliber.db md5
 UNCHANGED 54aa42e5 throughout — no session work touched production data.
@@ -271,6 +305,40 @@ First production write since 2026-08-09. caliber.db md5 54aa42e5 -> e13cbee6.
   E(R) diff and should never be read as one.** Anchor divergence stayed healthy on all five
   (MU 0.4%, GOOG 3.9%), no trip.
 - Grades table still 0 rows. Suite 670 -> 682.
+
+## ▶ SESSION-CLOSE NOTES — 2026-08-15 (second session). NEXT ORDER: AWAITING VIC.
+Commits: **1f538b9** (re-run + supersede trail + EDGAR re-ruling) + this close.
+Suite 670 -> 682. **caliber.db md5 54aa42e5 -> e13cbee6 — the FIRST production write since
+2026-08-09, and it was ORDERED.** Backup at the pre-write md5 kept locally.
+- **THE SESSION'S ONE ORDER WAS EXECUTED IN FULL.** ids 221-225 supersede 216-220. Open
+  ruling on 216-220 RESOLVED by Vic on the report.
+- **PRECEDENT SET — ORDERS ARE RECORDED VERBATIM BEFORE EXECUTION.**
+  `docs/orders/2026-08-15-rerun-armed-pass.md` was written BEFORE the first write, so the
+  terms survive a session death mid-order. **The order text arrived TRUNCATED mid-sentence
+  and was recorded truncation-and-all, with the reading Code acted under stated separately
+  rather than silently completing it.** Do this again: never quietly finish a cut-off order.
+- **THE SESSION-OPEN PROTOCOL PAID OFF AGAIN, cheaply.** Empirical PPID read settled
+  identity in one command (PID 246, no peers) before anything touched the tree.
+- **STATE-DETERMINATION BEFORE ACTION WORKED.** The wake-up prompt asked which of three
+  states the tree was in; md5 + max(eval id) + suite count answered it in three commands
+  (state A, never started). Cheap, and it is what made the production write safe to start.
+- **TWO FINDINGS SURFACED BY PRE-FLIGHTING RATHER THAN TRUSTING RECORDED STATE:**
+  1. The EDGAR 403 is INTERMITTENT, not cleared — and a `curl` probe DISAGREED with the
+     adapter path seconds later. Recorded state was stale in BOTH directions within one
+     session. New standing discipline: pre-flight on the adapter's own path, immediately.
+  2. EDGAR IS SCORE-BEARING via SIC -> lens. Code's own order-file reasoning had asserted
+     "confidence labels only"; it was wrong, was caught before the write, and the wrong
+     claim is struck through IN PLACE rather than deleted. Had EDGAR 403'd mid-batch,
+     `fetch_edgar` (unwrapped) would have written FIVE `failed` rows into production.
+- **THE GENERAL LESSON, and it is the same shape as the last session's:** RECORDED STATE IS
+  A CLAIM, NOT A MEASUREMENT. Last session it was a baseline silently doing unadvertised
+  work; this session it was an environment flag that had changed underneath the note, and
+  an attribution sentence in this very file that had been wrong the whole time. **Re-measure
+  what a write depends on, immediately before the write, on the path production uses.**
+- STANDING RULES ADDED THIS SESSION (all in the session protocol above): live-EDGAR
+  pre-flight · EDGAR is score-bearing · expected-delta sets name their dependents.
+- PHASE H FULLY CLOSED EXCEPT H-4 (deferred behind EDGAR expansion; the blocker is the
+  MISSING D&A SPEC, not reachability). **PHASES L AND M PARKED AWAITING VIC'S CALL.**
   New tripwire `_leverage_uniformity_alarm` — advisory, warns when a whole batch sits
   under the ladder's top rung, which was the visible symptom nobody noticed for 8 days.
 - **FIXTURE MODE MIGRATED TO THE FMP FIXTURES (365bc6c); yfinance remnants deleted**
@@ -394,6 +462,17 @@ provenance relabel.
 - Degraded runs (`--fixture` / `--no-synthesis`) must NAME THEIR DESTINATION (`--db-path`).
 - DARK BEFORE ARM on any new comparison surface.
 - Golden diffs are REVIEWED, never asserted.
+- **EXPECTED-DELTA SETS NAME THEIR DEPENDENTS (standing, ruled 2026-08-15).** A
+  production-write order states the FULL expected-delta set, INCLUDING dependent tables, so
+  the post-write confirmation can distinguish an EXPECTED-DEPENDENT delta from a SURPRISE.
+  **Expected companions of ANY live evaluation write** — never a finding on their own:
+    `field_provenance`   +N rows per eval (save_evaluation writes them with the row)
+    `synthesis_cache`    +1 per ticker synthesised (save_synthesis_cache)
+    `sqlite_sequence`    +1 per NEW AUTOINCREMENT table created that run
+  Anything OUTSIDE the stated set plus these three is REPORTED, NEVER ABSORBED. Origin: the
+  2026-08-15 re-run order named three deltas and the write produced six; all three extras
+  were benign dependents, but "benign" was a judgement made AFTER the fact, which is exactly
+  the judgement an expected-delta set exists to make BEFOREHAND.
 - **LIVE-EDGAR PRE-FLIGHT (standing discipline, ruled 2026-08-15).** Any run that will hit
   live EDGAR PRE-FLIGHTS ALL REQUIRED ENDPOINTS ON THE ADAPTER'S OWN FETCH PATH IMMEDIATELY
   BEFORE THE RUN. **A STALE PROBE IS NOT A PRE-FLIGHT.** EDGAR reachability is INTERMITTENT,
