@@ -250,18 +250,47 @@ Exactly two of twenty quarters move, not every pre-split one, because the share 
 
 ## 9. Known limitations
 
-### 9a. ENVIRONMENT — EDGAR unreachable from this host (accepted, not worked around)
+### 9a. ENVIRONMENT — EDGAR reachability is INTERMITTENT (re-ruled 2026-08-15)
 
-`sec.gov` and `data.sec.gov` return **HTTP 403** from this container: with and without a
-declared `User-Agent`, sandboxed and unsandboxed, via both the adapter and plain `curl`.
-FMP is unaffected (`fetch_splits GOOG → 2 events`).
+**Current ruling: INTERMITTENT — 403s observed and cleared within the same session
+(2026-08-15); egress-dependent; fixture mode remains the offline fallback.**
 
-**Suspected egress-IP block.** Ruled 2026-08-15: **accepted as-is for H-1, not to be worked
-around.** FMP is the sole live feed by standing discipline and EDGAR is the cross-check, so
-an offline fixture-recorded delivery is honest rather than degraded. Investigating the block
-is a **separate environment task**, deliberately not in H-1's scope.
+*Superseded reading (kept for the record):* this section previously recorded EDGAR as
+flatly unreachable — `sec.gov` and `data.sec.gov` returning **HTTP 403** with and without a
+declared `User-Agent`, sandboxed and unsandboxed, via both the adapter and plain `curl`,
+with FMP unaffected. That measurement was correct when taken. It was **not a stable
+state.**
 
-Consequence: the live probe could not run, and every figure in §8b is fixture-recorded.
+MEASURED WITHIN ONE SESSION, 2026-08-15, in this order:
+1. Session open — `www.sec.gov` **200**, `data.sec.gov` **200** (both endpoints, plain
+   `curl`, with and without a declared User-Agent).
+2. ~20 minutes later — `www.sec.gov` **403**, `data.sec.gov` **200**. A partial, not a
+   clean block.
+3. Immediately after, on the adapter's own fetch path — `_get_cik` resolved all five
+   golden tickers and `fetch_edgar` returned clean for all five with correct SICs.
+
+So the block is **egress-dependent and flaps**, and — critically — **a plain `curl` probe
+disagreed with the adapter path taken seconds later.** Suspected egress-IP rotation.
+Investigating the cause remains a **separate environment task**.
+
+**STANDING DISCIPLINE THAT FALLS OUT OF THIS (ruled 2026-08-15, also recorded in
+CLAUDE.md):** any run that will hit live EDGAR **pre-flights ALL required endpoints on the
+adapter's own fetch path immediately before the run. A stale probe is not a pre-flight.**
+Hard-fail semantics are unchanged and deliberately so: `fetch_edgar` is not wrapped in
+`run_single_ticker`, so a 403 mid-batch raises into the broad handler and persists a
+`failed` row per ticker. Five failed rows in production is exactly what the loud-failure
+discipline exists to prevent, and the pre-flight is the mechanism that prevents it.
+
+**EDGAR IS SCORE-BEARING, NOT CONFIDENCE-ONLY** (correction, 2026-08-15). The cross-check
+(`apply_report`) touches confidence labels and source strings only — but `batch/runner.py`
+also does `yf.sic = edgar.sic; lens = select_lens(yf.sector, yf.industry, edgar.sic)`.
+**EDGAR selects the lens, and the lens moves scores.** Any statement that "an EDGAR failure
+can only move a confidence label" is wrong and was corrected here. It fails hard rather
+than degrading, so there is no silent-wrong-lens path — but the blast radius of an EDGAR
+outage is a refused evaluation, not a downgraded one.
+
+Consequence for H-1 as delivered: the live probe did not run, and every figure in §8b is
+fixture-recorded. That remains true and is unaffected by the re-ruling.
 
 ### 9b. RESOLVED 2026-08-15 — `--fixture` batch mode now exercises the yield leg
 

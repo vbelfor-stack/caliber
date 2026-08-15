@@ -223,7 +223,54 @@ UNCHANGED 54aa42e5 throughout — no session work touched production data.
   Golden diff: V and WU Financial Health 5 -> 4. WU is the validating case — ~295%
   leverage now scores ZERO where it scored maximum. ids 216-220 were scored under the
   defect and are NOT modified (points lost: MU 0, GOOG 0, V -1, NOW -1, WU -3);
-  **RE-RUNNING THE ARMED PASS IS AN OPEN RULING FOR VIC.**
+  **RE-RUN ORDERED AND EXECUTED 2026-08-15 — ids 221-225 SUPERSEDE 216-220.** Terms in
+  docs/orders/2026-08-15-rerun-armed-pass.md. ids 216-220 remain BYTE-IDENTICAL (verified
+  against the pre-write backup); the correction is APPENDED AND LINKED, never edited in.
+
+**RE-RUN OF THE ARMED PASS — DONE 2026-08-15. ids 221-225. Order: docs/orders/2026-08-15-rerun-armed-pass.md.**
+First production write since 2026-08-09. caliber.db md5 54aa42e5 -> e13cbee6.
+- **SUPERSEDE TRAIL ADDED TO `evaluations`** (ruled): `supersedes_id` INTEGER REFERENCES
+  evaluations(id) + `supersede_reason` TEXT, both nullable, ADDITIVE — 31 pre-existing rows
+  verified byte-identical after migration, all reading NULL. Guards raise the typed
+  `SupersedeLinkInvalid` BEFORE any write: no superseding a nonexistent id, and
+  `supersedes_id` requires a non-empty reason. Validated in run_single_ticker OUTSIDE the
+  try/except, for the same reason DegradedRunWriteRefused is — the broad handler persists a
+  'failed' row, so a link error caught in there would write junk into the DB it protects.
+  run_batch validates EVERY link up front, before ticker 1. CLI: `--supersedes TICKER=ID,...`
+  + `--supersede-reason`. Tests: tests/test_supersede_trail.py (12).
+- **THREE EFFECT CLASSES, ruled — a re-run diff is never lumped:**
+  (a) units fix, (b) H-3 armed own-history anchor, (c) EDGAR-derived LENS SELECTION.
+  **CLASS (c) WAS EMPTY** — all five lenses identical then vs now (MU cyclical, GOOG/V/WU
+  compounder, NOW growth), so no ticker's pillar diff is confounded and (a)/(b) attribution
+  is clean. A lens change would have CONFOUNDED that ticker's whole panel; the check is
+  mandatory in any future re-run.
+- **ONE PILLAR CELL MOVED IN ALL 25: WU Financial Health 5 -> 4** (avg 3.6 -> 3.4), on
+  class (a). D/E as scored: MU 0%->6%, GOOG 0%->18%, V 1%->68%, NOW 1%->68%, WU 3%->295%.
+  Only WU crossed a rung and it now carries HIGH-LEVERAGE. **The live diff is NARROWER than
+  the fixture golden diff, which showed V AND WU moving 5 -> 4 — live V was ALREADY 4 (held
+  by CURRENT-RATIO-BELOW-1) and its restored -1 leverage point did not cross a boundary.**
+- **CLASS (b) IS VISIBLE IN THE BINDING ANCHOR, NOT THE SCORE — as predicted.** WU's
+  compounder fcf_yield binds **own_history at +3.32pp** vs sector +11.71 and risk_free
+  +12.70 — an 8.39pp narrowing (predicted 8.37/8.40). **It survives at 5 with 0.32pp of
+  margin over the +3.0 top rung.** WU's Valuation 5 is now the single most boundary-exposed
+  cell in the golden set — a small move in FCF, price or the 10Y drops it. GOOG gains the
+  anchor (-2.41pp) but risk_free still binds (-3.36pp). MU binds own_history (-1.14pp).
+  **V's own-history is UNAVAILABLE FOR TWO INDEPENDENT REASONS** — earnings leg
+  `basis=truncated` (2015-03-19 4:1 split, 1/3 witnesses, still REFUSED) and FCF leg
+  `basis=unavailable (no_capex_tag)`. Both stated in the reading; nothing substituted.
+- **DELTA AUDIT — THREE DELTAS BEYOND THE THREE THE ORDER NAMED.** Named and expected:
+  evaluations +5 rows + 2 columns, `fundamental_series` created (557 rows). ALSO CHANGED,
+  reported rather than absorbed: **field_provenance +105** (21/eval, a dependent of the new
+  rows — save_evaluation writes them), **synthesis_cache +5** (fresh synthesis cached; NOT
+  in the order's stated set), **sqlite_sequence +1** (AUTOINCREMENT bookkeeping for the new
+  table). Nothing was dropped or rewritten.
+- **E(R) MOVED ON ALL FIVE AND IS NOT ATTRIBUTABLE TO (a), (b) OR (c).** MU -17.56->-14.58,
+  GOOG +6.09->+3.99, V +5.86->+4.01, NOW +1.62->-2.18, WU -9.60->-14.09; NOW's verdict_conf
+  medium -> low. Six days of price movement plus a fresh LLM synthesis on fresh prices —
+  inherent to re-running, not evidence about the fixes. **A re-run cannot produce a clean
+  E(R) diff and should never be read as one.** Anchor divergence stayed healthy on all five
+  (MU 0.4%, GOOG 3.9%), no trip.
+- Grades table still 0 rows. Suite 670 -> 682.
   New tripwire `_leverage_uniformity_alarm` — advisory, warns when a whole batch sits
   under the ladder's top rung, which was the visible symptom nobody noticed for 8 days.
 - **FIXTURE MODE MIGRATED TO THE FMP FIXTURES (365bc6c); yfinance remnants deleted**
@@ -347,6 +394,26 @@ provenance relabel.
 - Degraded runs (`--fixture` / `--no-synthesis`) must NAME THEIR DESTINATION (`--db-path`).
 - DARK BEFORE ARM on any new comparison surface.
 - Golden diffs are REVIEWED, never asserted.
+- **LIVE-EDGAR PRE-FLIGHT (standing discipline, ruled 2026-08-15).** Any run that will hit
+  live EDGAR PRE-FLIGHTS ALL REQUIRED ENDPOINTS ON THE ADAPTER'S OWN FETCH PATH IMMEDIATELY
+  BEFORE THE RUN. **A STALE PROBE IS NOT A PRE-FLIGHT.** EDGAR reachability is INTERMITTENT,
+  measured within a single session: both endpoints 200 at open, `www.sec.gov` 403 ~20min
+  later while `data.sec.gov` stayed 200, then all five golden CIKs and all five
+  `fetch_edgar` calls clean on the adapter path. A plain `curl` probe DISAGREED with the
+  adapter path seconds later — which is why the pre-flight must use the adapter, not curl.
+  Hard-fail semantics are UNCHANGED and deliberately so: `fetch_edgar` is NOT wrapped in
+  `run_single_ticker`, so a mid-batch 403 raises into the broad handler and persists a
+  `failed` row PER TICKER. Five failed rows in production is exactly what loud-failure
+  discipline exists to prevent; the pre-flight is the mechanism that prevents it.
+  See docs/h1-series.md §9a (which supersedes the flat "EDGAR unreachable" flag).
+- **EDGAR IS SCORE-BEARING, NOT CONFIDENCE-ONLY (correction, ruled 2026-08-15).** The
+  cross-check `apply_report` touches confidence labels and source strings only — but
+  batch/runner.py separately does `yf.sic = edgar.sic; lens = select_lens(...)`. **EDGAR
+  SELECTS THE LENS AND THE LENS MOVES SCORES.** Any claim that an EDGAR failure can only
+  move a confidence label is WRONG. Blast radius of an EDGAR outage is a REFUSED
+  evaluation, not a degraded one. Consequence for any re-run diff: lens-selection is its
+  own effect class, and a ticker whose lens changed between passes has a CONFOUNDED pillar
+  diff that must not be attributed to any other cause.
 
 ## How we work (relay / architect model)
 - Vic is architect and gatekeeper; Code executes work orders. Report as you go, in plain English.

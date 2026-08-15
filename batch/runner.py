@@ -24,7 +24,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 # Ensure caliber root on path when run as __main__
 _ROOT = Path(__file__).parent.parent
@@ -50,7 +50,8 @@ from core.lens_select import select_lens
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals
 from store.models import (save_evaluation, save_failed_evaluation, get_cached_synthesis,
-                          save_synthesis_cache, _DEFAULT_DB)
+                          save_synthesis_cache, _DEFAULT_DB, _validate_supersede_link,
+                          SupersedeLinkInvalid)
 from synthesis.schema import check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
@@ -156,16 +157,27 @@ def run_single_ticker(
     verbose: bool = True,
     force_refresh: bool = False,
     db_path: Optional[Path] = None,
+    supersedes_id: Optional[int] = None,
+    supersede_reason: Optional[str] = None,
 ) -> TickerResult:
     """
     Run the full CALIBER pipeline for one ticker.
     Never raises — failures are caught and returned as TickerResult(status='failed').
+
+    supersedes_id / supersede_reason: stamp the persisted row as REPLACING an earlier
+    evaluation. Only a COMPLETING run carries the link — a 'failed' or
+    'rate_unavailable' row supersedes nothing, because it replaced nothing.
 
     EXCEPT DegradedRunWriteRefused, which is raised before any work: a degraded run
     (fixture_mode or run_synthesis=False) must pass db_path explicitly rather than
     defaulting into production caliber.db. See _guard_degraded_write.
     """
     _guard_degraded_write(fixture_mode, run_synthesis, db_path)
+    # Validated HERE, outside the try/except, for the same reason the degraded-write
+    # guard is: the broad handler below persists a 'failed' row, so a malformed
+    # supersede link caught in there would write a junk row into the very database
+    # the check protects — and then report the refusal as an operational failure.
+    _validate_supersede_link(supersedes_id, supersede_reason, db_path or _DEFAULT_DB)
 
     t0 = time.monotonic()
     _log = (lambda msg: print(f"  [{ticker}] {msg}")) if verbose else (lambda msg: None)
@@ -315,7 +327,10 @@ def run_single_ticker(
             ticker, lens, pillars, synthesis,
             expected_return=expected_return, status=anchor_status,
             db_path=db_path or _DEFAULT_DB,
+            supersedes_id=supersedes_id, supersede_reason=supersede_reason,
         )
+        if supersedes_id is not None:
+            _log(f"supersedes id={supersedes_id}")
         # Mirror the status save_evaluation actually persisted (anchor verdict
         # wins; else B-1 derivation from synthesis presence).
         eval_status = anchor_status or ("ok" if synthesis is not None else "no_synthesis")
@@ -421,6 +436,8 @@ def run_batch(
     run_synthesis: bool = True,
     verbose: bool = True,
     db_path: Optional[Path] = None,
+    supersedes: Optional[Dict[str, int]] = None,
+    supersede_reason: Optional[str] = None,
 ) -> List[TickerResult]:
     """
     Run the full pipeline for every ticker with per-name isolation.
@@ -429,8 +446,23 @@ def run_batch(
     Raises DegradedRunWriteRefused up front (before any ticker runs) if this is a
     degraded run with no explicit db_path — refusing the whole batch is right here, as
     the destination is a property of the run, not of any one ticker.
+
+    supersedes: {ticker -> superseded evaluation id}. A ticker absent from the map
+    runs normally and supersedes nothing. Every link is validated UP FRONT, before
+    any ticker runs, for the same reason as the degraded-write guard: a re-run that
+    would leave the trail half-written on ticker 4 of 5 should not start.
     """
     _guard_degraded_write(fixture_mode, run_synthesis, db_path)
+
+    supersedes = supersedes or {}
+    unknown = sorted(set(supersedes) - set(tickers))
+    if unknown:
+        raise SupersedeLinkInvalid(
+            f"supersedes names ticker(s) not in this batch: {', '.join(unknown)}. "
+            "A link that never runs would be silently dropped."
+        )
+    for _tkr, _sid in supersedes.items():
+        _validate_supersede_link(_sid, supersede_reason, db_path or _DEFAULT_DB)
 
     total = len(tickers)
     results: List[TickerResult] = []
@@ -447,6 +479,8 @@ def run_batch(
             run_synthesis=run_synthesis,
             verbose=verbose,
             db_path=db_path,
+            supersedes_id=supersedes.get(ticker),
+            supersede_reason=supersede_reason if ticker in supersedes else None,
         )
         results.append(result)
 
@@ -497,7 +531,30 @@ def main() -> None:
     parser.add_argument("--db-path", default=None,
                         help="Destination DB. REQUIRED for degraded runs (--fixture / "
                              "--no-synthesis) so a measurement run cannot land in production.")
+    parser.add_argument("--supersedes", default=None,
+                        help="Mark this run as REPLACING earlier evaluations. "
+                             "Format: TICKER=ID[,TICKER=ID...]. Requires --supersede-reason. "
+                             "The earlier rows are never modified.")
+    parser.add_argument("--supersede-reason", default=None,
+                        help="Why the earlier evaluations are superseded. Mandatory "
+                             "whenever --supersedes is given.")
     args = parser.parse_args()
+
+    supersedes = None
+    if args.supersedes:
+        supersedes = {}
+        for pair in args.supersedes.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            if "=" not in pair:
+                print(f"\nREFUSED: --supersedes entry {pair!r} is not TICKER=ID\n", file=sys.stderr)
+                sys.exit(3)
+            tkr, _, sid = pair.partition("=")
+            if not sid.strip().isdigit():
+                print(f"\nREFUSED: --supersedes entry {pair!r} has a non-numeric id\n", file=sys.stderr)
+                sys.exit(3)
+            supersedes[tkr.strip().upper()] = int(sid)
 
     if args.tickers:
         tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
@@ -514,8 +571,10 @@ def main() -> None:
             fixture_mode=args.fixture,
             run_synthesis=not args.no_synthesis,
             db_path=Path(args.db_path) if args.db_path else None,
+            supersedes=supersedes,
+            supersede_reason=args.supersede_reason,
         )
-    except DegradedRunWriteRefused as e:
+    except (DegradedRunWriteRefused, SupersedeLinkInvalid) as e:
         # Loud, but a refusal is an expected operator outcome, not a crash — print it
         # readably and exit 3 (matching evaluate.py's refusal code) rather than dumping
         # a traceback that reads like a bug.

@@ -40,6 +40,50 @@ def _conn(db_path: Path = _DEFAULT_DB) -> sqlite3.Connection:
     return conn
 
 
+class SupersedeLinkInvalid(Exception):
+    """A supersede link was malformed. Raised BEFORE any row is written.
+
+    Two rules, both loud (a bad audit trail is worse than no audit trail — it reads
+    as provenance while pointing nowhere):
+      1. supersedes_id must name an evaluation that EXISTS. The FK is the DB-level
+         backstop; this is the typed signal that says which id was missing.
+      2. supersedes_id requires supersede_reason. An unexplained supersede tells a
+         future reader that a row was replaced but not why, which is the one thing
+         the trail exists to record.
+    """
+
+
+# Columns added to `evaluations` after rows already existed. ADDITIVE ONLY — every
+# existing row reads NULL, and nothing is migrated or rewritten.
+#
+# NOTE the pairing rule (supersedes_id requires supersede_reason) is enforced in
+# Python at the single write boundary, NOT as a table CHECK. SQLite cannot add a
+# multi-column CHECK via ALTER TABLE, so encoding it in the fresh-DB DDL alone would
+# leave a migrated production DB and a fresh test DB under DIFFERENT constraints —
+# and the tests would then be proving something production does not enforce. One
+# enforcement point, identical everywhere. See SupersedeLinkInvalid.
+_EVALUATIONS_ADDED_COLUMNS = {
+    "supersedes_id": "INTEGER REFERENCES evaluations(id)",
+    "supersede_reason": "TEXT",
+}
+
+
+def _ensure_columns(conn: sqlite3.Connection, table: str, columns: Dict[str, str]) -> List[str]:
+    """Add any missing columns to `table`. Returns the names actually added.
+
+    Idempotent: a column already present is left completely alone (never redefined,
+    never backfilled). SQLite permits ADD COLUMN with a REFERENCES clause only when
+    the column defaults to NULL, which is exactly the additive case here.
+    """
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    added = []
+    for name, ddl in columns.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+            added.append(name)
+    return added
+
+
 def init_db(db_path: Path = _DEFAULT_DB) -> None:
     """Create tables if they don't exist."""
     with _conn(db_path) as conn:
@@ -56,7 +100,14 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 avg_score       REAL,
                 overall_conf    TEXT,
                 verdict_conf    TEXT,
-                expected_return REAL
+                expected_return REAL,
+                -- Supersede trail (ruled 2026-08-15). An evaluation is NEVER edited or
+                -- deleted to correct it: the corrected run lands as a NEW ROW pointing at
+                -- the one it replaces. Same principle as fundamental_series — overwriting
+                -- destroys the evidence that a reading changed, which is the whole audit
+                -- trail. Both columns are NULL on an ordinary (non-superseding) run.
+                supersedes_id     INTEGER REFERENCES evaluations(id),
+                supersede_reason  TEXT
             );
 
             CREATE TABLE IF NOT EXISTS field_provenance (
@@ -155,6 +206,52 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 ON fundamental_series (ticker, metric, period_end, period_type, basis);
         """)
 
+        # Bring a pre-existing evaluations table up to the current column set. A DB
+        # created fresh by the DDL above already has them and this is a no-op.
+        _ensure_columns(conn, "evaluations", _EVALUATIONS_ADDED_COLUMNS)
+
+
+def _validate_supersede_link(
+    supersedes_id: Optional[int],
+    supersede_reason: Optional[str],
+    db_path: Path = _DEFAULT_DB,
+) -> None:
+    """Enforce the supersede-link rules BEFORE anything is written.
+
+    Checked here rather than left to the foreign key so the failure names the id it
+    could not find, and so the pairing rule (which SQLite cannot express as an
+    added CHECK) lives in the same place as the FK rule instead of being split
+    across two layers. The FK remains as the DB-level backstop.
+    """
+    has_reason = supersede_reason is not None and supersede_reason.strip() != ""
+
+    if supersedes_id is None:
+        # A reason pointing at nothing is unqueryable noise that still reads as
+        # provenance. NOTE: the ruling specified the other direction only; this
+        # half is Code's addition, disclosed for Vic to strike or keep.
+        if has_reason:
+            raise SupersedeLinkInvalid(
+                f"supersede_reason given ({supersede_reason!r}) with no supersedes_id — "
+                "a reason must name the row it explains."
+            )
+        return
+
+    if not has_reason:
+        raise SupersedeLinkInvalid(
+            f"supersedes_id={supersedes_id} requires a non-empty supersede_reason. "
+            "An unexplained supersede records that a row was replaced but not why."
+        )
+
+    with _conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM evaluations WHERE id=?", (supersedes_id,)
+        ).fetchone()
+    if row is None:
+        raise SupersedeLinkInvalid(
+            f"supersedes_id={supersedes_id} does not exist in evaluations — "
+            "a supersede trail may not point at a nonexistent row."
+        )
+
 
 def _pillar_to_dict(p: PillarResult) -> Dict[str, Any]:
     return {
@@ -208,6 +305,8 @@ def save_evaluation(
     expected_return: Optional[float] = None,
     db_path: Path = _DEFAULT_DB,
     status: Optional[str] = None,
+    supersedes_id: Optional[int] = None,
+    supersede_reason: Optional[str] = None,
 ) -> int:
     """
     Persist a complete evaluation. Returns the new evaluation id.
@@ -215,8 +314,14 @@ def save_evaluation(
     status: caller override for the eval status (the anchor-guard verdict —
     'ok' | 'anchor_unverified' | 'anchor_divergence'). When None, it is derived
     from synthesis presence (B-1: 'ok' if synthesis else 'no_synthesis').
+
+    supersedes_id / supersede_reason: this run REPLACES an earlier evaluation (e.g.
+    it was scored under a defect since fixed). The earlier row is left completely
+    untouched — appended-and-linked, never edited. Both or neither; see
+    SupersedeLinkInvalid.
     """
     init_db(db_path)
+    _validate_supersede_link(supersedes_id, supersede_reason, db_path)
 
     avg_score = sum(p.score for p in pillars) / len(pillars) if pillars else None
     from adapters.base import _RANK, _LEVEL
@@ -243,13 +348,15 @@ def save_evaluation(
             """
             INSERT INTO evaluations
               (ticker, run_at, lens, status, pillars_json, synthesis_json,
-               avg_score, overall_conf, verdict_conf, expected_return)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               avg_score, overall_conf, verdict_conf, expected_return,
+               supersedes_id, supersede_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 ticker, _utc_now(), lens, status,
                 pillars_json, synthesis_json,
                 avg_score, overall_conf, verdict_conf, expected_return,
+                supersedes_id, supersede_reason,
             ),
         )
         eval_id = cur.lastrowid
