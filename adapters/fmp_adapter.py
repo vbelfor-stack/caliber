@@ -110,6 +110,19 @@ def _safe_get(endpoint: str, key: str, default: Any = None) -> Any:
         return default
 
 
+# ── Annual income-statement depth (Phase L, R9) ───────────────────────────────
+# Raised 4 -> 10 for the lifecycle classifier: the DECLINE rule's cyclical guard needs
+# through-cycle peak-to-peak revenue, which R9 floors at >= 8 measured fiscal years
+# ("a guard that can't see a cycle doesn't get to rule on one"). 4 rows could not see one.
+# MEASURED, not assumed, on the adapter's own fetch path 2026-08-16: all nine fixture
+# tickers return exactly 10 contiguous rows, FY2016-FY2025. That check matters because
+# FMP does NOT reliably honour `limit` — `historical-price-eod/full` asks for 365 and
+# over-delivers ~1,255 — so delivered depth is re-measured, never inferred from this number.
+# Behaviour-neutral for the pre-L pipeline: the only consumers, _compute_revenue_growth and
+# _first(), index [0] and [1] of a newest-first list, which extra OLDER rows cannot reach.
+INCOME_ANNUAL_LIMIT = 10
+
+
 # ── Sector P/E snapshot (Phase D, market anchor) ──────────────────────────────
 # One call serves every ticker on an exchange for a day, so it is cached per
 # (date, exchange) rather than fetched per evaluation. The snapshot is published per
@@ -434,7 +447,8 @@ def fetch_payload(ticker: str) -> Dict[str, Any]:
             "ratios_ttm": _safe_get(f"ratios-ttm?symbol={ticker}", key, []),
             "key_metrics_ttm": _safe_get(f"key-metrics-ttm?symbol={ticker}", key, []),
             "income_annual": _safe_get(
-                f"income-statement?symbol={ticker}&period=annual&limit=4", key, []),
+                f"income-statement?symbol={ticker}&period=annual"
+                f"&limit={INCOME_ANNUAL_LIMIT}", key, []),
             "income_q": _safe_get(
                 f"income-statement?symbol={ticker}&period=quarter&limit=8", key, []),
             "balance": _safe_get(
