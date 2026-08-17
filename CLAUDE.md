@@ -11,7 +11,17 @@ section is the cold-start record; everything below it is the durable detail.
 **ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
 (ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
 step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: STEP 3 (B-2 stage-conditioned tolerances) IS UNBLOCKED AND AWAITS VIC'S ORDER.**
+ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC ON THE L-3 REPORT (docs/l3-stage-tolerance.md). §5 step 3 is ARMED.**
+The B-2 anchor-divergence band is now STAGE-CONDITIONED (YOUNG 30 / HIGROWTH 20 /
+MATURE+DECLINE 15) and it is **the only scoring-path consumer of lifecycle stage** — pinned.
+Step 1's no-read-back pin was RETIRED BY NAME and replaced by that successor pin.
+**ZERO flag states flip**, so arming had no immediate effect — measured, not assumed.
+**STEP 4 STAYS BLOCKED behind fundamental_series coverage expansion (standing ruling).**
+**avg_score CONSUMER CENSUS (ordered, measured): avg_score is DISPLAY + STORAGE ONLY — no
+code reads it back. Pillar SCORES and FLAGS reach the synthesis PROMPT; grading reads only
+expected_return and verdict_conf. So pillar defects are display + prompt-bias bugs, not
+forecast bugs, and grading measures synthesis skill almost alone.**
+(superseded) STEP 3 IS UNBLOCKED AND AWAITS VIC'S ORDER.
 L-2b closed both step-2 defects (docs/l2b-fixes-and-reruns.md): the standard lens now
 withholds cheap rungs from NEGATIVE multiples (RKLB Valuation 5 -> 1), and the lens map was
 rewritten at SEC granularity (pharma carved out of the chemicals range -> LLY compounder;

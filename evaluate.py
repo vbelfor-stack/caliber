@@ -34,6 +34,7 @@ from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
 from core.lens_overrides import lens_override
+from core.stage_tolerance import tolerance_for
 from core.universe import is_calibration_instrument
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals, TechnicalOverlay
@@ -401,13 +402,17 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         price_str = f"${current_price:.2f} (as-of {price_as_of})" if current_price else "n/a"
 
         scenario_rets = per_scenario_returns(synthesis, current_price) if current_price else {}
+        # §5.1 ARMED (L-3): the B-2 band is STAGE-CONDITIONED. THE ONLY SCORING-PATH READ OF
+        # LIFECYCLE STAGE — it reads the PERSISTED stage (the calibration set step 1 built),
+        # and anything unclassified or not measured gets the DEFAULT band, never the widest.
+        _tol = tolerance_for(ticker, write_db)
+        print(f"  [anchor] B-2 tolerance {_tol.tolerance * 100:.0f}% — {_tol.reason}")
         try:
-            _ac = check_anchor(synthesis, current_price)   # armed guard (threshold in synthesis.schema)
+            _ac = check_anchor(synthesis, current_price, threshold=_tol.tolerance)
             expected_return = _ac.computed_er
             anchor_status = _ac.status
             if _ac.divergence is not None:
-                _thr_str = (f"armed @ {ANCHOR_DIVERGENCE_THRESHOLD * 100:.0f}%"
-                            if ANCHOR_DIVERGENCE_THRESHOLD is not None else "DISARMED")
+                _thr_str = f"armed @ {_tol.tolerance * 100:.0f}%"
                 print(f"  [anchor] implied=${_ac.implied_anchor:.2f} live=${current_price:.2f} "
                       f"divergence={_ac.divergence * 100:.1f}%  ({_thr_str}, no trip)")
             elif anchor_status == "anchor_unverified":

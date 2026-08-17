@@ -1129,25 +1129,27 @@ def _fast_offline(monkeypatch):
     return ev
 
 
-def test_evaluate_annotates_but_never_consults_the_stage():
-    """FLIPPED BY §5 STEP 1 — and it cost exactly one assertion, which is why the pin was
-    split. evaluate.py now imports the classifier; what must remain true is that nothing in
-    the SCORING path reads a stage back.
+def test_evaluate_RETIRED_no_read_back_pin_superseded_by_L3():
+    """RETIRED BY THE L-3 ORDER, deliberately and by name.
 
-    Structural assertions, since "does not consult" cannot be proven by absence of a string
-    alone: the stage is computed after score_all, and no scoring symbol appears downstream
-    of it in the same function.
+    This asserted that nothing downstream of the annotation consumed a stage. §5 step 3 armed
+    the stage-conditioned B-2 band, which IS a scoring-path consumer, so the pin was retired
+    rather than weakened — a pin edited until it passes is worse than one removed on the
+    record. Its successor is
+    tests/test_l3_stage_tolerance.test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer
+    _of_stage, which allows exactly one consumer and fails if a second appears.
+
+    What still holds and is still checked here: the annotation is computed AFTER scoring, so
+    the stage a run WRITES cannot influence the pillars of that same run.
     """
     src = Path("evaluate.py").read_text(encoding="utf-8")
-    assert "core.lifecycle" in src, "step 1 is armed; evaluate.py should import the classifier"
-    # The annotation happens AFTER scoring, so nothing downstream can consume it.
     call = "_lifecycle_block(ticker, yf, edgar, lens, fixture_mode, write_db"
     assert src.index("score_all(") < src.index(call)
-    # And the classifier's output is never fed to a scoring, synthesis or E(R) call.
     tail = src[src.index(call):]
-    for forbidden in ("score_all(", "compute_er(", "run_synthesis(", "check_anchor("):
+    for forbidden in ("score_all(", "compute_er("):
         assert forbidden not in tail, (
-            f"{forbidden} appears AFTER the stage annotation — step 1 is annotate-only")
+            f"{forbidden} appears AFTER the stage annotation — the run's own stage row must "
+            f"not feed the run's own pillars")
 
 
 def test_evaluate_writes_one_stage_row_and_moves_no_score(tmp_path, capsys, monkeypatch):
