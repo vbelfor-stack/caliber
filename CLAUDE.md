@@ -12,7 +12,7 @@ Do not start coverage expansion before L-4a and L-4b land.**
 
 | | |
 |---|---|
-| HEAD | **633d300a5717a662fdd8f98c394a755f913f3998** — "L-3 report: consumer census, dark table, zero flips" |
+| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `633d300a5717a662fdd8f98c394a755f913f3998`** ("L-3 report: consumer census, dark table, zero flips"). A block cannot contain its own hash; this was caught by the close verification pass rather than left as a false claim. |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
 | Suite | **825 passed** |
 | caliber.db md5 | **24df814597b6bab52b979e7fee6ca034** (WAL checkpointed at close) |
