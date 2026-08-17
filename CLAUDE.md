@@ -11,7 +11,15 @@ section is the cold-start record; everything below it is the durable detail.
 **ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
 (ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
 step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC.** §5 step 1 is ARMED and its sanctioned run is done
+ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC ON THE STEP-2 UNIVERSE TABLE (docs/l2-universe-run.md).** Step 3 arms
+only after review. **TWO SCORING DEFECTS FOUND BY THE RUN, NEITHER FIXED (scoring logic =
+Vic's ruling):** (1) RKLB scores Valuation **5/5 on EV/EBITDA -372.6x** — the standard lens's
+fallback ladder rung `ev_eb < 10` admits NEGATIVE multiples, so a loss-maker reads maximally
+cheap (core/pillars.py:885); same class as the negative-forward-PE hard stop, but live and on
+a HELD name. (2) **SIC->lens is inverted on its two clearest cases** — LLY (pharma, SIC 2834)
+reads CYCLICAL because the (2800,2900) chemicals range swallows drugs, and CAT (SIC 3531)
+reads STANDARD because 3500-3599 is a gap between ranges.
+(superseded) §5 step 1 is ARMED and its sanctioned run is done
 (docs/l2a-step1-run.md): 9 stage rows, verdicts identical to the L-1d dark table, 0 transient
 readings. **ONE ITEM NEEDS A RULING BEFORE STEP 2:** the run also wrote nine REAL live
 evaluations (ids 229-237), four of which are the CALIBRATION BANKS (JPM/BK/USB/C) — they will
@@ -28,7 +36,7 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 |---|---|
 | HEAD | L-2a on master, pushed |
 | Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
-| caliber.db md5 | **PRODUCTION BASELINE = `1e301195d756ab444641274ac732d682`** (post-backfill, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
+| caliber.db md5 | **PRODUCTION BASELINE = `e7be34a9315bbd03e4711dcce6c57576`** (post step-2 universe run, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
 
