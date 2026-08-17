@@ -1,329 +1,118 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at L-1b, 2026-08-17)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-17)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT L-2a 2026-08-17
-**PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
-(COMPLETE, rulings R1–R11, amended by the L-1c ruling 2026-08-17).
-**ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
-(ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
-step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC ON THE L-3 REPORT (docs/l3-stage-tolerance.md). §5 step 3 is ARMED.**
-The B-2 anchor-divergence band is now STAGE-CONDITIONED (YOUNG 30 / HIGROWTH 20 /
-MATURE+DECLINE 15) and it is **the only scoring-path consumer of lifecycle stage** — pinned.
-Step 1's no-read-back pin was RETIRED BY NAME and replaced by that successor pin.
-**ZERO flag states flip**, so arming had no immediate effect — measured, not assumed.
-**STEP 4 STAYS BLOCKED behind fundamental_series coverage expansion (standing ruling).**
-**avg_score CONSUMER CENSUS (ordered, measured): avg_score is DISPLAY + STORAGE ONLY — no
-code reads it back. Pillar SCORES and FLAGS reach the synthesis PROMPT; grading reads only
-expected_return and verdict_conf. So pillar defects are display + prompt-bias bugs, not
-forecast bugs, and grading measures synthesis skill almost alone.**
-(superseded) STEP 3 IS UNBLOCKED AND AWAITS VIC'S ORDER.
-L-2b closed both step-2 defects (docs/l2b-fixes-and-reruns.md): the standard lens now
-withholds cheap rungs from NEGATIVE multiples (RKLB Valuation 5 -> 1), and the lens map was
-rewritten at SEC granularity (pharma carved out of the chemicals range -> LLY compounder;
-heavy machinery 3510-3570 added -> CAT cyclical; IONQ/INFQ/BE overridden to growth with
-mandatory rationale). Six superseding re-runs landed. **STEP 4 REMAINS BLOCKED behind
-fundamental_series coverage expansion (ruled) — the YOUNG/blocked boundary currently reflects
-which names have FCF data, not business reality.**
-(superseded) AWAITING VIC ON THE STEP-2 UNIVERSE TABLE (docs/l2-universe-run.md). Step 3 arms
-only after review. **TWO SCORING DEFECTS FOUND BY THE RUN, NEITHER FIXED (scoring logic =
-Vic's ruling):** (1) RKLB scores Valuation **5/5 on EV/EBITDA -372.6x** — the standard lens's
-fallback ladder rung `ev_eb < 10` admits NEGATIVE multiples, so a loss-maker reads maximally
-cheap (core/pillars.py:885); same class as the negative-forward-PE hard stop, but live and on
-a HELD name. (2) **SIC->lens is inverted on its two clearest cases** — LLY (pharma, SIC 2834)
-reads CYCLICAL because the (2800,2900) chemicals range swallows drugs, and CAT (SIC 3531)
-reads STANDARD because 3500-3599 is a gap between ranges.
-(superseded) §5 step 1 is ARMED and its sanctioned run is done
-(docs/l2a-step1-run.md): 9 stage rows, verdicts identical to the L-1d dark table, 0 transient
-readings. **ONE ITEM NEEDS A RULING BEFORE STEP 2:** the run also wrote nine REAL live
-evaluations (ids 229-237), four of which are the CALIBRATION BANKS (JPM/BK/USB/C) — they will
-be GRADEABLE in ~90 days, and the never-holdings ruling never anticipated bank rows entering
-the grading set. Nothing changed; see the report §5.
-**STANDING: NO SYNTHETIC CALIBRATION, EVER** — `GUARD-TOLERANCE-UNCALIBRATED` and
-`REINVESTMENT-THRESHOLD-UNCALIBRATED` stay until REAL data calibrates them. A tolerance
-tuned on generated series is worse than no tolerance.
-Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
-**STANDING RULE ADDED 2026-08-17: any commit closing a ruled work order PUSHES IMMEDIATELY
-— no per-commit approval. Unpushed-at-close is the exception, not the norm.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4a (STX diagnosis).
+Do not start coverage expansion before L-4a and L-4b land.**
+
+### STATE AT CLOSE 2026-08-17 — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | L-2a on master, pushed |
-| Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
-| caliber.db md5 | **PRODUCTION BASELINE = `24df814597b6bab52b979e7fee6ca034`** (post L-2b re-runs, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
-| evaluations | 36 rows, max id **225** |
-| Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
+| HEAD | **633d300a5717a662fdd8f98c394a755f913f3998** — "L-3 report: consumer census, dark table, zero flips" |
+| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
+| Suite | **825 passed** |
+| caliber.db md5 | **24df814597b6bab52b979e7fee6ca034** (WAL checkpointed at close) |
+| evaluations | **79** rows, max id **271** · held 50 / calibration 29 / NULL 0 |
+| lifecycle_stage | **43** rows |
+| lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
+| field_provenance | **1416** rows |
+| fundamental_series | 557 rows (4 tickers only — MU/GOOG/NOW/WU) · grades 0 · synthesis_cache 16 |
 
-- **L-1a (8ebacd2, pushed):** `income_annual` limit 4 → 10 per R9. Depth MEASURED at 10 on
-  the adapter's own path for all nine tickers, FY2016–2025 contiguous. Fixture baseline
-  moved by SPLICE ONLY (ruled 2026-08-16) — a full re-record was REJECTED for this phase
-  because it dragged in fresh vendor data (4 pillar cells moved, recorded in the order file
-  as observed drift, deferred).
-- **L-1b (this commit):** `core/lifecycle.py` + `core/lifecycle_config.py` +
-  `tools/probe_lifecycle.py` + `fetch_dividends` + three `lifecycle_*` tables, and the §7
-  test gates. **TWO LATENT DEFECTS FIXED** in the adopted build — see the commit message.
-- **L-1c (2026-08-17):** cyclical-guard definition ruled and implemented (prior peak =
-  max FY revenue strictly BEFORE the streak start year); **bank-lens names now classify on
-  NET REVENUE** (`revenue - interestExpense`), never gross; R6 default 1.50 ratified with
-  the flag kept on every reading.
-- **L-1d (2026-08-17) — BOTH CYCLICAL FINDINGS CLOSED BY RULING.**
-  **THE GUARD IS NOW PEAK-TO-PEAK** (two most recent local peaks; permit iff later < earlier;
-  strict, no tolerance; both peaks logged, flagged `GUARD-TOLERANCE-UNCALIBRATED`). A
-  magnitude bar was REJECTED — it tests trough depth, and deep troughs are what cyclicals do
-  (MU fell ~50% in FY2023 while secularly fine). Fewer than two local peaks REFUSES the
-  permit as a GATE (no `INPUTS-INCOMPLETE`; other rules still classify) — distinct from the
-  streak-spans-window case, which is verdict-level.
-  Peaks are logged for EVERY cyclical evaluation (not only on comparison) — MU's guard does
-  not fire, so comparison-only logging left the calibration set EMPTY; fixed in c87815a.
-  **NOTE THE LIVE TABLE HAS NEVER EXERCISED THE GUARD:** MU is the only cyclical name and
-  its streak is 0. The evidence the guard works is the harness + synthetics, not the table.
-  **HARNESS, ordered re-run, same seed:** 9,966 evaluable → **46.6% permit / 53.4% refuse**
-  (L-1c was 100%/0%). The guard is two-sided at last;
-  `test_the_guard_can_both_permit_and_refuse_so_it_is_not_vacuous` exists to catch a fourth
-  one-sided definition, since one-sidedness survived two rulings unnoticed.
-  **RULE 2 NOW HAS A CYCLICAL GUARD:** for cyclical names YOUNG is blocked if the window
-  holds an FY with positive operating margin AND positive FCF (earned ⇒ trough, not
-  pre-earnings). MU FY2023 now reads **MATURE**, measured. `YOUNG-UNCALIBRATED` still fires
-  wherever YOUNG is reached; a block emits `CYCLICAL-GUARD-HELD-OUT-OF-YOUNG`.
-- **L-1e (2026-08-17) — BOTH GUARD PRECONDITIONS FAIL CLOSED. THE SYMMETRY IS THE POINT:
-  the peak gate denies DECLINE when it cannot measure, the FCF gate denies YOUNG when it
-  cannot measure.** Neither grants a tag on evidence it could not gather.
-  (1) Cyclical name with NO FCF series → YOUNG BLOCKED, `CYCLICAL-GUARD-UNEVALUABLE-FCF-
-  ABSENT`. **This departs from R1's usual direction on purpose** (a missing input now DENIES
-  a tag rather than permitting one) because the exposure is trough-reads-YOUNG; a
-  pre-earnings cyclical with no FCF series is a feed problem, not a guess.
-  (2) Any missing FY in the measured window → peak guard REFUSES, `PEAK-GUARD-SERIES-GAP`;
-  peaks are not even computed on a gapped series, so fabricated structure cannot reach the
-  calibration set. Contiguity is a PRECONDITION — "adjacent across a hole" is deliberately
-  undefined. A real hit is a feed-repair ticket and the reason says so.
-  **BOTH ARE PROVABLY INERT LIVE, measured not assumed:** all nine names are contiguous
-  FY2016–2025, and MU (the only cyclical lens) has 6 FY FCF points. No dark run was ordered
-  or needed.
-- **PHASE L PUNCH LIST (ruled, deferred):** calibrate
-  `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms. 1.50 stands
-  until then and every reading that consults it stays flagged
-  `REINVESTMENT-THRESHOLD-UNCALIBRATED`. No tuning on a four-name sample.
-- **PHASE H CLOSED EXCEPT H-4** (deferred; blocker is the missing D&A spec). **PHASE M
-  still parked**, and L blocks it.
+### ARMED STATE — what reads what, precisely
 
-- **PHASE H IS FULLY CLOSED EXCEPT H-4.** H-1 built+dark, H-2 ruled, H-3 armed.
-- **H-4 (EBITDA leg) REMAINS DEFERRED behind EDGAR expansion** — no D&A spec exists among
-  the 19, the same blocker that makes reinvestment NULL. **NOTE: EDGAR is now
-  FLAKY-AVAILABLE rather than blocked (see the re-ruling below). That MAY unblock H-4
-  sooner than expected. IT DOES NOT UNBLOCK IT TODAY** — the blocker is the missing D&A
-  spec, not reachability, and reachability is intermittent besides.
-- **PHASES L AND M ARE PARKED, AWAITING VIC'S CALL.** Not scoped, not started.
-- **ids 216-220 — OPEN RULING RESOLVED 2026-08-15.** The armed pass was re-run;
-  **ids 221-225 SUPERSEDE 216-220** via the new `supersedes_id`/`supersede_reason` trail.
-  Both effects verified, WU's HIGH-LEVERAGE flag confirmed correct, attribution clean
-  (lens class empty). 216-220 remain byte-identical — appended and linked, never edited.
-  Order + full terms: `docs/orders/2026-08-15-rerun-armed-pass.md`. Detail below.
-- **EDGAR RE-RULED: INTERMITTENT, NOT BLOCKED.** 403s observed AND cleared within one
-  session; a plain `curl` probe disagreed with the adapter path seconds later. Standing
-  discipline added: pre-flight ALL required endpoints ON THE ADAPTER'S OWN FETCH PATH
-  immediately before any live-EDGAR run — a stale probe is not a pre-flight.
-- **CORRECTION ON RECORD: EDGAR IS SCORE-BEARING.** It selects the lens via SIC
-  (`batch/runner.py`: `yf.sic = edgar.sic; lens = select_lens(...)`). The long-standing
-  "EDGAR can only move a confidence label" framing was WRONG and is corrected throughout.
+- **§5 step 3 IS ARMED, IN `evaluate.py` ONLY.** The B-2 anchor-divergence band is
+  stage-conditioned: **YOUNG 30% · HIGROWTH 20% · MATURE 15% · DECLINE 15%**, read from the
+  PERSISTED `lifecycle_stage` table via `core/stage_tolerance.tolerance_for()`.
+- **KNOWN DIVERGENCE, FIX RULED FOR L-4a:** `batch/runner.py` still calls the guard on the
+  **flat 15%**. The two write paths currently disagree about tolerance. Bounded and legible,
+  but it must not persist.
+- **THE TOLERANCE LOOKUP IS THE ONLY SCORING-PATH CONSUMER OF LIFECYCLE STAGE.** Pinned by
+  `test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage`. `core/pillars.py`,
+  `core/valuation_anchors.py`, `batch/runner.py` and `synthesis/schema.py` contain no
+  reference to the classifier or the stage table. The band is passed INTO `check_anchor` as
+  its existing `threshold`, so the guard never learns what a stage is.
+- **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) is BLOCKED behind
+  `fundamental_series` coverage expansion by standing ruling — 24 of 28 names have no FCF
+  history, so the YOUNG/blocked boundary currently reflects FEED COVERAGE, not business
+  reality, and a hard block on that basis would be arbitrary.
+- Step 1's no-read-back pin was **RETIRED BY NAME** at L-3 and replaced by the successor pin
+  above. Its surviving half is still checked: the annotation runs AFTER scoring, so a run's
+  own stage row cannot feed that run's own pillars.
 
-**WHERE WE ARE — PHASE D IS CLOSED (2026-08-09).** All five valuation lenses are rate-aware
-and ARMED, on THREE DIFFERENT MECHANISMS. Ethos rule 10 is fully built.
+### THE L-4 WORK ORDER — as issued by Vic in the 2026-08-17 close order
 
-| Mechanism | Lenses | Shape |
-|---|---|---|
-| panel-anchored | compounder, cyclical, standard | MIN across available anchors (RULED permanent) |
-| rate-shifted thresholds | growth | EV/Rev thresholds x k=(R0+ERP)/(R+ERP); R0=4.0, clamp [0.60,1.80] |
-| cost-of-equity | bank | P/B vs justified P/B = ROE/CoE; RATIO ladder + excess-ROE gate |
+Transcribed verbatim from the close order's own words; it was not delivered as a separate
+order document, and that is recorded here rather than silently smoothed over.
 
-- growth: R0=4.0 is PROVISIONAL — **revisit if the 10Y exits 3–6%**. Clamp locked.
-- cyclical: TRAILING basis + peak/rollover HARD GATE capping at 2.
-- bank: ladder is on the RATIO, never the difference (scale-dependence ruling).
-- ARMED_LENSES != ARMED_PANEL_LENSES, deliberately. "Armed" does not mean "panel-scored".
-- Last live proof: the value trap was caught on C — 1.08x book, screen-cheap, ROE under CoE,
-  scored 4 -> 3 by the armed instrument.
+> **STX diagnosis first — price-feed vs stale-anchor question; batch tolerance arming; then
+> coverage expansion capped at one order, step 4 ruled on its evidence.**
 
-**OPEN TRIPWIRES — each REPORTS TO VIC before its result is treated as validated:**
-1. **First production STANDARD-lens eval** — report the full panel readout. No golden ticker
-   is natively standard-lens, so that first live case is the only real evidence the mapping
-   will ever have had.
-2. **First live BANK eval landing in rung 4 or 5** — flagged `BANK-RUNG-UNCALIBRATED`. Those
-   rungs are PROVISIONAL-UNCALIBRATED: no calibration bank (JPM/BK/USB/C) trades below
-   justified book, so they are reasoned, not measured.
-3. **β SINGLE-SOURCE CAP** on the bank pillar (`_cap_beta_confidence`) — β is FMP-only, has no
-   cross-check, and moves CoE directly. SELF-RETIRES the day a corroborated second β source
-   lands; no code change needed.
+Code's reading, stated separately and NOT part of the order:
 
-**PHASE G SCOPING — DONE 2026-08-11. Report: docs/g-scoping.md. NOTHING IMPLEMENTED.**
-Root cause confirmed and the fix is exact, but TWO MEASURED FINDINGS CUT AGAINST THE
-PREMISE THAT MOVED G UP THE ROADMAP — both need a ruling before any G build starts:
-- **G'S ENTIRE REACH IS ONE CELL: own-history goes 3/20 -> 4/20 readings.** Of the 17
-  missing, 15 are missing BY CONSTRUCTION (own-history is trailing-earnings-only) and 1
-  is V (no share series at any basis; measured 0 -> 0 under the fix). Only NOW's cell is
-  a split defect. The 15-cell trailing-only restriction is the REAL coverage constraint
-  and is a DIFFERENT piece of work, deliberately not scoped.
-- **ZERO SCORES MOVE** across the golden five + four banks, even with the cyclical lens
-  FORCED. Own-history feeds METRIC_EARNINGS_YIELD only, and cyclical is the only armed
-  panel lens on it — so own-history can move a score through cyclical AND NOWHERE ELSE.
-  NOW is a GROWTH ticker (rate-shifted, no panel), so its restored anchor is INERT; and
-  NOW reads +0.51pp CHEAP vs its own history, so under MIN it would never bind anyway.
-  MU is the only cyclical name and it has no truncation. Per-ticker: NOW 2 -> 19 quarters
-  (anchor restored), GOOG 17 -> 20 (accuracy, median 4.43% -> 4.34%), all others unchanged.
-G IS STILL WORTH DOING — as LATENT-TRAP REMOVAL AND ACCURACY, not coverage recovery.
-KEY TECHNICAL FINDINGS (all measured, see the report):
-- The share series is MIXED-BASIS, not pre/post-split: post-split filings restate SOME
-  prior period-ends (annual comparatives) and not others (original 10-Q cover pages), and
-  instant_series dedupes by period-end keeping whichever sorts first. A naive adjacent-
-  ratio detector fires 3x on GOOG (20:1, 1:20, 20:1) and poisons 2 of 20 quarters — while
-  THE MEDIAN BARELY MOVES (4.43 -> 4.26). **A G validation that compares medians will pass
-  a broken implementation. Per-point assertions are mandatory.**
-- THE WELL-POSED RULE (no discontinuity inference): a fact is on the basis in effect at its
-  FILING date. adjusted = raw x prod{ratio : split.ex_date > fact.filed}. Verified exactly
-  on live SEC data — GOOG's two 2021-12-31 rows reconcile to 0.003%.
-- **BLOCKER: _extract_xbrl_facts DROPS `filed`** (keeps start/end/fy/fp/form/accession).
-  Accession YEAR is not a substitute — it separates GOOG's two 2021-12-31 rows but NOT
-  2022-03-31 from 2022-06-30, which straddle the split and are both `-22-`.
-- SINGLE-SOURCE RISK IS REAL BUT MITIGABLE — three witnesses, all measured, all agreeing:
-  FMP /stable/splits (GOOG 20:1 ex-2022-07-18, NOW 5:1 ex-2025-12-18); the EDGAR
-  RESTATEMENT RATIO, already in the fetched payload at zero cost (GOOG 19.99937, NOW
-  5.00001); and the EDGAR TAGGED RATIO StockholdersEquityNoteStockSplitConversionRatio1
-  (GOOG 20, NOW 5), one concept away. Two of three are INDEPENDENT OF FMP.
-  Take the RATIO corroborated, the DATE from FMP — the EDGAR date is a declaration/record
-  date, not an ex-date (GOOG 07-15 vs 07-18). Disagreement -> WITHHOLD, never pick a side.
-- NEW RISK RECORDED: price-history depth is an UNDOCUMENTED DEPENDENCY. fetch_payload asks
-  for `limit=365` but FMP returns 1,255 rows (~5y) and own-history's whole depth rests on
-  that. If FMP ever honours the limit, EVERY own-history series silently goes to 0/20.
+- **L-4a — STX DIAGNOSIS, FIRST.** STX carries a **90.08% anchor divergence** and
+  `status='anchor_divergence'`: its synthesis anchored near **$94** while STX trades near
+  **$995**, a ~10x gap. The question to answer is **price-feed vs stale-anchor** — i.e. is
+  FMP serving a wrong/split-unadjusted price, or did the model anchor to a stale remembered
+  level (the MU 2026-08-07 shape, which turned out to be a stale LLM anchor while the feed
+  was correct)? Both are ~10x-shaped, and the MU precedent says do not assume which.
+  E(R) is currently withheld on STX, which is the guard working.
+- **L-4b — BATCH TOLERANCE ARMING.** Bring `batch/runner.py` onto the same stage-conditioned
+  band so the two write paths stop disagreeing. Flips the batch dark pin — expect to retire
+  it by name and replace it, exactly as L-3 did for evaluate.py.
+- **L-4c — COVERAGE EXPANSION, CAPPED AT ONE ORDER.** Extend `fundamental_series` beyond the
+  four names it covers. **Step 4 is then ruled on that evidence**, not before.
 
-**G RULINGS ISSUED 2026-08-11 (all accepted, permanent unless re-ruled):**
-- G PROCEEDS, scoped small. Fix = MIXED-BASIS RULE (basis in effect at FILING date).
-  NAIVE ADJACENT-RATIO DETECTION REJECTED PERMANENTLY (GOOG: 3 false fires, 2/20 poisoned,
-  median-invisible). The `filed`-field blocker is in scope.
-- PER-POINT ASSERTIONS MANDATORY in G validation; median checks proven insufficient.
-- Split ratio: 2-OF-3 WITNESS CORROBORATION REQUIRED; DATE FROM FMP; declaration-vs-ex-date
-  distinction documented. PRECEDENT: first corroborated-by-design input, TEMPLATE FOR THE
-  FUTURE BETA CROSS-CHECK.
-- Pin the limit=365 risk immediately. DONE.
-- Trailing-only expansion = PHASE H CANDIDATE, not scoped. Cost/value paragraph delivered
-  in docs/g-build.md §6.
-- CLAUDE.md per-phase maintenance RATIFIED as a standing rule.
+### PUNCH LIST — current at close
 
-**G-1/G-2/G-3 BUILT AND DARK 2026-08-11 — report docs/g-build.md. NOTHING ARMED.**
-Suite 577 -> 612. caliber.db md5 unchanged 54aa42e5.
-- G-1 GATE PASSED: `first_filed` captured, EARLIEST-WINS across the accession tie-break
-  (a later filing repeating a value verbatim did not restate it). Resolution diff EMPTY —
-  171 fields (9 tickers x 19 specs) on identical cached companyfacts, 0 diffs.
-- G-2 GATE PASSED: GOOG 3/3, NOW 3/3, C 2/3 corroborated; V 1/3 REFUSED AND FLAGGED.
-  Agreement is exact — GOOG 20 vs 19.99937, NOW 5 vs 5.00001.
-  NEW DESIGN ELEMENT — SCOPE HORIZON: EDGAR XBRL starts ~2009, so pre-XBRL splits can
-  NEVER earn a second witness (MU 1994-2000, JPM 1982-2000, USB 1979-2001). Splits
-  predating the oldest share filing are OUT-OF-SCOPE, not uncorroborated, and are silent.
-  Without it the report emitted 33 alarming NOTEs across nine tickers and would have
-  desensitised the one warning that matters.
-- G-3 GATE PASSED PER QUARTER: GOOG 17 -> 20 (all 17 existing IDENTICAL, recovered points
-  3.97/4.05/3.99 vs a ~4% norm — the naive rule's 0.25%/0.20% signature ABSENT),
-  NOW 2 -> 19, all seven others identical point-for-point. ZERO existing quarters moved
-  anywhere. Dark surface wired at BOTH boundaries, live-only (fixtures predate G-1).
-- **TRAP FOUND AND CLOSED BY THE DARK PASS — the build's own headline.** The restated
-  series has NO truncation to fall back on, so an EMPTY split list is not a safe default:
-  run on GOOG with events=[] it emits 2022-03-31 at 81.02% — the exact artifact G exists
-  to remove. An empty list is ambiguous between "never split" and "could not find out".
-  `restatement_blocked` refuses unless the split state is ESTABLISHED; `own_history_restated`
-  takes the REPORT, not a list, so it cannot be called ambiguously. On refusal the
-  truncated series stands. THE FIX WAS CORRECT ON BOTH TICKERS IT WAS BUILT FOR AND WOULD
-  STILL HAVE REGRESSED THE PIPELINE ON THE THIRD.
+- **`field_provenance.field_name` is NULL on all 1,416 rows** — provenance is unqueryable by
+  field, only by `(evaluation_id, pillar)`. **DIAGNOSIS QUESTION, not yet a fix order:** is
+  the writer dropping the name, or was it never populated?
+- **SHARE-CLASS DEDUP AT CIK LEVEL.** GOOG and GOOGL are ONE issuer on ONE CIK
+  (`0001652044`) and both are evaluated. Two rows with near-identical fundamentals would
+  DOUBLE-WEIGHT one forecast in any grade rollup. GOOGL is canonical (held); GOOG is
+  calibration. Dedup by CIK before grading aggregates, not by ticker.
+- **REPLACE THE `_CYCLICAL_INDUSTRY` KEYWORD SWEEP with explicit SIC entries** as names
+  accumulate. Matching keywords against a vendor's free-text industry string is what put
+  IONQ/INFQ on the cyclical lens and forced the L-2b overrides.
+- **FEED-REPAIR TICKETS:** `income_annual` series gaps — **IONQ missing FY2020**, **XE missing
+  FY2023 and FY2024**. Both had peak detection REFUSED rather than inferred across the hole.
+- **NO ETF/FUND REFUSAL GUARD.** Pointing `evaluate.py` at an ETF yields a garbage
+  classification instead of a refusal. The signal is already in the payload FMP returns
+  (`isEtf: true`, verified live on LYTE). LYTE and FLTW are held but deliberately absent from
+  `tickers.txt` for this reason.
+- **THRESHOLD CALIBRATIONS — BOTH FLAGS STAY INDEFINITELY.**
+  `GUARD-TOLERANCE-UNCALIBRATED` (no cyclical name has carried a decline streak, so ZERO real
+  peak comparisons have occurred) and `REINVESTMENT-THRESHOLD-UNCALIBRATED` (only GOOG 1.195
+  and MU 0.668 measured). **NO SYNTHETIC CALIBRATION, EVER** — a tolerance tuned on generated
+  series is worse than no tolerance.
 
-**G-4 ARMED 2026-08-11 — PHASE G IS CLOSED.** Report docs/g-build.md (G-4 section).
-Ruled ARM on CORRECTNESS, not score movement: GOOG's series was known-wrong and feeds the
-binding anchor class. restatement_blocked RATIFIED (empty list != safe default). Scope
-horizon RATIFIED (alarm desensitization is a correctness problem; V's warning must stay the
-only one). Suite 613. caliber.db md5 unchanged 54aa42e5.
-- ARMED DIFF, live, all nine: **ZERO SCORES MOVED** — exactly the scoping prediction.
-  Per-quarter reviewed: GOOG all 17 pre-existing +0.00 and 3 recovered (4.05/3.97/3.99);
-  NOW both pre-existing +0.00 and 17 recovered (0.18-1.10). IDENTICAL TO THE DARK DIFF.
-- own_history_series() picks the basis AND RETURNS IT; the basis is stamped on the anchor
-  reading (basis=split_restated | truncated (<reason>)). A panel anchor on a truncated
-  series is a DIFFERENT MEASUREMENT from one on a restated series and provenance says so.
-- fetch_splits returns None for UNKNOWN, [] for "none exist" — the distinction is the whole
-  contract. `splits` joined fetch_payload so the recorder captures it through the one path
-  production requests.
-- FIXTURE RE-RECORD (ruled: recorder discipline beats recorded divergence): GOOG + NOW
-  re-recorded, offline now reproduces live EXACTLY (GOOG 20q @4.34, NOW 19q @0.78).
-  Resolution diff REVIEWED, 1 field of 38 moved: GOOG total_debt_reported no_tag ->
-  stale_tag — withheld either way, field is DARK, and it is the same movement already
-  recorded live at D-5 (the fixture predated that chain extension). NOW: zero movement.
-  MU/V/WU/banks deliberately NOT re-recorded: no split data -> None -> refused ->
-  truncated, which already equals their restated series. No drift to close.
-- V STAYS REFUSED (1/3 witnesses), flag retained.
-- Tests flipped: test_the_truncating_series_is_now_the_FALLBACK_and_still_truncates (the
-  truncating function is unchanged and still pinned — it is the only thing between an
-  unknown split and GOOG's ~81% quarters) and test_a_recent_split_no_longer_costs_the_anchor.
-  Added test_without_a_split_report_the_panel_keeps_the_truncated_basis.
+### STANDING RULES THAT SURVIVE SESSIONS
 
-**H-FCF SCOPED 2026-08-11 — docs/h-fcf-scoping.md. NOTHING IMPLEMENTED. BOTH CLAIMS FAIL
-AS STATED; THE CEILING ARGUMENT DOES NOT SURVIVE.**
-- **CLAIM 1 (free_cashflow advisory -> armed): OPPORTUNITY SURVIVES, ATTRIBUTION DOES NOT.**
-  The basis mismatch IS resolvable and the advisory is doing real work (MU diverges 1469%
-  unmatched). Re-read at FY-END: MU/GOOG/NOW/BK/C all **0.0%**, WU **28.6% CONFLICT**
-  (a genuine disagreement that survives period matching — arming would DOWNGRADE WU),
-  V/JPM/USB no capex tag. BUT the mechanism is extending period_basis='annual_fy' to FLOW
-  inputs — `_instant_at` requires `not rec.get('start')`, so it is INSTANTS-ONLY today and
-  cash-flow rows fall through. The TTM-at-a-target-period helper ALREADY EXISTS
-  (_assemble_ttm(as_of_end=)/ttm_series). **A historical series is neither necessary nor
-  sufficient for it.** Split out as H-X, a SEPARATE order (see below).
-- **CLAIM 1 SECOND FAILURE: arming free_cashflow does NOT unblock Financial Health.**
-  Measured, not reasoned: FH's five inputs are current_ratio (high), total_cash (high),
-  free_cashflow (fixable), total_debt (total_debt@FY is DARK — MU agrees 0.5%, GOOG
-  CONFLICTS 8.8%), and **debt_to_equity, which is FMP-NET vs EDGAR-GROSS — a DEFINITIONAL
-  mismatch no period matching can fix**. Forcing all five high does give FH=high, so the
-  pillar is reachable in principle; debt_to_equity is the binding constraint.
-- **CLAIM 2 (fcf_yield corroborant): FAILS, on principle not on data.** fcf_yield =
-  FCF_TTM / market cap, and market cap = PRICE x shares — the E-4 uncorroborable class.
-  FMP publishes NO plain TTM FCF (only price-denominated ratios + FCFF/FCFE), so the TTM
-  level is reachable only by multiplying a ratio back out by market cap, i.e. by injecting
-  the price term. An EDGAR fcf_yield would share an IDENTICAL denominator with FMP's, so
-  comparing them carries exactly the free_cashflow row's information and adds none;
-  stamping that agreement on fcf_yield would let the uncorroborated price term inherit
-  corroboration it never received. LAUNDERING — the peer-anchor rejection rationale.
-- **CEILING: H-FCF closes blockers in ZERO of four pillars, not two.**
-  test_verdict_high_is_still_blocked STAYS PASSING — do not touch it (ruling R-D).
-  Shortest remaining path to verdict-high is NOT this one: it runs through debt_to_equity,
-  Management's hardcoded medium, and a second source for price/estimate-derived fields.
-- **NEW FINDING — TRANSCRIPTION vs INDEPENDENCE.** EDGAR TTM FCF equals FMP's implied TTM
-  FCF **to 0.000% — exact to the dollar — on MU/GOOG/NOW/BK**. Four unrelated issuers
-  agreeing to the dollar is not two independent sources; FMP's cash-flow fundamentals are
-  evidently SEC-derived. The whole E-3 armed set rests on this same footing. It does NOT
-  invalidate the cross-check (WU diverges 40% and that is where it earns its keep), but
-  for FILED FUNDAMENTALS it is a TRANSCRIPTION check, not an independent measurement —
-  recorded because 'high confidence' is being asked to mean something specific.
-- **H-FCF'S REAL VALUE (survives, and is worth doing):** own-history coverage 4/20 -> 8/20;
-  INDEPENDENCE-NARROWED 16/20 -> 12/20 (directly attacks D-3 ruling 6's 85%). Compounder
-  lens gains its first issuer-referenced denominator.
-- **BLAST RADIUS MEASURED (load-bearing — the universe IS the golden five):** own-history
-  feeds METRIC_FCF_YIELD -> COMPOUNDER ONLY = GOOG, V, WU = 3 OF 5. **Zero scores move**,
-  but **WU's BINDING ANCHOR CHANGES sector -> own_history**, narrowing its read by 8.37pp
-  (+12.67 -> +4.30); it survives at 5 only because +4.30 still clears the +3.0 top rung.
-  A ticker nearer a rung boundary would move.
-- **CORRECTIONS TO MY OWN g-build.md §6:** (a) the useful ceiling is **12/20, not 16/20** —
-  16 counts forward-earnings cells NO LENS CONSUMES; (b) **V gains NOTHING — no capex tag**
-  (its recorded cross-check limit, which I wrongly carried into the lens claim). The
-  compounder beneficiaries are **GOOG and WU**, not GOOG/V/WU.
-- **OPEN RULING FOR H-2 — NEGATIVE-FCF EXCLUSION / SURVIVORSHIP.** MU: 10 of 24 quarters
-  (42%) have negative FCF and are excluded, so its "own FCF history" is the median of the
-  quarters when FCF was POSITIVE, not its typical FCF yield. C: 14 of 21 -> withheld.
-  Bias direction is SAFE (higher median -> looks richer -> MIN takes the worst), but the
-  magnitude wants a ruling, not a default. Options: exclude-and-flag (trailing precedent),
-  withhold above an exclusion threshold, or require positive TTM FCF in a majority.
-
-**H-1 BUILT, DARK, COMMITTED 2026-08-15 (7a8bbf1). H-2 IS RULED. H-3 IS NEXT.**
-Report docs/h1-series.md. Suite 613 -> 644. caliber.db md5 unchanged 54aa42e5; the
-`fundamental_series` table does NOT exist in production (only a full live batch run creates
-it — a fixture/no-synthesis run must name its own destination).
-**SUPERSEDED 2026-08-15 (later session): `fundamental_series` NOW EXISTS in production,
-557 rows, created by the ids 221-225 re-run — the first full live batch run since H-1
-landed. It behaved exactly as designed: 153/121/…/152 new rows per ticker, 0 restatements.**
+- **PUSH ON LANDING.** Any commit that closes a ruled work order pushes immediately — no
+  per-commit approval. Unpushed-at-close is the exception, not the norm.
+- **EXPECTED-DELTA ON EVERY WRITE.** State the full expected delta set INCLUDING dependents
+  before writing; report anything outside it rather than absorbing it. Standing companions of
+  any evaluation write: `field_provenance` +N per eval, `synthesis_cache` +1 per ticker
+  synthesised **by batch only** (`evaluate.py` never writes the cache), `sqlite_sequence` +1
+  per new AUTOINCREMENT table.
+- **SUPERSEDE, NEVER PURGE, for a sanctioned run with a defect.** A corrected run lands as a
+  NEW ROW with `supersedes_id` + a stated reason. Purge is reserved for CONTAMINATION (rows
+  that should never have existed), under a transaction with an exact blast-radius assertion.
+- **FAIL-CLOSED DEFAULTS.** A guard that cannot measure DENIES the tag or band it guards:
+  the peak gate denies DECLINE, the FCF gate denies YOUNG, an unclassified name gets the
+  DEFAULT tolerance and never the widest. Absence must never be privately optimal.
+- **NO SAME-DAY DUPLICATE E(R)s.** Re-run only names whose state actually changes; unflipped
+  names do not re-run.
+- **STOP AND REPORT BETWEEN ORDERS.** One step per work order, dark-verified before the next
+  arms. Nothing arms without a ruling.
+- **ALWAYS `PRAGMA wal_checkpoint(TRUNCATE)` BEFORE RECORDING AN md5**, or a later checkpoint
+  moves bytes with no logical write behind it.
+- **A RULE RECORDED WITHOUT NAMING ITS ENFORCEMENT POINT IS A BELIEF, NOT A GUARD** — and a
+  flag verification only covers the writes the verifying run actually performs.
 
 ## ▶ PHASE H CLOSED EXCEPT H-4 — first session of 2026-08-15 (SUPERSEDED BY THE PICKUP BLOCK ABOVE)
 Commits this session: 7a8bbf1 (H-1) · 6bdd4e8 · 8d9aa95 (D/E scale defect) · 15ab835 ·
