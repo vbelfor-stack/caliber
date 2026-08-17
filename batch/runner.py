@@ -54,6 +54,8 @@ from store.models import (save_evaluation, save_failed_evaluation, get_cached_sy
                           SupersedeLinkInvalid)
 from synthesis.schema import check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD
 
+from core.universe import is_calibration_instrument
+
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
 
@@ -329,6 +331,7 @@ def run_single_ticker(
             expected_return=expected_return, status=anchor_status,
             db_path=db_path or _DEFAULT_DB,
             supersedes_id=supersedes_id, supersede_reason=supersede_reason,
+            calibration_instrument=is_calibration_instrument(ticker),
         )
         if supersedes_id is not None:
             _log(f"supersedes id={supersedes_id}")

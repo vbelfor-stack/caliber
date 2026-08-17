@@ -65,6 +65,12 @@ class SupersedeLinkInvalid(Exception):
 _EVALUATIONS_ADDED_COLUMNS = {
     "supersedes_id": "INTEGER REFERENCES evaluations(id)",
     "supersede_reason": "TEXT",
+    # Ruled 2026-08-17. 1 when the ticker was NOT in the held universe at write time.
+    # Calibration names ARE graded — a bank E(R) is evidence about the bank lens — but the
+    # two populations must be sliceable, because a blended accuracy number misleads in both
+    # directions. Rows written before this column read NULL = MEMBERSHIP UNRECORDED, which
+    # is deliberately NOT the same as 0; see core/universe.
+    "calibration_instrument": "INTEGER",
 }
 
 
@@ -107,7 +113,10 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 -- destroys the evidence that a reading changed, which is the whole audit
                 -- trail. Both columns are NULL on an ordinary (non-superseding) run.
                 supersedes_id     INTEGER REFERENCES evaluations(id),
-                supersede_reason  TEXT
+                supersede_reason  TEXT,
+                -- 1 = the ticker was NOT in tickers.txt when this row was written. NULL on
+                -- rows predating the column: unrecorded, which is not the same as 'held'.
+                calibration_instrument INTEGER
             );
 
             CREATE TABLE IF NOT EXISTS field_provenance (
@@ -379,6 +388,7 @@ def save_evaluation(
     status: Optional[str] = None,
     supersedes_id: Optional[int] = None,
     supersede_reason: Optional[str] = None,
+    calibration_instrument: Optional[bool] = None,
 ) -> int:
     """
     Persist a complete evaluation. Returns the new evaluation id.
@@ -421,14 +431,15 @@ def save_evaluation(
             INSERT INTO evaluations
               (ticker, run_at, lens, status, pillars_json, synthesis_json,
                avg_score, overall_conf, verdict_conf, expected_return,
-               supersedes_id, supersede_reason)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               supersedes_id, supersede_reason, calibration_instrument)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 ticker, _utc_now(), lens, status,
                 pillars_json, synthesis_json,
                 avg_score, overall_conf, verdict_conf, expected_return,
                 supersedes_id, supersede_reason,
+                None if calibration_instrument is None else int(bool(calibration_instrument)),
             ),
         )
         eval_id = cur.lastrowid

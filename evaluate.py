@@ -33,6 +33,7 @@ from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
+from core.universe import is_calibration_instrument
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals, TechnicalOverlay
 from synthesis.client import run_synthesis
@@ -455,7 +456,8 @@ def evaluate(ticker: str, fixture_mode: bool = False,
     try:
         eval_id = save_evaluation(ticker, lens, pillars, synthesis,
                                   expected_return=expected_return, status=anchor_status,
-                                  db_path=write_db)
+                                  db_path=write_db,
+                                  calibration_instrument=is_calibration_instrument(ticker))
         print(f"  Evaluation saved  (id={eval_id})")
     except Exception as e:
         print(f"  WARN: Could not persist evaluation — {e}", file=sys.stderr)
