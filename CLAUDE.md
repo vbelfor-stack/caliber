@@ -5,20 +5,24 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT L-1e 2026-08-17
+### STATE AT L-2a 2026-08-17
 **PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
 (COMPLETE, rulings R1–R11, amended by the L-1c ruling 2026-08-17).
-**NEXT: AWAITING VIC'S ARMING RULING.** Dark tables: docs/l1d-dark-run.md (verdicts),
-docs/l1e-preconditions.md (L-1e + the arming-order argument). §5 arms one behaviour at a
-time, and the FIRST step requires flipping the dark-surface pin — see the report.
+**ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
+(ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
+step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
+ORDER, dark-verified before the next arms. **NEXT: L-2a commit 2 = step 1.**
+**STANDING: NO SYNTHETIC CALIBRATION, EVER** — `GUARD-TOLERANCE-UNCALIBRATED` and
+`REINVESTMENT-THRESHOLD-UNCALIBRATED` stay until REAL data calibrates them. A tolerance
+tuned on generated series is worse than no tolerance.
 Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
 **STANDING RULE ADDED 2026-08-17: any commit closing a ruled work order PUSHES IMMEDIATELY
 — no per-commit approval. Unpushed-at-close is the exception, not the norm.**
 
 | | |
 |---|---|
-| HEAD | L-1e on master, pushed |
-| Suite | **764** (682 + 82 in tests/test_lifecycle.py) |
+| HEAD | L-2a on master, pushed |
+| Suite | **769** (682 + 87 in tests/test_lifecycle.py) |
 | caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |

@@ -1080,14 +1080,55 @@ def test_mature_is_the_tightest_and_young_the_widest_prior():
     assert M_WIDTH_PRIOR_ORDERING[-1] == STAGE_YOUNG
 
 
-def test_nothing_in_the_scoring_pipeline_reads_the_classifier_yet():
-    """DARK-SURFACE PIN, same shape as test_no_score_reads_the_series_yet. Phase L must
-    not reach a score, a lens or an E(R) until §5 arms one behaviour at a time."""
-    for path in ("core/pillars.py", "core/valuation_anchors.py", "batch/runner.py",
-                 "evaluate.py", "synthesis/schema.py"):
-        src = Path(path).read_text(encoding="utf-8")
-        assert "core.lifecycle" not in src, f"{path} imports the classifier — L is DARK"
-        assert "lifecycle_stage" not in src, f"{path} reads the stage table — L is DARK"
+# ── DARK-SURFACE PINS — ONE PER FILE, DELIBERATELY (ruled L-2a step 0) ────────
+# These were ONE test looping over five files. Arming §5 step 1 touches evaluate.py, which
+# would have meant deleting or editing the single pin and RETIRING THE PROTECTION ON THE
+# OTHER FOUR IN THE SAME STROKE — the 2026-08-15 eleven-test silent-dependency shape, where
+# a check was lost as a side effect of a change that only needed part of it.
+# Split, each arming step flips exactly one assertion and the rest keep failing loudly.
+
+def _assert_dark(path: str) -> None:
+    src = Path(path).read_text(encoding="utf-8")
+    assert "core.lifecycle" not in src, f"{path} imports the classifier — L is DARK here"
+    assert "lifecycle_stage" not in src, f"{path} reads the stage table — L is DARK here"
+
+
+def test_pillars_does_not_read_the_classifier():
+    """Scoring must never consult a stage. This pin outlives every §5 step."""
+    _assert_dark("core/pillars.py")
+
+
+def test_valuation_anchors_does_not_read_the_classifier():
+    _assert_dark("core/valuation_anchors.py")
+
+
+def test_batch_runner_does_not_read_the_classifier():
+    """The batch path stays dark until its own arming order — step 1 is evaluate.py ONLY."""
+    _assert_dark("batch/runner.py")
+
+
+def test_synthesis_schema_does_not_read_the_classifier():
+    """Flips only when §5.1's stage-conditioned B-2 tolerances arm (step 3)."""
+    _assert_dark("synthesis/schema.py")
+
+
+def test_evaluate_does_not_read_the_classifier_yet():
+    """THE ONE PIN §5 STEP 1 IS EXPECTED TO FLIP. It is separate from the other four
+    precisely so that flipping it costs exactly one assertion."""
+    _assert_dark("evaluate.py")
+
+
+def test_save_lifecycle_stage_refuses_to_default_its_destination():
+    """A writer that falls back to production caliber.db when an argument is forgotten is
+    the exact failure mode the interactive path creates. db_path is required and
+    keyword-only."""
+    import inspect
+    sig = inspect.signature(save_lifecycle_stage)
+    p = sig.parameters["db_path"]
+    assert p.default is inspect.Parameter.empty, "db_path grew a default again"
+    assert p.kind is inspect.Parameter.KEYWORD_ONLY
+    with pytest.raises(TypeError):
+        save_lifecycle_stage(_result("MU", STAGE_MATURE))       # type: ignore[call-arg]
 
 
 def test_the_config_version_is_stamped_and_non_empty():

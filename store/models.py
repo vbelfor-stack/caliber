@@ -878,7 +878,7 @@ class OverrideRationaleMissing(ValueError):
     """
 
 
-def save_lifecycle_stage(result: Any, db_path: Path = _DEFAULT_DB) -> tuple:
+def save_lifecycle_stage(result: Any, *, db_path: Path) -> tuple:
     """Append one classification. Returns (stage_row_id, transition_row_id_or_None).
 
     APPEND, NEVER OVERWRITE, on the fundamental_series precedent. A transition row is
@@ -892,8 +892,12 @@ def save_lifecycle_stage(result: Any, db_path: Path = _DEFAULT_DB) -> tuple:
     approved stage, so the report says "computed moved, override still stands" rather than
     implying the ticker changed stage.
 
-    Takes an explicit db_path from its caller: this is a writer, so the destination is
-    named rather than defaulted (degraded-run write guard).
+    **db_path IS REQUIRED AND KEYWORD-ONLY (ruled L-2a step 0).** It previously defaulted to
+    production caliber.db while this docstring claimed the destination was named rather than
+    defaulted — the claim was true of every call site and false of the signature. Harmless
+    while the only caller was a probe that requires --db-path; the interactive path added at
+    step 1 is exactly the failure mode ("writes to production when someone forgets an
+    argument"), so the default is gone rather than documented around.
     """
     now = datetime.now(timezone.utc).isoformat()
     absent = ",".join(result.absent_legs) if result.absent_legs else None
