@@ -394,6 +394,24 @@ def build_legs(
     # Anchoring the peak BEFORE the streak begins makes it a real comparison: it asks
     # whether this downcycle has taken revenue below where the LAST cycle topped out.
     streak_val = legs["decline_streak"].value if legs["decline_streak"].present else None
+
+    # PEAKS ARE LOGGED FOR EVERY CYCLICAL EVALUATION, not only the ones where the guard
+    # reaches a comparison. The ruling asks for the peak pair so a tolerance can be
+    # calibrated later; MU is the only cyclical name in the universe and its guard does not
+    # fire (streak 0), so logging only on comparison would leave the calibration set EMPTY —
+    # which is the opposite of what the instruction was for.
+    if lens == "cyclical":
+        _peaks = _local_peaks(series)
+        legs["cyclical_peaks"] = Leg(
+            "cyclical_peaks", [f"{lbl[:4]}:{rev:,.0f}" for lbl, rev in _peaks],
+            detail=(f"{len(_peaks)} local peak(s): "
+                    + "; ".join(f"{lbl[:4]} {rev:,.0f}" for lbl, rev in _peaks)
+                    + (f" — two most recent delta "
+                       f"{(_peaks[-1][1] - _peaks[-2][1]) / _peaks[-2][1] * 100:+.2f}%"
+                       if len(_peaks) >= 2 else "")) if _peaks else "no local peak in window")
+    else:
+        _peaks = []
+
     if lens != "cyclical":
         legs["cyclical_peak_to_peak"] = Leg(
             "cyclical_peak_to_peak", None,
@@ -424,7 +442,7 @@ def build_legs(
         # DO — MU's revenue halved in FY2023 while the business was secularly fine, so a
         # depth test would permit DECLINE in precisely the false-positive case. §3 rule 1's
         # intent is SECULAR decline, and the only measurement of that is peak against peak.
-        peaks = _local_peaks(series)
+        peaks = _peaks
         if len(peaks) < 2:
             # THE GATE FAILS CLOSED — permit REFUSED, and deliberately NOT asserted-absent.
             # This refuses ONE RULE'S GATE, it does not void the classification: with fewer
@@ -436,11 +454,6 @@ def build_legs(
                 "cyclical_peak_to_peak", False,
                 detail=f"permit REFUSED — only {len(peaks)} local peak(s) in {n} measured "
                        f"FY; two cycle tops are needed to measure secular decline")
-            legs["cyclical_peaks"] = Leg(
-                "cyclical_peaks", [f"{lbl[:4]}:{rev:,.0f}" for lbl, rev in peaks],
-                detail=f"{len(peaks)} local peak(s): "
-                       + ("; ".join(f"{lbl[:4]} {rev:,.0f}" for lbl, rev in peaks)
-                          or "none"))
         else:
             (e_lbl, e_rev), (l_lbl, l_rev) = peaks[-2], peaks[-1]
             lower = l_rev < e_rev
@@ -450,13 +463,6 @@ def build_legs(
                        f"{e_rev:,.0f} — peak-to-peak "
                        f"{'LOWER (permit)' if lower else 'NOT lower (refuse)'} "
                        f"(streak {streak_val}, {n} FY measured)")
-            # Both peak values are logged on EVERY evaluation so a tolerance can be
-            # calibrated later against real refusals, rather than guessed now.
-            legs["cyclical_peaks"] = Leg(
-                "cyclical_peaks", [f"{e_lbl[:4]}:{e_rev:,.0f}", f"{l_lbl[:4]}:{l_rev:,.0f}"],
-                detail=f"two most recent local peaks — {e_lbl[:4]} {e_rev:,.0f} then "
-                       f"{l_lbl[:4]} {l_rev:,.0f} (delta "
-                       f"{(l_rev - e_rev) / e_rev * 100:+.2f}%)")
 
     # ── FCF sign, 2 of last 3 (R2) ───────────────────────────────────────────
     if fcf_fy is None:

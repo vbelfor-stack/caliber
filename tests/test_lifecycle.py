@@ -407,6 +407,21 @@ def test_both_peak_values_are_logged_on_every_evaluation():
     assert r.inputs["cyclical_peaks"] == ["2018:1,100", "2022:900"]   # persisted
 
 
+def test_peaks_are_logged_even_when_the_guard_does_not_fire():
+    """The calibration set must not be empty. MU is the only cyclical name in the universe
+    and its guard does not fire (streak 0), so logging peaks only on a comparison would
+    leave nothing to calibrate a tolerance against — the opposite of the instruction."""
+    income = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 600),
+                      (2021, 800), (2022, 900), (2023, 800), (2024, 700), (2025, 1500)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    assert legs["decline_streak"].value == 0                  # guard does not fire
+    assert legs["cyclical_peak_to_peak"].value is None
+    assert legs["cyclical_peaks"].value == ["2018:1,100", "2022:900"]
+    r = classify("SYN", legs, "cyclical")
+    assert r.inputs["cyclical_peaks"] == ["2018:1,100", "2022:900"]
+
+
 def test_fewer_than_two_local_peaks_REFUSES_the_permit_without_voiding_the_verdict():
     """Ruled fail-direction: the GATE fails closed, and that is not the same as voiding the
     classification. No two measurable cycle tops means no secular-decline tag on streak
