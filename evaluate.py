@@ -33,6 +33,7 @@ from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
+from core.lens_overrides import lens_override
 from core.universe import is_calibration_instrument
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals, TechnicalOverlay
@@ -230,7 +231,9 @@ def _print_technicals(tech: TechnicalOverlay) -> None:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def evaluate(ticker: str, fixture_mode: bool = False,
-             db_path: Optional[Path] = None) -> None:
+             db_path: Optional[Path] = None,
+             supersedes_id: Optional[int] = None,
+             supersede_reason: Optional[str] = None) -> None:
     ticker = ticker.upper().strip()
     fx_root = Path("tests/fixtures")
 
@@ -303,8 +306,11 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         print(f"\n  {xcheck.watch}")
 
     # ── Lens selection ────────────────────────────────────────────────────────
-    lens = select_lens(yf.sector, yf.industry, edgar.sic)
+    lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
     print(f"\n  Valuation lens: {lens_label(lens)} ({lens})")
+    _ov = lens_override(ticker)
+    if _ov is not None:
+        print(f"  LENS OVERRIDDEN (explicit, hand-curated): {_ov[1]}")
 
     # Phase D-0 DARK: measure the three valuation anchors and log the spreads.
     # Applies nothing — no Prov, score, E(R) or grade can move.
@@ -457,7 +463,9 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         eval_id = save_evaluation(ticker, lens, pillars, synthesis,
                                   expected_return=expected_return, status=anchor_status,
                                   db_path=write_db,
-                                  calibration_instrument=is_calibration_instrument(ticker))
+                                  calibration_instrument=is_calibration_instrument(ticker),
+                                  supersedes_id=supersedes_id,
+                                  supersede_reason=supersede_reason)
         print(f"  Evaluation saved  (id={eval_id})")
     except Exception as e:
         print(f"  WARN: Could not persist evaluation — {e}", file=sys.stderr)
@@ -480,8 +488,13 @@ def main() -> None:
         "--db-path", type=Path, default=None,
         help="Destination for the lifecycle stage write (default: production caliber.db)"
     )
+    parser.add_argument("--supersedes", type=int, default=None,
+                        help="Evaluation id this run supersedes (requires --supersede-reason)")
+    parser.add_argument("--supersede-reason", default=None,
+                        help="Why the superseded evaluation is being replaced")
     args = parser.parse_args()
-    evaluate(args.ticker, fixture_mode=args.fixture, db_path=args.db_path)
+    evaluate(args.ticker, fixture_mode=args.fixture, db_path=args.db_path,
+             supersedes_id=args.supersedes, supersede_reason=args.supersede_reason)
 
 
 if __name__ == "__main__":

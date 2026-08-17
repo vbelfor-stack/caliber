@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from core.lens_overrides import lens_override
+
 # ── keyword lists (all lowercase for case-insensitive matching) ──────────────
 
 # Asset-light financial networks + mega-cap ad platforms — check BEFORE general financial sector
@@ -62,11 +64,31 @@ _CYCLICAL_INDUSTRY = [
 # SIC ranges that map to cyclical (semiconductors: 3674)
 _CYCLICAL_SIC_RANGES = [
     (2600, 2700),   # paper / packaging
-    (2800, 2900),   # chemicals
+    (2800, 2900),   # chemicals -- SEE _NON_CYCLICAL_SIC_CARVEOUTS: SEC major group 28 is
+                    #   "Chemicals and Allied Products" and it CONTAINS PHARMA. Commodity
+                    #   chemicals are genuinely cyclical; drugs are not. A major-group range
+                    #   cannot tell 2834 from 2860, so the carve-out below runs first.
     (3300, 3500),   # metals / fabricated metals
+    (3510, 3570),   # HEAVY MACHINERY (added L-2b): engines 351x, farm 352x, construction /
+                    #   mining / oilfield 353x (CAT is 3531), metalworking 354x, special
+                    #   industry 355x, general industrial 356x. This range previously did not
+                    #   exist and 3500-3599 fell through EVERY range, so the archetypal
+                    #   industrial cyclical scored on the generic lens with no peak gate.
+                    #   STOPS AT 3570 DELIBERATELY: 357x is computers and office equipment,
+                    #   which is not heavy machinery and must not be swept in.
     (3600, 3700),   # electronic equipment (3674 = semiconductors)
     (1000, 1500),   # mining
     (2900, 3000),   # petroleum refining
+]
+
+# SIC codes that fall INSIDE a cyclical range but are NOT cyclical businesses. Checked
+# BEFORE the ranges, and each maps to the lens it should have had.
+# 2833-2836 = medicinal chemicals, pharmaceutical preparations, in-vitro diagnostics and
+# biological products. Demand is not cyclical; the cyclical lens would normalise a pharma
+# major to "mid-cycle" earnings and expose it to a peak/rollover gate that caps valuation
+# at 2 for being at a record. Found live: LLY (SIC 2834) read cyclical.
+_NON_CYCLICAL_SIC_CARVEOUTS = [
+    ((2833, 2837), "compounder"),   # drugs and biologicals
 ]
 
 # Banks / insurers / REITs
@@ -113,13 +135,34 @@ def select_lens(
     sector: Optional[str],
     industry: Optional[str],
     sic: Optional[str] = None,
+    ticker: Optional[str] = None,
 ) -> str:
     """
     Return one of: "growth", "cyclical", "bank", "compounder", "standard".
     Checks are ordered; first match wins.
+
+    `ticker` is optional and is used ONLY to consult the explicit override list. Callers that
+    do not pass it get exactly the previous behaviour.
     """
     s = (sector or "").lower().strip()
     i = (industry or "").lower().strip()
+
+    # 0. EXPLICIT PER-ISSUER OVERRIDE, hand-curated with a mandatory rationale. First,
+    #    because a human who looked at the business outranks any inference from a vendor's
+    #    industry string or the SEC's filing code. See core/lens_overrides.
+    ov = lens_override(ticker)
+    if ov is not None:
+        return ov[0]
+
+    # 0b. Carve-outs: a SIC that sits inside a cyclical range but is not a cyclical business.
+    if sic:
+        try:
+            sic_int = int(str(sic).split(".")[0])
+            for (lo, hi), lens in _NON_CYCLICAL_SIC_CARVEOUTS:
+                if lo <= sic_int < hi:
+                    return lens
+        except (ValueError, TypeError):
+            pass
 
     # 1. Asset-light compounder (must precede general financial check)
     if any(kw in i for kw in _COMPOUNDER_INDUSTRY):

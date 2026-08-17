@@ -859,6 +859,11 @@ def _valuation_growth(yf: TickerData, fred: FredData) -> PillarResult:
     )
 
 
+# A negative multiple is an UNDEFINED one, not a cheap one. Ruled L-2b 2026-08-17 after
+# RKLB scored 5/5 on EV/EBITDA -372.6x in production.
+FLAG_NEGATIVE_MULTIPLE = "NEGATIVE-MULTIPLE-CHEAP-RUNGS-WITHHELD"
+
+
 def _valuation_standard(yf: TickerData, fred: FredData, panel=None) -> PillarResult:
     """Standard lens: EV/EBITDA, P/E, FCF yield."""
     flags: List[str] = []
@@ -882,7 +887,17 @@ def _valuation_standard(yf: TickerData, fred: FredData, panel=None) -> PillarRes
     elif not yf.ev_to_ebitda.is_missing():
         ev_eb = yf.ev_to_ebitda.value
         parts.append(f"EV/EBITDA {ev_eb:.1f}x.")
-        if ev_eb < 10:
+        if ev_eb < 0:
+            # SIGN GATE (ruled 2026-08-17, L-2b). A NEGATIVE multiple is not a cheap one,
+            # it is an UNDEFINED one: negative EV/EBITDA means negative EBITDA, so there
+            # are no earnings to be cheap against. Without this the ladder's first rung
+            # (`< 10`) admitted -372.6x and scored RKLB 5/5 — the maximum, "cheapest" rung
+            # — on an evaluation that simultaneously carried NEGATIVE-OPERATING-MARGIN,
+            # NEGATIVE-ROE and NEGATIVE-FCF. Same principle as the negative-forward-PE hard
+            # stop; found live by tripwire 1's first firing.
+            score = 1
+            flags.append(FLAG_NEGATIVE_MULTIPLE)
+        elif ev_eb < 10:
             score = 5
         elif ev_eb < 15:
             score = 4
@@ -898,7 +913,10 @@ def _valuation_standard(yf: TickerData, fred: FredData, panel=None) -> PillarRes
         pe = yf.trailing_pe.value
         parts.append(f"P/E {pe:.1f}x.")
         if not scored:
-            if pe < 12:
+            if pe < 0:
+                score = 1          # same gate: no earnings to be cheap against
+                flags.append(FLAG_NEGATIVE_MULTIPLE)
+            elif pe < 12:
                 score = 5
             elif pe < 18:
                 score = 4
@@ -908,10 +926,30 @@ def _valuation_standard(yf: TickerData, fred: FredData, panel=None) -> PillarRes
                 score = 2
             else:
                 score = 1
+            scored = True
 
     if not yf.fcf_yield.is_missing():
         fy = yf.fcf_yield.value * 100
         parts.append(f"FCF yield {fy:.1f}%.")
+
+    # THE GATE IS A CAP, NOT ONLY A LADDER RUNG (ruled: "ineligible for rungs 4 and 5").
+    # Whichever input awarded the score, a negative EV/EBITDA, P/E or FCF yield means the
+    # cheap end of the ladder is unreachable BY CONSTRUCTION. Applied last so no ordering of
+    # the three inputs can route around it.
+    negatives = [
+        f"EV/EBITDA {yf.ev_to_ebitda.value:.1f}x"
+        if not yf.ev_to_ebitda.is_missing() and yf.ev_to_ebitda.value < 0 else None,
+        f"P/E {yf.trailing_pe.value:.1f}x"
+        if not yf.trailing_pe.is_missing() and yf.trailing_pe.value < 0 else None,
+        f"FCF yield {yf.fcf_yield.value * 100:.1f}%"
+        if not yf.fcf_yield.is_missing() and yf.fcf_yield.value < 0 else None,
+    ]
+    negatives = [n for n in negatives if n]
+    if negatives and score >= 4:
+        score = 3
+        parts.append(f"Cheap rungs withheld — negative {', '.join(negatives)}.")
+        if FLAG_NEGATIVE_MULTIPLE not in flags:
+            flags.append(FLAG_NEGATIVE_MULTIPLE)
 
     parts.append(_rate_note(fred))
     confidence = min_conf(*[p for p in inputs if not p.is_missing()])

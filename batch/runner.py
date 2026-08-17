@@ -223,7 +223,7 @@ def run_single_ticker(
 
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
-        lens = select_lens(yf.sector, yf.industry, edgar.sic)
+        lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
 
         # Phase D-0 DARK: measure the three valuation anchors; applies nothing.
         if fixture_mode:
