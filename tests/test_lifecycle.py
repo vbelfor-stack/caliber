@@ -16,9 +16,12 @@ THE FOUR THINGS PINNED HARDEST, because each one is a way the table could lie qu
   4. THE G-4 CONTRACT ON DIVIDENDS. None means UNKNOWN, [] means PAYS NONE. Collapsing
      them pushes a name toward DECLINE or HIGROWTH on evidence never gathered.
 
-ONE TEST HERE PINS A REPORTED DEFECT RATHER THAN CORRECT BEHAVIOUR — see
-test_cyclical_guard_AS_BUILT_compares_latest_to_prior_peak_NOT_peak_to_peak. It is named
-to say so and it flips when Vic rules on the finding.
+THE CYCLICAL GUARD HAS BEEN DEFINED THREE TIMES AND THE TEST HISTORY IS DELIBERATE:
+L-1b compared latest revenue to the prior peak; L-1c compared it to the pre-streak peak;
+both were provably ALL-PERMIT, so the guard could not refuse anything. L-1d rules
+PEAK-TO-PEAK. `test_the_guard_can_both_permit_and_refuse_so_it_is_not_vacuous` exists
+specifically to catch a fourth one-sided definition, because one-sidedness is the failure
+mode that survived two rulings unnoticed.
 """
 from __future__ import annotations
 
@@ -30,6 +33,8 @@ import pytest
 from core.lifecycle import (
     FLAG_CYCLICAL_GUARD_BLIND,
     FLAG_CYCLICAL_GUARD_HELD,
+    FLAG_CYCLICAL_GUARD_HELD_YOUNG,
+    FLAG_GUARD_TOLERANCE_UNCALIBRATED,
     FLAG_INPUTS_INCOMPLETE,
     FLAG_INSUFFICIENT_HISTORY,
     FLAG_LENS_INCOMPAT,
@@ -342,53 +347,38 @@ def test_the_guard_is_not_applied_to_non_cyclical_lenses():
     assert leg.present and leg.value is None and "not applicable" in leg.detail
 
 
-def test_the_prior_peak_is_measured_BEFORE_the_streak_start_year():
-    """THE RULED DEFINITION (L-1c). Prior peak = max(FY revenue) over all FYs strictly
-    BEFORE the decline-streak start year; DECLINE is permitted only if the latest revenue
-    is below it.
+def test_the_guard_PERMITS_when_the_later_cycle_peak_is_below_the_earlier_one():
+    """THE RULED DEFINITION (L-1d): peak-to-peak. The two most recent local peaks; the
+    guard permits DECLINE only if the later peak is BELOW the earlier one. Strict, no
+    tolerance.
 
-    THIS TEST WAS FLIPPED. It previously pinned the as-built semantic (latest vs the peak
-    of everything-but-the-latest), which was vacuous: a declining latest year is BY
-    CONSTRUCTION below that peak, so the leg could never refuse. Anchoring the peak before
-    the streak makes it a real question — has this downcycle taken revenue below where the
-    LAST cycle topped out?
+    FLIPPED TWICE NOW, and the history is the point: L-1b compared latest-vs-prior-peak
+    (vacuous), L-1c compared latest-vs-pre-streak-peak (also vacuous, provably), and only a
+    peak-against-peak comparison measures SECULAR decline rather than trough depth.
 
-    Series below: streak of 3 (2023-2025), so the pre-streak window is 2016-2022 and the
-    prior peak is 1100 @ 2022. Latest 800 < 1100, so the guard permits and DECLINE fires.
+    Series below: local peaks 1100 @ 2018 and 900 @ 2022. Later peak is LOWER, so each
+    cycle is topping out weaker — the guard permits and DECLINE fires.
     """
-    income = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 600),
-                      (2021, 1000), (2022, 1100), (2023, 1000), (2024, 900), (2025, 800)],
+    income = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 600),
+                      (2021, 800), (2022, 900), (2023, 800), (2024, 700), (2025, 600)],
                      margins=[10.0] * 10)
     legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
     assert legs["decline_streak"].value == 3
     guard = legs["cyclical_peak_to_peak"]
     assert guard.value is True
-    assert "pre-streak peak 1,100 @ 2022" in guard.detail
-    assert classify("SYN", legs, "cyclical").stage == STAGE_DECLINE
+    assert "peak 2022 900 vs prior peak 2018 1,100" in guard.detail
+    assert "LOWER (permit)" in guard.detail
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage == STAGE_DECLINE
+    assert FLAG_GUARD_TOLERANCE_UNCALIBRATED in r.flags
 
 
-def test_the_RULED_guard_still_cannot_refuse_a_streak_REPORTED_UNRESOLVED():
-    """PINS A MEASURED FACT, NOT DESIRED BEHAVIOUR. Reported to Vic; flips on a ruling.
+def test_the_guard_REFUSES_when_the_cycle_peaks_are_RISING():
+    """The case every earlier definition let through, and the reason peak-to-peak was ruled.
 
-    The L-1c ruling anchored the prior peak BEFORE the streak start year. Implemented
-    faithfully — and it is still vacuous, for a reason that is provable rather than
-    empirical:
-
-        let k = streak >= 1, series oldest-first, latest = index n-1.
-        the streak means rev[n-1] < rev[n-2] < ... < rev[n-k-1]   (adjacent FYs)
-        the pre-streak window is series[0 .. n-k-1], which CONTAINS rev[n-k-1]
-        so prior_peak = max(pre-streak) >= rev[n-k-1] > rev[n-1] = latest
-        therefore latest < prior_peak ALWAYS.                                    QED
-
-    Measured to match: over 9,989 random cyclical series with a streak and an evaluable
-    guard, the guard permitted DECLINE 9,989 times and refused 0.
-
-    The case below is the one the guard should arguably catch — three years off a record
-    high but still ABOVE the previous cycle's top (700 @ 2018) — and it does not, because
-    the ruled window includes the current cycle's own run-up (1200 @ 2022).
-
-    CONSEQUENCE: the raised streak bar (3 vs 2) remains the ONLY cyclical protection.
-    Options put to Vic in the L-1c report; Code does not pick one.
+    Rising cycle tops (700 @ 2018 then 1200 @ 2022) mean the business is not secularly
+    declining, however deep the current trough. A magnitude bar would PERMIT here — the
+    trough is 25% off the peak — which is exactly the MU-shaped false positive.
     """
     income = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 800),
                       (2021, 1000), (2022, 1200), (2023, 1100), (2024, 1000), (2025, 900)],
@@ -396,9 +386,85 @@ def test_the_RULED_guard_still_cannot_refuse_a_streak_REPORTED_UNRESOLVED():
     legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
     assert legs["decline_streak"].value == 3
     guard = legs["cyclical_peak_to_peak"]
-    assert guard.value is True                       # permits, though 900 > 700
-    assert "pre-streak peak 1,200 @ 2022" in guard.detail
-    assert classify("SYN", legs, "cyclical").stage == STAGE_DECLINE
+    assert guard.value is False
+    assert "NOT lower (refuse)" in guard.detail
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage != STAGE_DECLINE
+    assert FLAG_CYCLICAL_GUARD_HELD in r.flags
+
+
+def test_both_peak_values_are_logged_on_every_evaluation():
+    """Ruled: log both peaks so a tolerance can be calibrated later on REAL refusals."""
+    income = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 600),
+                      (2021, 800), (2022, 900), (2023, 800), (2024, 700), (2025, 600)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    peaks = legs["cyclical_peaks"]
+    assert peaks.value == ["2018:1,100", "2022:900"]
+    assert "delta -18.18%" in peaks.detail
+    r = classify("SYN", legs, "cyclical")
+    assert any(a.leg == "cyclical_peaks" for a in r.assertions)
+    assert r.inputs["cyclical_peaks"] == ["2018:1,100", "2022:900"]   # persisted
+
+
+def test_fewer_than_two_local_peaks_REFUSES_the_permit_without_voiding_the_verdict():
+    """Ruled fail-direction: the GATE fails closed, and that is not the same as voiding the
+    classification. No two measurable cycle tops means no secular-decline tag on streak
+    strength alone — but the name still classifies on the remaining rules, so this must NOT
+    stamp INPUTS-INCOMPLETE the way the streak-spans-window case does."""
+    # One local peak only (2021), then a long decline.
+    income = _income([(2016, 400), (2017, 500), (2018, 600), (2019, 700), (2020, 800),
+                      (2021, 900), (2022, 850), (2023, 800), (2024, 750), (2025, 700)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    guard = legs["cyclical_peak_to_peak"]
+    assert legs["decline_streak"].value == 4
+    assert guard.present is True and guard.value is False
+    assert "only 1 local peak" in guard.detail
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage != STAGE_DECLINE
+    assert not any("cyclical_peak_to_peak" in e for e in r.absent_legs)
+    assert FLAG_GUARD_TOLERANCE_UNCALIBRATED not in r.flags      # no pair to calibrate on
+
+
+def test_the_latest_fy_can_never_be_a_local_peak():
+    """Its right-hand neighbour does not exist yet, so calling it a peak would assert the
+    cycle has topped when the next reading is what decides that."""
+    from core.lifecycle import _fy_series, _local_peaks
+    income = _income([(2016, 400), (2017, 500), (2018, 600), (2019, 700), (2020, 800),
+                      (2021, 900), (2022, 950), (2023, 980), (2024, 990), (2025, 9999)],
+                     margins=[10.0] * 10)
+    series, _ = _fy_series(income, None)
+    assert [lbl[:4] for lbl, _rev in _local_peaks(series)] == []
+
+
+def test_an_endpoint_may_be_a_peak_against_its_single_interior_neighbour():
+    from core.lifecycle import _fy_series, _local_peaks
+    income = _income([(2016, 900), (2017, 500), (2018, 600), (2019, 400)],
+                     margins=[10.0] * 4)
+    series, _ = _fy_series(income, None)
+    # 2016 qualifies against 2017 alone; 2018 qualifies against 2017 and 2019.
+    assert [lbl[:4] for lbl, _rev in _local_peaks(series)] == ["2016", "2018"]
+
+
+def test_the_guard_can_both_permit_and_refuse_so_it_is_not_vacuous():
+    """THE PROPERTY EVERY EARLIER DEFINITION LACKED, asserted directly.
+
+    L-1b's and L-1c's definitions were provably all-permit: whatever the data, a decline
+    streak forced LOWER=True. This test fails if the guard ever becomes one-sided again,
+    which is the failure mode that survived two rulings undetected.
+    """
+    rising = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 800),
+                      (2021, 1000), (2022, 1200), (2023, 1100), (2024, 1000), (2025, 900)],
+                     margins=[10.0] * 10)
+    falling = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 600),
+                       (2021, 800), (2022, 900), (2023, 800), (2024, 700), (2025, 600)],
+                      margins=[10.0] * 10)
+    verdicts = {
+        _legs(rising, "cyclical", dividends=PAYS_DIVIDEND)["cyclical_peak_to_peak"].value,
+        _legs(falling, "cyclical", dividends=PAYS_DIVIDEND)["cyclical_peak_to_peak"].value,
+    }
+    assert verdicts == {True, False}, "the guard is one-sided again"
 
 
 def test_with_no_decline_streak_the_guard_does_not_fire_and_is_not_absent():
@@ -439,38 +505,84 @@ def test_a_streak_spanning_the_whole_window_yields_INPUTS_INCOMPLETE_not_a_verdi
     assert FLAG_INPUTS_INCOMPLETE in r.flags
 
 
-def test_MU_mid_downcycle_classifies_YOUNG_on_real_filed_data_REPORTED():
-    """PINS A MEASURED FINDING FROM THE FY2023 COUNTERFACTUAL. Reported to Vic.
+MU_FY2023_FCF = [("2020-09-03", 83e6), ("2021-09-02", 2438e6), ("2022-09-01", 3114e6),
+                 ("2023-08-31", -6117e6)]
 
-    Ordered re-run: MU's own filed series truncated at FY2023 (the memory trough, revenue
-    30,758M -> 15,540M). Results, all measured:
 
-      - the cyclical guard PERMITS decline (15,540M < pre-streak peak 30,758M @ 2022)
-      - but the streak is 1, under the cyclical bar of 3, so rule 1 cannot fire anyway
-      - and the classification is NEITHER DECLINE NOR MATURE: MU's FY2023 operating margin
-        was -36.97% and its FCF -6,117M, so **rule 2 fires and MU classifies YOUNG.**
+def test_MU_mid_downcycle_NO_LONGER_reads_YOUNG_and_reads_MATURE_instead():
+    """ORDERED PIN 2a (L-1d). MU's own filed series truncated at FY2023 — the memory
+    trough, revenue 30,758M -> 15,540M, operating margin -36.97%, FCF -6,117M.
 
-    THE FINDING: rule 2 has NO cyclical guard, and a cyclical trough produces negative
-    margins and negative FCF by nature. A 1978-vintage memory maker is tagged
-    'Young / Pre-earnings', which under §5 would attract the widest distribution prior, the
-    30% anchor-divergence tolerance, and a mandatory supply-layer block about lockup dates
-    and insider overhang. The YOUNG-UNCALIBRATED tripwire does fire, which is the designed
-    net catching it.
+    BEFORE L-1d this classified YOUNG: rule 2 had no cyclical guard, so a trough looked
+    like pre-earnings. Now measured, every step shown rather than assumed:
 
-    NOT PATCHED — a cyclical guard on rule 2 is a rule change and therefore Vic's call.
+      - streak 1, under the cyclical bar of 3            -> rule 1 blocked on the streak
+      - peak-to-peak 2018 30,391M then 2022 30,758M, RISING -> guard REFUSES the permit too,
+        so rule 1 is blocked twice, and this time the guard genuinely performed a check
+      - rule 2's cyclical guard: earned in 2020, 2021 and 2022 (positive margin AND positive
+        FCF) -> YOUNG BLOCKED, flag CYCLICAL-GUARD-HELD-OUT-OF-YOUNG
+      - CAGR 2020->2023 is negative                      -> rule 3 cannot fire
+      - therefore MATURE, on the residual.
     """
     rows = json.loads(Path("tests/fixtures/fmp/MU.json").read_text())["income_annual"]
     through_2023 = [r for r in sorted(rows, key=lambda x: x["date"])
                     if r["date"][:4] <= "2023"]
-    legs = _legs(through_2023, "cyclical", dividends=PAYS_DIVIDEND)
+    legs = _legs(through_2023, "cyclical", dividends=PAYS_DIVIDEND, fcf=MU_FY2023_FCF)
     assert legs["fy_count"].value == 8                      # meets CYCLICAL_MIN_FY
     assert legs["decline_streak"].value == 1
-    assert legs["cyclical_peak_to_peak"].value is True      # guard permits
-    assert legs["margin_sign"].value < 0                    # -36.97%
+    assert legs["cyclical_peak_to_peak"].value is False     # peaks RISING -> refuse
+    assert legs["margin_sign"].value < 0                    # -36.97%, would have been YOUNG
+    assert legs["cyclical_has_earned"].value is True
     r = classify("MU", legs, "cyclical")
+    assert r.stage != STAGE_YOUNG
+    assert r.stage == STAGE_MATURE
+    assert r.rule_fired == "rule4_mature"
+    assert FLAG_CYCLICAL_GUARD_HELD_YOUNG in r.flags
+
+
+def test_a_genuinely_pre_earnings_cyclical_still_reaches_YOUNG():
+    """ORDERED PIN 2b (L-1d). The guard must block troughs, NOT pre-earnings names. No FY
+    in the window has both a positive operating margin and positive FCF, so nothing has
+    been demonstrably earned and YOUNG is still correct."""
+    income = _income([(2016, 10), (2017, 25), (2018, 60), (2019, 40), (2020, 90),
+                      (2021, 150), (2022, 220), (2023, 180), (2024, 260), (2025, 300)],
+                     margins=[-40.0, -35.0, -30.0, -50.0, -28.0,
+                              -22.0, -18.0, -25.0, -12.0, -8.0])
+    fcf = [(f"{y}-12-31", -5e6) for y in range(2016, 2026)]
+    legs = _legs(income, "cyclical", dividends=[], fcf=fcf)
+    assert legs["cyclical_has_earned"].value is False
+    r = classify("SYN", legs, "cyclical")
     assert r.stage == STAGE_YOUNG
     assert r.rule_fired == "rule2_young"
     assert FLAG_YOUNG_UNCALIBRATED in r.flags
+    assert FLAG_CYCLICAL_GUARD_HELD_YOUNG not in r.flags
+
+
+def test_the_rule2_guard_needs_an_FCF_series_and_says_so_when_it_has_none():
+    """THE GUARD'S REACH IS LIMITED AND THE LIMIT IS ON THE RECORD. Establishing "has
+    earned" needs BOTH a margin and an FCF reading. With no FCF series the block cannot be
+    established, so YOUNG stays reachable (R1's direction: a missing input never satisfies a
+    condition, including one that would block). MU has an FCF series; V and every bank do
+    not — a cyclical-lens name without one is still exposed to the trough-reads-YOUNG
+    behaviour."""
+    rows = json.loads(Path("tests/fixtures/fmp/MU.json").read_text())["income_annual"]
+    through_2023 = [r for r in sorted(rows, key=lambda x: x["date"])
+                    if r["date"][:4] <= "2023"]
+    legs = _legs(through_2023, "cyclical", dividends=PAYS_DIVIDEND, fcf=None)
+    assert legs["cyclical_has_earned"].present is False
+    assert "cannot_establish_earnings" in legs["cyclical_has_earned"].reason
+    assert classify("MU", legs, "cyclical").stage == STAGE_YOUNG
+
+
+def test_the_rule2_guard_does_not_apply_to_non_cyclical_lenses():
+    """A non-cyclical name with a negative margin is YOUNG on rule 2 as before — the guard
+    is scoped to the lens whose troughs motivated it."""
+    income = _income([(2022, 100), (2023, 200), (2024, 400), (2025, 800)],
+                     margins=[-30.0, -20.0, -10.0, -5.0])
+    legs = _legs(income, "growth", dividends=[],
+                 fcf=[("2023-12-31", 5e6), ("2024-12-31", 6e6), ("2025-12-31", 7e6)])
+    assert legs["cyclical_has_earned"].value is None
+    assert classify("SYN", legs, "growth").stage == STAGE_YOUNG
 
 
 def test_the_streak_is_anchored_at_the_latest_fy_not_the_worst_run_anywhere():

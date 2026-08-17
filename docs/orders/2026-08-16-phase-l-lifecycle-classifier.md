@@ -68,13 +68,64 @@ Evaluated top-down; first match wins:
 > Streak = 0 → the guard does not fire (there is no decline to gate). Streak spanning the
 > entire measured window → the guard is asserted-absent and the row is stamped
 > INPUTS-INCOMPLETE; no prior peak was observed, so no verdict is given.
-> **REPORTED UNRESOLVED (L-1c report §3):** the amended definition is still provably
+> ~~**REPORTED UNRESOLVED (L-1c report §3):** the amended definition is still provably
 > incapable of refusing — `latest < max(pre-streak)` holds for every streak ≥ 1, because
 > the year immediately preceding the streak is itself in the pre-streak window and is by
 > construction above every year in the streak. Measured: 9,989 random cyclical series with
 > a streak, 0 refusals. The raised streak bar (3 vs 2) remains the only cyclical
-> protection. Awaiting a further ruling.
+> protection. Awaiting a further ruling.~~ **RESOLVED BY THE L-1d RULING — SUPERSEDED BY
+> THE PEAK-TO-PEAK DEFINITION BELOW.**
+
+> **AMENDED AGAIN BY THE L-1d RULING, 2026-08-17 — THIS IS THE DEFINITION IN FORCE.**
+> **PEAK-TO-PEAK.** A magnitude bar was REJECTED with the rationale on record: it tests
+> TROUGH DEPTH, and deep troughs are what cyclicals do — MU fell ~50% in FY2023 while
+> secularly fine, so a magnitude bar permits DECLINE in exactly the false-positive case.
+> §3 rule 1's intent is SECULAR decline, and the only measurement of that is peak vs peak.
+> - **Local peak:** an FY whose revenue exceeds BOTH adjacent FYs. Window endpoints may
+>   qualify against their single interior neighbour — **EXCEPT the latest FY, which can
+>   never be a peak** (its right-hand neighbour does not exist yet).
+> - Take the **two most recent local peaks** in the measured window. The guard permits
+>   DECLINE only if **later peak < earlier peak**. Strict, no tolerance. Both peak values
+>   are logged on every evaluation so a tolerance can be calibrated later against REAL
+>   refusals; flagged `GUARD-TOLERANCE-UNCALIBRATED`.
+> - **Fewer than two local peaks → the guard cannot evaluate → the DECLINE permit is
+>   REFUSED**, reason recorded. The fail direction is protective: no two measurable cycle
+>   tops means no secular-decline tag on streak strength alone. **This refuses one rule's
+>   GATE, not the verdict** — the name still classifies on the remaining rules, which is why
+>   it does NOT stamp `INPUTS-INCOMPLETE`, unlike the streak-spans-window case above, which
+>   is verdict-level.
+> - **HARNESS RE-RUN, ordered and measured (same seed as L-1c):** 9,990 random cyclical
+>   series with a streak → 9,966 compared two peaks, **4,648 permits (46.6%) and 5,318
+>   refuses (53.4%)**; 23 gate-refused for fewer than two peaks; 1 asserted-absent. The
+>   definition is genuinely two-sided, against L-1c's 9,989 permits and 0 refuses.
+> - DOCUMENTED LIMITATION: adjacency is adjacency in the MEASURED series, so a missing FY
+>   would make a "neighbour" non-year-adjacent. No gap exists in FMP `income_annual` for any
+>   of the nine (FY2016–2025 contiguous), so this is latent and recorded rather than
+>   resolved — gap semantics for peak detection would be a ruling, not a detail.
 2. **YOUNG**: operating margin negative OR FCF negative in ≥2 of last 3 years OR history < 2 fiscal years.
+
+> **AMENDED BY THE L-1d RULING, 2026-08-17 — RULE 2 NOW CARRIES A CYCLICAL GUARD.**
+> For **cyclical-lens** names, YOUNG is **BLOCKED** if the measured window contains at least
+> one FY with **positive operating margin AND positive FCF**. Rationale on record: rule 2's
+> semantic is PRE-EARNINGS, and a company that has demonstrably earned inside the window is
+> not pre-earnings — it is in a trough. Blocked → fall through to the remaining rules.
+> `YOUNG-UNCALIBRATED` keeps firing wherever YOUNG is still reached, so R10's net stays live;
+> a block emits `CYCLICAL-GUARD-HELD-OUT-OF-YOUNG`.
+> **WHY IT WAS NEEDED (measured, L-1c report §4):** MU's own filed series truncated at FY2023
+> classified **YOUNG** — operating margin −36.97%, FCF −6,117M — so a 1978-vintage memory
+> maker read 'Young / Pre-earnings' at a cycle trough, which under §5 would attract the
+> widest distribution prior, the 30% divergence tolerance and a lockup/insider-overhang
+> supply block.
+> **"THE WINDOW" IS IMPLEMENTED AS THE RECENT MEASURED WINDOW** (`TREND_WINDOW_YEARS + 1`
+> points), the same span every DECLINE leg uses. The alternative reading — the entire
+> measured series — gives the SAME answer on both cases the ruling pins, so the choice is
+> not load-bearing today; it is recorded because it would matter for a name that earned a
+> decade ago and has not since.
+> **KNOWN LIMIT OF THE GUARD'S REACH:** establishing "has earned" needs a margin AND an FCF
+> reading. With no FCF series the block cannot be established and YOUNG stays reachable
+> (R1's direction — a missing input never satisfies a condition, including one that blocks).
+> MU has an FCF series; **V and every bank do not**, so a cyclical-lens name without one is
+> still exposed to the trough-reads-YOUNG behaviour. Pinned by test.
 3. **HIGROWTH**: revenue 3y CAGR ≥ 15% AND reinvestment ratio high (top-half of sector) AND capital returns absent or de minimis.
 4. **MATURE**: everything else (positive earnings, moderate growth, capital returns present or reinvestment moderate).
 

@@ -5,18 +5,19 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT L-1c 2026-08-17
+### STATE AT L-1d 2026-08-17
 **PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
 (COMPLETE, rulings R1–R11, amended by the L-1c ruling 2026-08-17).
-**NEXT: re-run the live dark table under corrected semantics + report, then STOP for Vic.**
+**NEXT: AWAITING VIC'S REVIEW of the L-1d dark table (docs/l1d-dark-run.md). §5 arming
+order is discussed only after he believes the cyclical semantics.**
 Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
 **STANDING RULE ADDED 2026-08-17: any commit closing a ruled work order PUSHES IMMEDIATELY
 — no per-commit approval. Unpushed-at-close is the exception, not the norm.**
 
 | | |
 |---|---|
-| HEAD | L-1c on master, pushed |
-| Suite | **752** (682 + 70 in tests/test_lifecycle.py) |
+| HEAD | L-1d on master, pushed |
+| Suite | **760** (682 + 78 in tests/test_lifecycle.py) |
 | caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
@@ -33,19 +34,25 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
   max FY revenue strictly BEFORE the streak start year); **bank-lens names now classify on
   NET REVENUE** (`revenue - interestExpense`), never gross; R6 default 1.50 ratified with
   the flag kept on every reading.
-- **STILL OPEN AFTER L-1c — THE CYCLICAL GUARD CANNOT REFUSE, AND THAT IS NOW PROVEN.**
-  The amended definition is implemented faithfully and is still vacuous: for any streak
-  ≥ 1, the year immediately before the streak sits in the pre-streak window and is by
-  construction above every year in the streak, so `latest < max(pre-streak)` ALWAYS.
-  Measured: 9,989 random cyclical series with a streak → **0 refusals.** The raised streak
-  bar (3 vs 2) is the ONLY cyclical protection in force. Pinned in
-  `test_the_RULED_guard_still_cannot_refuse_a_streak_REPORTED_UNRESOLVED`. Awaiting ruling.
-- **NEW FINDING, L-1c — RULE 2 HAS NO CYCLICAL GUARD, AND A TROUGH READS AS YOUNG.**
-  Ordered MU FY2023 counterfactual on real filed data: operating margin −36.97%, FCF
-  −6,117M → **MU classifies YOUNG**, which under §5 would attract the widest distribution
-  prior, the 30% divergence tolerance and a lockup/insider-overhang supply block. Reported,
-  NOT patched (a rule change is Vic's). `YOUNG-UNCALIBRATED` fires and is the net that
-  catches it. Pinned in `test_MU_mid_downcycle_classifies_YOUNG_on_real_filed_data_REPORTED`.
+- **L-1d (2026-08-17) — BOTH CYCLICAL FINDINGS CLOSED BY RULING.**
+  **THE GUARD IS NOW PEAK-TO-PEAK** (two most recent local peaks; permit iff later < earlier;
+  strict, no tolerance; both peaks logged, flagged `GUARD-TOLERANCE-UNCALIBRATED`). A
+  magnitude bar was REJECTED — it tests trough depth, and deep troughs are what cyclicals do
+  (MU fell ~50% in FY2023 while secularly fine). Fewer than two local peaks REFUSES the
+  permit as a GATE (no `INPUTS-INCOMPLETE`; other rules still classify) — distinct from the
+  streak-spans-window case, which is verdict-level.
+  **HARNESS, ordered re-run, same seed:** 9,966 evaluable → **46.6% permit / 53.4% refuse**
+  (L-1c was 100%/0%). The guard is two-sided at last;
+  `test_the_guard_can_both_permit_and_refuse_so_it_is_not_vacuous` exists to catch a fourth
+  one-sided definition, since one-sidedness survived two rulings unnoticed.
+  **RULE 2 NOW HAS A CYCLICAL GUARD:** for cyclical names YOUNG is blocked if the window
+  holds an FY with positive operating margin AND positive FCF (earned ⇒ trough, not
+  pre-earnings). MU FY2023 now reads **MATURE**, measured. `YOUNG-UNCALIBRATED` still fires
+  wherever YOUNG is reached; a block emits `CYCLICAL-GUARD-HELD-OUT-OF-YOUNG`.
+- **OPEN LIMIT ON RECORD (not a defect, a reach limit):** rule 2's guard needs BOTH a margin
+  and an FCF reading. **V and every bank have no FCF series**, so a cyclical-lens name
+  without one is still exposed to trough-reads-YOUNG. No cyclical name lacks it today (MU is
+  the only cyclical and it has one). Pinned by test.
 - **PHASE L PUNCH LIST (ruled, deferred):** calibrate
   `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms. 1.50 stands
   until then and every reading that consults it stays flagged

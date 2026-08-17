@@ -73,6 +73,8 @@ STAGES = (STAGE_YOUNG, STAGE_HIGROWTH, STAGE_MATURE, STAGE_DECLINE)
 FLAG_INPUTS_INCOMPLETE = "INPUTS-INCOMPLETE"
 FLAG_INSUFFICIENT_HISTORY = "INSUFFICIENT-HISTORY"
 FLAG_CYCLICAL_GUARD_HELD = "CYCLICAL-GUARD-HELD-OUT-OF-DECLINE"
+FLAG_CYCLICAL_GUARD_HELD_YOUNG = "CYCLICAL-GUARD-HELD-OUT-OF-YOUNG"
+FLAG_GUARD_TOLERANCE_UNCALIBRATED = "GUARD-TOLERANCE-UNCALIBRATED"
 FLAG_CYCLICAL_GUARD_BLIND = "CYCLICAL-GUARD-BLIND-WINDOW-TOO-SHORT"
 FLAG_REINVEST_UNCALIBRATED = "REINVESTMENT-THRESHOLD-UNCALIBRATED"
 FLAG_YOUNG_UNCALIBRATED = "YOUNG-UNCALIBRATED"
@@ -242,6 +244,32 @@ def _decline_streak(series: Sequence[Tuple[str, float, Optional[float]]]) -> int
     return streak
 
 
+def _local_peaks(series: Sequence[Tuple[str, float, Optional[float]]]
+                 ) -> List[Tuple[str, float]]:
+    """[(fy_label, revenue)] of LOCAL PEAKS, oldest first (L-1d ruled definition).
+
+    A local peak is an FY whose revenue exceeds BOTH adjacent FYs. Window ENDPOINTS may
+    qualify against their single interior neighbour — EXCEPT THE LATEST FY, WHICH CAN NEVER
+    BE A PEAK: its right-hand neighbour does not exist yet, so calling it a peak would be
+    asserting the cycle has topped when the next reading is what decides that.
+
+    DOCUMENTED LIMITATION: adjacency here is adjacency IN THE MEASURED SERIES. If a fiscal
+    year is missing, the neighbour used is the nearest measured one, which is not a
+    year-adjacent FY. No gap exists in FMP `income_annual` for any of the nine tickers
+    (FY2016-2025 contiguous, measured at L-1a), so this is latent — recorded rather than
+    resolved, because inventing gap semantics for peak detection is a ruling, not a detail.
+    """
+    peaks: List[Tuple[str, float]] = []
+    n = len(series)
+    for i in range(n - 1):                      # the latest FY is never a peak
+        rev = series[i][1]
+        right = series[i + 1][1]
+        left = series[i - 1][1] if i > 0 else None
+        if rev > right and (left is None or rev > left):
+            peaks.append((series[i][0], rev))
+    return peaks
+
+
 def _window(series: Sequence[Tuple[str, float, Optional[float]]], years: int):
     """(earliest_row, latest_row) spanning exactly `years` fiscal years, or None.
 
@@ -387,17 +415,48 @@ def build_legs(
             "cyclical_peak_to_peak",
             f"streak_{streak_val}_spans_measured_window_no_prior_peak")
     else:
-        pre_streak = series[:n - streak_val]         # FYs BEFORE the streak start year
-        prior_peak = max(r[1] for r in pre_streak)
-        peak_label = next(r[0] for r in pre_streak if r[1] == prior_peak)
-        latest_rev = series[-1][1]
-        lower = latest_rev < prior_peak
-        legs["cyclical_peak_to_peak"] = Leg(
-            "cyclical_peak_to_peak", lower,
-            detail=f"latest {latest_rev:,.0f} vs pre-streak peak {prior_peak:,.0f} "
-                   f"@ {peak_label[:4]} — through-cycle "
-                   f"{'LOWER' if lower else 'NOT lower'} "
-                   f"(streak {streak_val}, {n} FY measured)")
+        # PEAK-TO-PEAK (L-1d ruling). The two most recent local peaks in the measured
+        # window; the guard permits DECLINE only if the LATER peak is BELOW the EARLIER one.
+        # Strict comparison, no tolerance.
+        #
+        # WHY PEAK-TO-PEAK AND NOT A MAGNITUDE BAR (ruled, recorded because it is the whole
+        # argument): a magnitude bar tests TROUGH DEPTH, and deep troughs are what cyclicals
+        # DO — MU's revenue halved in FY2023 while the business was secularly fine, so a
+        # depth test would permit DECLINE in precisely the false-positive case. §3 rule 1's
+        # intent is SECULAR decline, and the only measurement of that is peak against peak.
+        peaks = _local_peaks(series)
+        if len(peaks) < 2:
+            # THE GATE FAILS CLOSED — permit REFUSED, and deliberately NOT asserted-absent.
+            # This refuses ONE RULE'S GATE, it does not void the classification: with fewer
+            # than two measurable cycle tops there is no secular-decline evidence, so the
+            # name simply falls through to the remaining rules and is classified normally.
+            # (Contrast the streak-spanning-window case above, which is verdict-level and
+            # DOES stamp INPUTS-INCOMPLETE.)
+            legs["cyclical_peak_to_peak"] = Leg(
+                "cyclical_peak_to_peak", False,
+                detail=f"permit REFUSED — only {len(peaks)} local peak(s) in {n} measured "
+                       f"FY; two cycle tops are needed to measure secular decline")
+            legs["cyclical_peaks"] = Leg(
+                "cyclical_peaks", [f"{lbl[:4]}:{rev:,.0f}" for lbl, rev in peaks],
+                detail=f"{len(peaks)} local peak(s): "
+                       + ("; ".join(f"{lbl[:4]} {rev:,.0f}" for lbl, rev in peaks)
+                          or "none"))
+        else:
+            (e_lbl, e_rev), (l_lbl, l_rev) = peaks[-2], peaks[-1]
+            lower = l_rev < e_rev
+            legs["cyclical_peak_to_peak"] = Leg(
+                "cyclical_peak_to_peak", lower,
+                detail=f"peak {l_lbl[:4]} {l_rev:,.0f} vs prior peak {e_lbl[:4]} "
+                       f"{e_rev:,.0f} — peak-to-peak "
+                       f"{'LOWER (permit)' if lower else 'NOT lower (refuse)'} "
+                       f"(streak {streak_val}, {n} FY measured)")
+            # Both peak values are logged on EVERY evaluation so a tolerance can be
+            # calibrated later against real refusals, rather than guessed now.
+            legs["cyclical_peaks"] = Leg(
+                "cyclical_peaks", [f"{e_lbl[:4]}:{e_rev:,.0f}", f"{l_lbl[:4]}:{l_rev:,.0f}"],
+                detail=f"two most recent local peaks — {e_lbl[:4]} {e_rev:,.0f} then "
+                       f"{l_lbl[:4]} {l_rev:,.0f} (delta "
+                       f"{(l_rev - e_rev) / e_rev * 100:+.2f}%)")
 
     # ── FCF sign, 2 of last 3 (R2) ───────────────────────────────────────────
     if fcf_fy is None:
@@ -414,6 +473,44 @@ def build_legs(
                 "fcf_negative_2of3", negs >= 2,
                 detail=f"{negs} of last 3 FY FCF negative "
                        f"({', '.join(p[:4] for p, _ in last3)})")
+
+    # ── rule 2's cyclical guard (L-1d ruling) ────────────────────────────────
+    # Rule 2's semantic is PRE-EARNINGS. A cyclical name that has demonstrably EARNED
+    # inside the measured window is not pre-earnings — it is in a trough. So for a
+    # cyclical-lens name, YOUNG is BLOCKED if the window contains at least one FY with
+    # positive operating margin AND positive FCF.
+    #
+    # "THE WINDOW" IS READ AS THE RECENT MEASURED WINDOW (TREND_WINDOW_YEARS + 1 points),
+    # the same span every DECLINE leg uses. The alternative reading — the entire measured
+    # series — gives the SAME answer on both cases the ruling pins (MU FY2023 blocked, a
+    # never-profitable synthetic still YOUNG), so the choice is not load-bearing today; it
+    # is stated here because it would matter for a name that earned a decade ago and has
+    # not since, and that case should be ruled rather than inherited.
+    if lens != "cyclical":
+        legs["cyclical_has_earned"] = Leg(
+            "cyclical_has_earned", None, detail=f"not applicable (lens={lens})")
+    elif fcf_fy is None:
+        # Cannot establish that it ever earned, so the block cannot be established either.
+        # A missing input never satisfies a condition — including a condition that would
+        # BLOCK a classification (R1, applied in the direction that does not invent
+        # evidence). YOUNG stays reachable and the absence is on the record.
+        legs["cyclical_has_earned"] = Leg.absent(
+            "cyclical_has_earned", "no_fcf_series_cannot_establish_earnings")
+    else:
+        fcf_by_year = {str(p)[:4]: v for p, v in fcf_fy if v is not None}
+        window_rows = series[-(TREND_WINDOW_YEARS + 1):]
+        earned_years = [
+            lbl[:4] for lbl, _rev, margin in window_rows
+            if margin is not None and margin > 0
+            and fcf_by_year.get(lbl[:4]) is not None and fcf_by_year[lbl[:4]] > 0
+        ]
+        legs["cyclical_has_earned"] = Leg(
+            "cyclical_has_earned", bool(earned_years),
+            detail=(f"earned in {', '.join(earned_years)} "
+                    f"(positive operating margin AND positive FCF) — not pre-earnings"
+                    if earned_years else
+                    f"no FY in the last {len(window_rows)} measured has both a positive "
+                    f"operating margin and positive FCF"))
 
     # ── capital returns (R5) ─────────────────────────────────────────────────
     if dividends is None:
@@ -562,6 +659,13 @@ def classify(
         _record(assertions, "rule1_decline", guard_leg, guard_ok)
         if not guard_leg.present:
             flags.append(FLAG_CYCLICAL_GUARD_BLIND)
+        peaks_leg = legs.get("cyclical_peaks")
+        if peaks_leg is not None:
+            # The peak pair is logged on every evaluation that produced one, so a tolerance
+            # can be calibrated later against REAL refusals instead of chosen in advance.
+            _record(assertions, "rule1_decline", peaks_leg, None)
+            if isinstance(peaks_leg.value, list) and len(peaks_leg.value) == 2:
+                flags.append(FLAG_GUARD_TOLERANCE_UNCALIBRATED)
 
     for leg in decline_legs:
         note_absent(leg)
@@ -589,7 +693,21 @@ def classify(
     _record(assertions, "rule2_young", fcf_leg, fcf_neg)
     note_absent(margin_sign_leg)
     note_absent(fcf_leg)
-    if margin_neg or fcf_neg:
+
+    # ── rule 2's CYCLICAL GUARD (L-1d) ───────────────────────────────────────
+    # A cyclical name that has earned inside the window is in a TROUGH, not pre-earnings.
+    # Blocked -> fall through to the remaining rules. YOUNG-UNCALIBRATED keeps firing
+    # wherever YOUNG is still reached, so R10's net stays live.
+    earned_leg = legs.get("cyclical_has_earned")
+    young_blocked = bool(cyclical and earned_leg is not None
+                         and earned_leg.present and earned_leg.value)
+    if cyclical and earned_leg is not None:
+        _record(assertions, "rule2_young", earned_leg, young_blocked)
+        note_absent(earned_leg)
+    if young_blocked and (margin_neg or fcf_neg):
+        flags.append(FLAG_CYCLICAL_GUARD_HELD_YOUNG)
+
+    if (margin_neg or fcf_neg) and not young_blocked:
         return StageResult(
             ticker=ticker, stage=STAGE_YOUNG, rule_fired="rule2_young", lens=lens,
             assertions=assertions, flags=_uniq(flags + [FLAG_YOUNG_UNCALIBRATED]),
