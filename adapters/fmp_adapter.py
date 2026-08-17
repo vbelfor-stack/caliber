@@ -217,6 +217,64 @@ def fetch_splits(ticker: str,
     return out
 
 
+_DIVIDENDS_CACHE: Dict[str, Optional[List[Dict[str, Any]]]] = {}
+
+
+def fetch_dividends(ticker: str,
+                    fixture_path: Optional[Path] = None,
+                    limit: int = 8) -> Optional[List[Dict[str, Any]]]:
+    """[{ex_date, dividend, frequency}, ...] newest first. **None means UNKNOWN, [] means
+    PAYS NONE.**
+
+    THE SAME CONTRACT AS fetch_splits, AND FOR THE SAME REASON (G-4, ruled again for L at
+    R11). The lifecycle classifier reads capital returns as evidence: an empty list read as
+    "this issuer pays no dividend" when it really meant "the call failed" pushes a ticker
+    toward DECLINE (rule 1's capital-returns leg) or HIGROWTH (rule 3's "returns absent")
+    on evidence that was never gathered. Callers pass None through to asserted-absent, per
+    R1 and R5; they never collapse the two.
+
+    MEASURED 2026-08-16 on the adapter's own path: WU returns 8 quarterly records, NOW
+    returns [] — NOW genuinely pays no dividend, so [] is a real and common answer here,
+    not an edge case.
+
+    Never raises: a lookup failure degrades to None (asserted-absent, flagged), never to
+    [] and never to an exception that would take down an evaluation.
+    """
+    t = ticker.upper()
+    if fixture_path is not None:
+        if not fixture_path.exists():
+            raise RuntimeError(f"[fmp] fixture not found: {fixture_path}")
+        raw = json.loads(fixture_path.read_text(encoding="utf-8"))
+        if "dividends" not in raw:
+            return None            # fixture predates the dividend capture — UNKNOWN
+        return _dividends_from_rows(raw["dividends"])
+    if t in _DIVIDENDS_CACHE:
+        return _DIVIDENDS_CACHE[t]
+    key = os.environ.get("FMP_API_KEY", "")
+    if not key:
+        return None
+    try:
+        rows = _get(f"dividends?symbol={t}&limit={limit}", key)
+    except Exception:
+        return None                # UNKNOWN, never []
+    out = _dividends_from_rows(rows)
+    _DIVIDENDS_CACHE[t] = out
+    return out
+
+
+def _dividends_from_rows(rows: Any) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for row in rows or []:
+        amt = coerce(row.get("dividend"))
+        ex = str(row.get("date", ""))[:10]
+        if not ex or amt is None:
+            continue
+        out.append({"ex_date": ex, "dividend": amt,
+                    "frequency": row.get("frequency")})
+    out.sort(key=lambda r: r["ex_date"], reverse=True)
+    return out
+
+
 def _first(lst: Any, default: Optional[Dict] = None) -> Dict:
     if isinstance(lst, list) and lst:
         return lst[0]
@@ -465,6 +523,11 @@ def fetch_payload(ticker: str) -> Dict[str, Any]:
             # Phase G: part of the ONE payload production requests, so the recorder
             # captures it and an offline run cannot drift from what live asks for.
             "splits": _safe_get(f"splits?symbol={ticker}", key, []),
+            # Phase L: capital-returns evidence for the lifecycle classifier. Same
+            # reasoning as `splits` — it joins the one payload so the recorder captures
+            # it. Fixtures recorded BEFORE this key exists carry no `dividends`, and
+            # fetch_dividends reads that as UNKNOWN (None), never as "pays none".
+            "dividends": _safe_get(f"dividends?symbol={ticker}&limit=8", key, []),
         }
     except Exception as e:
         raise RuntimeError(

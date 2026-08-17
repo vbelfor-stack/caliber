@@ -1,20 +1,42 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-15)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at L-1b, 2026-08-17)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT CLOSE 2026-08-15 (second session of the day)
-**NEXT ORDER: AWAITING VIC. Nothing is in flight. The tree is clean and pushed.**
+### STATE AT L-1b 2026-08-17
+**PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
+(COMPLETE, rulings R1–R11). **NEXT: the LIVE DARK RUN + report, then STOP for Vic.**
+Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
 
 | | |
 |---|---|
-| HEAD | see `git log -1` — session-close commit on master, 0 unpushed |
-| Suite | **682** |
-| caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** (CHANGED this session — authorized production write) |
+| HEAD | L-1b on master — push at close |
+| Suite | **740** (682 + 58 in tests/test_lifecycle.py) |
+| caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
+
+- **L-1a (8ebacd2, pushed):** `income_annual` limit 4 → 10 per R9. Depth MEASURED at 10 on
+  the adapter's own path for all nine tickers, FY2016–2025 contiguous. Fixture baseline
+  moved by SPLICE ONLY (ruled 2026-08-16) — a full re-record was REJECTED for this phase
+  because it dragged in fresh vendor data (4 pillar cells moved, recorded in the order file
+  as observed drift, deferred).
+- **L-1b (this commit):** `core/lifecycle.py` + `core/lifecycle_config.py` +
+  `tools/probe_lifecycle.py` + `fetch_dividends` + three `lifecycle_*` tables, and the §7
+  test gates. **TWO LATENT DEFECTS FIXED** in the adopted build — see the commit message.
+- **A SEMANTIC DEFECT IS REPORTED AND UNRULED — the cyclical guard.** §3 rule 1 requires
+  "through-cycle **peak-to-peak** revenue lower"; the leg as built compares the LATEST
+  revenue to the prior peak. A declining latest year is BY CONSTRUCTION below the prior
+  peak, so the leg returns LOWER=True for every cyclical name carrying a decline streak —
+  **vacuous in exactly the case it gates.** MU is held out of DECLINE today by its STREAK
+  (0 — FY2025 rose), not by the guard. Pinned as-built in
+  `test_cyclical_guard_AS_BUILT_compares_latest_to_prior_peak_NOT_peak_to_peak`, which
+  FLIPS when Vic rules. A fix needs a peak-detection definition — Vic's to rule, not
+  Code's to invent.
+- **PHASE H CLOSED EXCEPT H-4** (deferred; blocker is the missing D&A spec). **PHASE M
+  still parked**, and L blocks it.
 
 - **PHASE H IS FULLY CLOSED EXCEPT H-4.** H-1 built+dark, H-2 ruled, H-3 armed.
 - **H-4 (EBITDA leg) REMAINS DEFERRED behind EDGAR expansion** — no D&A spec exists among

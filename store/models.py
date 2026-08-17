@@ -204,6 +204,70 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_fundseries_key
                 ON fundamental_series (ticker, metric, period_end, period_type, basis);
+
+            -- ── Phase L: lifecycle stage ─────────────────────────────────────
+            -- ISSUER-KEYED and APPEND-ONLY, on the fundamental_series precedent: a stage
+            -- is a property of the issuer at a point in time, not of an evaluation run.
+            -- Every classification lands as a new row, so the history a transition report
+            -- reads is the table itself rather than a derived log that could disagree
+            -- with it.
+            --
+            -- `absent_legs` and `inputs_incomplete` are NOT decoration. A DECLINE computed
+            -- with every leg measured and a MATURE reached because a leg was missing are
+            -- different claims, and Phase M reads this table.
+            CREATE TABLE IF NOT EXISTS lifecycle_stage (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker           TEXT    NOT NULL,
+                computed_stage   TEXT    NOT NULL,
+                rule_fired       TEXT    NOT NULL,
+                lens             TEXT,
+                inputs_json      TEXT    NOT NULL,
+                assertions_json  TEXT    NOT NULL,
+                flags_json       TEXT    NOT NULL,
+                absent_legs      TEXT,               -- NULL iff nothing was absent
+                inputs_incomplete INTEGER NOT NULL DEFAULT 0,
+                config_version   TEXT    NOT NULL,
+                run_at           TEXT    NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_lifecycle_stage_ticker
+                ON lifecycle_stage (ticker, run_at);
+
+            -- Vic's override. `rationale_text` is NOT NULL and is additionally checked
+            -- non-empty by the writer: an override without a stated reason is exactly the
+            -- laundering the anti-launder mechanics exist to prevent (order §4).
+            -- Append-only — a superseding override is a NEW ROW, so the trail of what was
+            -- believed when survives.
+            CREATE TABLE IF NOT EXISTS lifecycle_overrides (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker           TEXT    NOT NULL,
+                computed_stage   TEXT    NOT NULL,
+                approved_stage   TEXT    NOT NULL,
+                rationale_text   TEXT    NOT NULL,
+                created_at       TEXT    NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_lifecycle_overrides_ticker
+                ON lifecycle_overrides (ticker, created_at);
+
+            -- Transitions are INFORMATION, not noise (order §4). A real table rather than
+            -- a view: the transition is detected against the previous row at write time,
+            -- and recomputing it later from a table that has since grown would not
+            -- reproduce what was actually reported.
+            CREATE TABLE IF NOT EXISTS lifecycle_transitions (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker           TEXT    NOT NULL,
+                from_stage       TEXT    NOT NULL,
+                to_stage         TEXT    NOT NULL,
+                from_stage_id    INTEGER REFERENCES lifecycle_stage(id),
+                to_stage_id      INTEGER REFERENCES lifecycle_stage(id),
+                overridden       INTEGER NOT NULL DEFAULT 0,
+                standing_override TEXT,
+                detected_at      TEXT    NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_lifecycle_transitions_ticker
+                ON lifecycle_transitions (ticker, detected_at);
         """)
 
         # Bring a pre-existing evaluations table up to the current column set. A DB
@@ -799,5 +863,142 @@ def list_fundamental_series(
             f"SELECT * FROM fundamental_series {clause} "
             f"ORDER BY ticker, metric, period_end DESC",
             params,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ── Phase L — lifecycle stage persistence ────────────────────────────────────
+
+class OverrideRationaleMissing(ValueError):
+    """An override was submitted without a rationale. Typed, and raised BEFORE the write.
+
+    Order §4 makes the rationale mandatory under the same anti-launder mechanics as Phase
+    M. A blank rationale is not a lesser override, it is an unexplained reclassification —
+    which is the thing the override record exists to make impossible.
+    """
+
+
+def save_lifecycle_stage(result: Any, db_path: Path = _DEFAULT_DB) -> tuple:
+    """Append one classification. Returns (stage_row_id, transition_row_id_or_None).
+
+    APPEND, NEVER OVERWRITE, on the fundamental_series precedent. A transition row is
+    written when the computed stage differs from this ticker's most recent computed stage;
+    the FIRST classification of a ticker is not a transition (there is nothing to
+    transition from) and writes no row.
+
+    A STANDING OVERRIDE IS NEVER SILENTLY RECLASSIFIED (order §4). When one exists, the
+    new computation is still recorded — suppressing it would hide the drift the re-review
+    trigger exists to surface — and the transition row is stamped `overridden` with the
+    approved stage, so the report says "computed moved, override still stands" rather than
+    implying the ticker changed stage.
+
+    Takes an explicit db_path from its caller: this is a writer, so the destination is
+    named rather than defaulted (degraded-run write guard).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    absent = ",".join(result.absent_legs) if result.absent_legs else None
+    with _conn(db_path) as conn:
+        prev = conn.execute(
+            "SELECT id, computed_stage FROM lifecycle_stage "
+            "WHERE ticker=? ORDER BY id DESC LIMIT 1",
+            (result.ticker.upper(),),
+        ).fetchone()
+
+        cur = conn.execute(
+            """INSERT INTO lifecycle_stage
+               (ticker, computed_stage, rule_fired, lens, inputs_json, assertions_json,
+                flags_json, absent_legs, inputs_incomplete, config_version, run_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (result.ticker.upper(), result.stage, result.rule_fired, result.lens,
+             json.dumps(result.inputs, default=str),
+             json.dumps([a.as_dict() for a in result.assertions]),
+             json.dumps(result.flags), absent,
+             1 if result.inputs_incomplete else 0,
+             result.config_version, now),
+        )
+        stage_id = cur.lastrowid
+
+        transition_id = None
+        if prev is not None and prev["computed_stage"] != result.stage:
+            standing = conn.execute(
+                "SELECT approved_stage FROM lifecycle_overrides "
+                "WHERE ticker=? ORDER BY id DESC LIMIT 1",
+                (result.ticker.upper(),),
+            ).fetchone()
+            t = conn.execute(
+                """INSERT INTO lifecycle_transitions
+                   (ticker, from_stage, to_stage, from_stage_id, to_stage_id,
+                    overridden, standing_override, detected_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (result.ticker.upper(), prev["computed_stage"], result.stage,
+                 prev["id"], stage_id,
+                 1 if standing is not None else 0,
+                 standing["approved_stage"] if standing is not None else None, now),
+            )
+            transition_id = t.lastrowid
+    return stage_id, transition_id
+
+
+def save_lifecycle_override(
+    ticker: str, computed_stage: str, approved_stage: str,
+    rationale_text: Optional[str], db_path: Path = _DEFAULT_DB,
+) -> int:
+    """Record Vic's override. Raises OverrideRationaleMissing BEFORE any write.
+
+    Validated ahead of the INSERT for the same reason DegradedRunWriteRefused and
+    SupersedeLinkInvalid are: a refusal that has already written something is not a
+    refusal.
+    """
+    if rationale_text is None or not str(rationale_text).strip():
+        raise OverrideRationaleMissing(
+            f"{ticker}: override {computed_stage} -> {approved_stage} refused — "
+            f"a rationale is mandatory (order §4)")
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn(db_path) as conn:
+        cur = conn.execute(
+            """INSERT INTO lifecycle_overrides
+               (ticker, computed_stage, approved_stage, rationale_text, created_at)
+               VALUES (?,?,?,?,?)""",
+            (ticker.upper(), computed_stage, approved_stage,
+             str(rationale_text).strip(), now),
+        )
+        return cur.lastrowid
+
+
+def get_standing_override(ticker: str, db_path: Path = _DEFAULT_DB) -> Optional[Dict]:
+    with _conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM lifecycle_overrides WHERE ticker=? ORDER BY id DESC LIMIT 1",
+            (ticker.upper(),),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def list_lifecycle_stages(
+    ticker: Optional[str] = None, latest_only: bool = False,
+    db_path: Path = _DEFAULT_DB,
+) -> List[Dict]:
+    with _conn(db_path) as conn:
+        if latest_only:
+            rows = conn.execute(
+                "SELECT * FROM lifecycle_stage WHERE id IN "
+                "(SELECT MAX(id) FROM lifecycle_stage GROUP BY ticker)"
+                + (" AND ticker=?" if ticker else "") + " ORDER BY ticker",
+                ((ticker.upper(),) if ticker else ()),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM lifecycle_stage"
+                + (" WHERE ticker=?" if ticker else "")
+                + " ORDER BY ticker, id DESC",
+                ((ticker.upper(),) if ticker else ()),
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_lifecycle_transitions(db_path: Path = _DEFAULT_DB) -> List[Dict]:
+    with _conn(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM lifecycle_transitions ORDER BY detected_at DESC, id DESC"
         ).fetchall()
     return [dict(r) for r in rows]
