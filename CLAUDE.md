@@ -11,7 +11,7 @@ section is the cold-start record; everything below it is the durable detail.
 **ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
 (ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
 step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: L-2a commit 2 = step 1.**
+ORDER, dark-verified before the next arms. **NEXT: L-2a step 1 is COMMITTED; the sanctioned golden-five-plus-banks run is the last action before STOP.**
 **STANDING: NO SYNTHETIC CALIBRATION, EVER** — `GUARD-TOLERANCE-UNCALIBRATED` and
 `REINVESTMENT-THRESHOLD-UNCALIBRATED` stay until REAL data calibrates them. A tolerance
 tuned on generated series is worse than no tolerance.
@@ -22,8 +22,8 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 | | |
 |---|---|
 | HEAD | L-2a on master, pushed |
-| Suite | **769** (682 + 87 in tests/test_lifecycle.py) |
-| caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
+| Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
+| caliber.db md5 | **e5f337b806d3590a9a5cb484cb1edada** — CHANGED 2026-08-17 (contamination + purge + retained lifecycle tables; see the INCIDENT section). Step 1's sanctioned write will change it again. |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
 
@@ -522,7 +522,22 @@ provenance relabel.
 **SESSION PROTOCOL — non-negotiable:**
 - Every close = commit + push + `git rev-list --count origin/master..master` reads 0 +
   `gh auth setup-git` re-check (the credential helper has vanished mid-session twice).
-- Degraded runs (`--fixture` / `--no-synthesis`) must NAME THEIR DESTINATION (`--db-path`).
+- **DEGRADED RUNS MUST NAME THEIR DESTINATION (`--db-path`) ON *BOTH* PATHS.** ~~(was
+  recorded as a single rule without naming where it was enforced)~~ **CORRECTED 2026-08-17
+  after a live contamination: the guard existed in `batch/runner.py` ONLY, and
+  `evaluate.py --fixture` wrote to production caliber.db the whole time.** Guard locations,
+  both raising `batch.runner.DegradedRunWriteRefused`:
+    `batch/runner.py`  — run_batch up front, run_single_ticker OUTSIDE its try/except
+    `evaluate.py`      — top of `evaluate()`, before any fetch (added L-2a)
+  **AND `--db-path` MUST ROUTE EVERY WRITE, not most of them.** Partial routing is the
+  mechanism that caused the incident. Enforced structurally: `save_evaluation`,
+  `save_failed_evaluation`, `save_synthesis_cache` and `save_lifecycle_stage` all take
+  `db_path` as a REQUIRED KEYWORD-ONLY argument — no production default to fall back to.
+  Pinned by `test_the_writers_in_the_evaluate_path_have_no_production_default` and by
+  `test_db_path_leaves_production_BYTE_IDENTICAL_across_a_whole_evaluate_run`.
+  STILL DEFAULTED, DELIBERATELY (their callers legitimately target production and changing
+  them is its own order): `init_db`, `save_override` (web/app.py), `save_grade`
+  (core/grading.py), `save_lifecycle_override`.
 - DARK BEFORE ARM on any new comparison surface.
 - Golden diffs are REVIEWED, never asserted.
 - **EXPECTED-DELTA SETS NAME THEIR DEPENDENTS (standing, ruled 2026-08-15).** A
@@ -556,6 +571,40 @@ provenance relabel.
   evaluation, not a degraded one. Consequence for any re-run diff: lens-selection is its
   own effect class, and a ticker whose lens changed between passes has a CONFOUNDED pillar
   diff that must not be attributed to any other cause.
+
+## ▶ INCIDENT — 2026-08-17: PRODUCTION CONTAMINATION FROM A FIXTURE RUN (closed)
+**3 evaluations + 63 field_provenance rows written to production caliber.db, then purged
+under ruling.** Recorded here because the cause was a rule that looked enforced and wasn't.
+- **What:** ids **226, 227, 228** — three MU rows, `status='ok'`, `avg_score` 4.2, with
+  `expected_return` values, from three `python evaluate.py MU --fixture --db-path
+  /tmp/step1.db` debugging runs at 19:50–19:52. Fixture pillars stapled to a synthesis
+  pulled from the 2026-08-15 MU `synthesis_cache` row — **chimeras that would have become
+  GRADEABLE in 90 days** and entered the grading set as real evaluations.
+- **Cause:** `--db-path` was newly added to `evaluate.py` for §5 step 1 and routed **only
+  the lifecycle write**; `save_evaluation` kept its production default. The flag read as
+  "this run writes here" and did not cover the run's main write. Code ran it believing it
+  was sandboxed without verifying what the flag covered. Compounding it: `evaluate.py` had
+  **never** had a degraded-run guard — the D-2 work was batch-only.
+- **Resolution:** purged in a single transaction with an exact blast-radius assertion
+  (3 ids + 63 provenance rows, else ROLLBACK) — the 2026-08-07 precedent. Verified after:
+  evaluations 36, max id 225, field_provenance 525, nothing in 226–228, grading-set query
+  clean. Backup of the contaminated state kept at `caliber.db.contaminated-2026-08-17-
+  195e6687.bak` until step 1's sanctioned run is verified, **then deleted** (a contaminated
+  backup outliving its purpose is its own hazard).
+- **md5 trail:** `e13cbee6` (pre-incident) → `195e6687` (contaminated) → **`e5f337b8`**
+  (post-purge). It does NOT return to `e13cbee6`: the three `lifecycle_*` tables created by
+  `init_db` at 19:50 were **unsanctioned but are RETAINED BY RULING** at 0 rows, because
+  step 1 creates them sanctioned within the hour and dropping them would add a destructive
+  step for cosmetic md5 purity.
+- **SECOND LEAK FOUND WHILE FIXING, never triggered:** `batch/runner.py` called
+  `save_synthesis_cache` **without `db_path`**, so a `--fixture --db-path scratch.db` batch
+  run would have routed its evaluation to the scratch DB and its synthesis cache to
+  PRODUCTION. It was never caught because the one live verification of that flag
+  (2026-08-09) used `--no-synthesis`, which writes no cache row. Fixed in L-2a.
+- **THE LESSON, and it is a new one:** the standing rules said degraded runs must name their
+  destination, and that sentence was true of the batch path and false of the interactive
+  one. **A rule recorded without naming its enforcement point is a belief, not a guard.**
+  Every guard entry in this file now names the file it lives in.
 
 ## How we work (relay / architect model)
 - Vic is architect and gatekeeper; Code executes work orders. Report as you go, in plain English.

@@ -295,6 +295,7 @@ def run_single_ticker(
                         ticker, today_str,
                         _json.dumps(synthesis.rawJson),
                         current_price,
+                        db_path=db_path or _DEFAULT_DB,
                     )
                     price_for_er = current_price
                     _log("synthesis generated and cached")

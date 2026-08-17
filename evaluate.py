@@ -9,6 +9,7 @@ Prints full five-pillar readout with provenance stamps and technical overlay.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -39,7 +40,8 @@ from synthesis.schema import (
     SynthesisOutput, compute_er, per_scenario_returns,
     check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD,
 )
-from store.models import save_evaluation, save_failed_evaluation
+from batch.runner import DegradedRunWriteRefused
+from store.models import init_db, save_evaluation, save_failed_evaluation
 
 
 # ── formatting helpers ────────────────────────────────────────────────────────
@@ -94,6 +96,118 @@ def _print_pillar(result: PillarResult) -> None:
                 print(f"    {val_str}  {_conf(p.confidence)} src={p.source}{as_of}")
 
 
+def _fy_series_from_db(db_path: Path, ticker: str, metric: str):
+    """FY points for one metric from `fundamental_series`, oldest first, READ-ONLY.
+
+    None means UNKNOWN — the table or the ticker's rows do not exist — which the classifier
+    reads as asserted-absent. An empty list would claim "this issuer has no such history",
+    which is a different and unearned statement.
+    """
+    import sqlite3
+    if not Path(db_path).exists():
+        return None
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT period_end, value FROM fundamental_series "
+            "WHERE ticker=? AND metric=? AND period_type='FY' AND superseded=0 "
+            "ORDER BY period_end",
+            (ticker.upper(), metric),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return None                      # table absent — UNKNOWN, not empty
+    finally:
+        conn.close()
+    return [(r["period_end"], r["value"]) for r in rows] or None
+
+
+def _lifecycle_block(ticker: str, yf, edgar, lens: str, fixture_mode: bool,
+                     db_path: Path, fmp_fx: Optional[Path]):
+    """§5 STEP 1 — ANNOTATE AND PERSIST. Ruled 2026-08-17.
+
+    READ-BACK IS THE THING THAT IS NOT HAPPENING HERE. The stage is computed AFTER every
+    pillar is scored and it is written to its own append-only tables; no score, confidence
+    label, tolerance, lens or E(R) consults it. Persistence without consultation, so the
+    calibration set accrues while the scoring path stays exactly as it was.
+
+    A PRODUCTION WRITE, STATED PLAINLY: one `lifecycle_stage` row per run, plus one
+    `lifecycle_transitions` row when the computed stage moves. The destination is named by
+    the caller — this writer has no default (L-2a step 0).
+    """
+    from adapters.edgar_adapter import instant_series
+    from adapters.fmp_adapter import fetch_dividends, fetch_income_annual
+    from core.lifecycle import (FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT, build_legs,
+                                classify, lens_compatibility_flags)
+    from store.models import save_lifecycle_stage
+
+    # The annual rows come from the adapter's own accessor, not from TickerData (which
+    # keeps derived point values, not the rows). None means UNKNOWN, and an unknown income
+    # series is NOT classified: an empty series would reach the insufficient-history path
+    # and emit YOUNG, so a feed flake would manufacture a pre-earnings verdict on a mature
+    # issuer. Skipping is the only honest option and it is said out loud.
+    income_annual = fetch_income_annual(ticker, fixture_path=fmp_fx)
+    if income_annual is None:
+        print(f"\n{_divider()}")
+        print("LIFECYCLE STAGE  (Phase L — annotation only)")
+        print(_divider())
+        print("  SKIPPED — annual income rows unavailable (UNKNOWN, not empty). No stage "
+              "row written: an empty series would emit YOUNG via insufficient history, "
+              "which would be a feed flake wearing a verdict.")
+        return None
+
+    transient: dict = {}
+
+    # Dividends: the one genuinely silent flake vector on this path. fetch_dividends
+    # degrades a failed lookup to None (UNKNOWN, never []), which is correct but
+    # indistinguishable from "no dividend key in an old fixture" — so classify the cause
+    # HERE, where the calling context is known, and label it.
+    dividends = fetch_dividends(ticker, fixture_path=fmp_fx)
+    if dividends is None and not fixture_mode and os.environ.get("FMP_API_KEY"):
+        transient["pays_dividend"] = "fmp_dividends_lookup_failed"
+
+    shares = None
+    pts = [(r.period_end, r.value)
+           for r in instant_series(edgar.financials, "shares_outstanding")
+           if r.period_end and r.value]
+    shares = sorted(pts) or None
+
+    legs = build_legs(
+        ticker, income_annual, lens,
+        dividends=dividends,
+        shares_series=shares,
+        fcf_fy=_fy_series_from_db(db_path, ticker, "fcf"),
+        sales_to_capital_fy=_fy_series_from_db(db_path, ticker, "sales_to_capital"),
+        transient_absences=transient,
+    )
+    result = classify(ticker, legs, lens)
+    result.flags.extend(lens_compatibility_flags(result.stage, lens))
+
+    print(f"\n{_divider()}")
+    print("LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)")
+    print(_divider())
+    print(f"  Stage: {result.stage}   (rule: {result.rule_fired}, lens: {lens})")
+    if result.flags:
+        print(f"  Flags: {', '.join(result.flags)}")
+    if result.absent_legs:
+        print(f"  Absent legs: {', '.join(result.absent_legs)}")
+    if FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT in result.flags:
+        print("  NOTE: at least one absence is a TRANSIENT FEED FAILURE, not missing data —"
+              " distrust this reading rather than acting on it.")
+    for a in result.assertions:
+        mark = {"satisfied": "OK ", "not_satisfied": "no ", "absent": "ABS"}[a.outcome]
+        print(f"    {mark} {a.rule:16} {a.leg:22} {a.detail}")
+
+    stage_id, transition_id = save_lifecycle_stage(result, db_path=db_path)
+    # EXPECTED-DELTA REPORTING (ruled): every run states what it wrote, so a production md5
+    # change is logged rather than silent.
+    print(f"\n  PRODUCTION WRITE: lifecycle_stage +1 row (id={stage_id}, {ticker})"
+          + (f"; lifecycle_transitions +1 row (id={transition_id})" if transition_id
+             else "; lifecycle_transitions +0")
+          + f"  -> {db_path}")
+    return result
+
+
 def _print_technicals(tech: TechnicalOverlay) -> None:
     print(_divider())
     print("TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)")
@@ -114,9 +228,31 @@ def _print_technicals(tech: TechnicalOverlay) -> None:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
-def evaluate(ticker: str, fixture_mode: bool = False) -> None:
+def evaluate(ticker: str, fixture_mode: bool = False,
+             db_path: Optional[Path] = None) -> None:
     ticker = ticker.upper().strip()
     fx_root = Path("tests/fixtures")
+
+    # ── DEGRADED-RUN WRITE GUARD (ruled L-2a after the 2026-08-17 contamination) ──
+    # A --fixture run REPLAYS RECORDED DATA; its output is a measurement, not an
+    # evaluation. Until now this path wrote to production regardless, which is how three
+    # fixture-pillar MU rows landed in caliber.db wearing status='ok'. The batch path has
+    # refused this since D-2; the interactive path did not, and the standing rule was
+    # recorded as though it covered both. Raised BEFORE any fetch, and the SAME exception
+    # class as batch so the rule reads once.
+    #
+    # ONE RESOLVED DESTINATION FOR EVERY WRITE IN THIS FUNCTION. The incident's mechanism
+    # was PARTIAL ROUTING: --db-path covered the lifecycle write while save_evaluation kept
+    # its production default. Nothing here may re-derive a destination.
+    if fixture_mode and db_path is None:
+        raise DegradedRunWriteRefused(
+            f"{ticker}: --fixture is a DEGRADED run (recorded data replayed) and must NAME "
+            f"ITS DESTINATION. Pass --db-path /path/to/scratch.db. Refusing before any "
+            f"work so nothing is written to production caliber.db."
+        )
+    from store.models import _DEFAULT_DB as _PROD_DB
+    write_db: Path = Path(db_path) if db_path is not None else _PROD_DB
+    init_db(write_db)
 
     print(_divider("="))
     print(f"  CALIBER v3  --  {ticker}")
@@ -305,11 +441,21 @@ def evaluate(ticker: str, fixture_mode: bool = False) -> None:
     except ValueError as e:
         print(f"  WARN: Synthesis schema error — {e}", file=sys.stderr)
 
+    # ── §5 step 1: lifecycle stage — ANNOTATE AND PERSIST, after all scoring ──
+    # Placed here deliberately: every pillar is already scored, so nothing downstream can
+    # consult the stage even by accident.
+    try:
+        _lifecycle_block(ticker, yf, edgar, lens, fixture_mode, write_db, fmp_fx)
+    except Exception as e:
+        # An annotation must never take down an evaluation. Loud on stderr, never silent.
+        print(f"  WARN: lifecycle stage annotation failed — {e}", file=sys.stderr)
+
     # ── Persist ───────────────────────────────────────────────────────────────
     print(f"\n{_divider()}")
     try:
         eval_id = save_evaluation(ticker, lens, pillars, synthesis,
-                                  expected_return=expected_return, status=anchor_status)
+                                  expected_return=expected_return, status=anchor_status,
+                                  db_path=write_db)
         print(f"  Evaluation saved  (id={eval_id})")
     except Exception as e:
         print(f"  WARN: Could not persist evaluation — {e}", file=sys.stderr)
@@ -328,8 +474,12 @@ def main() -> None:
         "--fixture", action="store_true",
         help="Load from tests/fixtures/ (offline mode, no live network calls)"
     )
+    parser.add_argument(
+        "--db-path", type=Path, default=None,
+        help="Destination for the lifecycle stage write (default: production caliber.db)"
+    )
     args = parser.parse_args()
-    evaluate(args.ticker, fixture_mode=args.fixture)
+    evaluate(args.ticker, fixture_mode=args.fixture, db_path=args.db_path)
 
 
 if __name__ == "__main__":

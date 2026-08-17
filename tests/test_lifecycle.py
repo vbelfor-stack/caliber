@@ -37,6 +37,7 @@ from core.lifecycle import (
     FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF,
     FLAG_GUARD_TOLERANCE_UNCALIBRATED,
     FLAG_INPUTS_INCOMPLETE,
+    FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT,
     FLAG_INSUFFICIENT_HISTORY,
     FLAG_LENS_INCOMPAT,
     FLAG_REINVEST_UNCALIBRATED,
@@ -1112,10 +1113,196 @@ def test_synthesis_schema_does_not_read_the_classifier():
     _assert_dark("synthesis/schema.py")
 
 
-def test_evaluate_does_not_read_the_classifier_yet():
-    """THE ONE PIN §5 STEP 1 IS EXPECTED TO FLIP. It is separate from the other four
-    precisely so that flipping it costs exactly one assertion."""
-    _assert_dark("evaluate.py")
+def _fast_offline(monkeypatch):
+    """Keep evaluate()-driven tests offline and quick.
+
+    run_synthesis reaches for the network and retries; evaluate() already treats a
+    RuntimeError from it as "synthesis skipped", which is the offline behaviour we want and
+    saves ~35s per call.
+    """
+    import evaluate as ev
+
+    def _no_synth(*a, **k):
+        raise RuntimeError("synthesis disabled in tests")
+
+    monkeypatch.setattr(ev, "run_synthesis", _no_synth)
+    return ev
+
+
+def test_evaluate_annotates_but_never_consults_the_stage():
+    """FLIPPED BY §5 STEP 1 — and it cost exactly one assertion, which is why the pin was
+    split. evaluate.py now imports the classifier; what must remain true is that nothing in
+    the SCORING path reads a stage back.
+
+    Structural assertions, since "does not consult" cannot be proven by absence of a string
+    alone: the stage is computed after score_all, and no scoring symbol appears downstream
+    of it in the same function.
+    """
+    src = Path("evaluate.py").read_text(encoding="utf-8")
+    assert "core.lifecycle" in src, "step 1 is armed; evaluate.py should import the classifier"
+    # The annotation happens AFTER scoring, so nothing downstream can consume it.
+    call = "_lifecycle_block(ticker, yf, edgar, lens, fixture_mode, write_db"
+    assert src.index("score_all(") < src.index(call)
+    # And the classifier's output is never fed to a scoring, synthesis or E(R) call.
+    tail = src[src.index(call):]
+    for forbidden in ("score_all(", "compute_er(", "run_synthesis(", "check_anchor("):
+        assert forbidden not in tail, (
+            f"{forbidden} appears AFTER the stage annotation — step 1 is annotate-only")
+
+
+def test_evaluate_writes_one_stage_row_and_moves_no_score(tmp_path, capsys, monkeypatch):
+    """THE RULED PIN FOR STEP 1: evaluate.py writes stage rows, and no score, tolerance or
+    verdict changes as a result. Measured by running the same evaluation twice — once with
+    the annotation live, once with it removed — and comparing the scorecard."""
+    ev = _fast_offline(monkeypatch)
+    db = tmp_path / "stage.db"
+    init_db(db)
+
+    ev.evaluate("MU", fixture_mode=True, db_path=db)
+    with_annotation = capsys.readouterr().out
+    rows = list_lifecycle_stages("MU", db_path=db)
+    assert len(rows) == 1, "step 1 must persist exactly one stage row per run"
+    assert rows[0]["computed_stage"] in {STAGE_YOUNG, STAGE_HIGROWTH, STAGE_MATURE,
+                                        STAGE_DECLINE}
+    assert "LIFECYCLE STAGE" in with_annotation
+    assert "PRODUCTION WRITE: lifecycle_stage +1 row" in with_annotation   # delta reported
+
+    monkeypatch.setattr(ev, "_lifecycle_block", lambda *a, **k: None)
+    ev.evaluate("MU", fixture_mode=True, db_path=db)
+    without_annotation = capsys.readouterr().out
+
+    def _scores(text):
+        return [ln.strip() for ln in text.splitlines()
+                if ln.strip().startswith(("Score:", "Composite avg score:"))]
+
+    assert _scores(with_annotation) == _scores(without_annotation), (
+        "the stage annotation moved a score — step 1 is supposed to be inert")
+    assert len(list_lifecycle_stages("MU", db_path=db)) == 1, (
+        "the disabled run still wrote a stage row")
+
+
+def test_the_stage_write_is_append_only_across_runs(tmp_path, capsys, monkeypatch):
+    """Two runs, two rows, first row untouched — the same append-only contract as
+    fundamental_series."""
+    ev = _fast_offline(monkeypatch)
+    db = tmp_path / "stage.db"
+    init_db(db)
+    ev.evaluate("MU", fixture_mode=True, db_path=db)
+    ev.evaluate("MU", fixture_mode=True, db_path=db)
+    capsys.readouterr()
+    rows = list_lifecycle_stages("MU", db_path=db)
+    assert len(rows) == 2
+    assert rows[0]["computed_stage"] == rows[1]["computed_stage"]
+    assert list_lifecycle_transitions(db_path=db) == []      # stage did not move
+
+
+def test_db_path_leaves_production_BYTE_IDENTICAL_across_a_whole_evaluate_run(
+        tmp_path, capsys, monkeypatch):
+    """THE 2026-08-17 INCIDENT'S PERMANENT TRIPWIRE.
+
+    Three MU rows landed in production caliber.db with status='ok' from a `--fixture
+    --db-path /tmp/...` run, because --db-path routed only the lifecycle write while
+    save_evaluation kept its production default. Partial routing is invisible to any test
+    that checks one table, so this checks the WHOLE FILE: every table, every byte.
+
+    `store.models._DEFAULT_DB` is what "production" means at runtime, and conftest points it
+    at a per-test file — so md5-ing that file before and after is the faithful equivalent of
+    md5-ing caliber.db.
+    """
+    import hashlib
+    import sqlite3
+
+    import store.models as models
+
+    prod = tmp_path / "pretend_production.db"
+    init_db(prod)
+    # QUIESCE BEFORE HASHING. The DBs run in WAL mode, so a freshly-written file has pages
+    # still in its -wal; a later checkpoint rewrites the main file and would show up as a
+    # byte change that no writer caused. Checkpointing here makes the baseline settled, so
+    # a difference below means a WRITE, not journal bookkeeping.
+    _q = sqlite3.connect(prod)
+    _q.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    _q.close()
+    monkeypatch.setattr(models, "_DEFAULT_DB", prod, raising=False)
+    before = hashlib.md5(prod.read_bytes()).hexdigest()
+
+    scratch = tmp_path / "scratch.db"
+    ev = _fast_offline(monkeypatch)
+    ev.evaluate("MU", fixture_mode=True, db_path=scratch)
+    capsys.readouterr()
+
+    after = hashlib.md5(prod.read_bytes()).hexdigest()
+    assert after == before, (
+        "a --db-path run mutated production — some write is still routing itself")
+    # ...and the scratch DB really did receive the run, so the test cannot pass by writing
+    # nothing anywhere.
+    assert list_lifecycle_stages("MU", db_path=scratch), "nothing was written to scratch"
+    import sqlite3
+    conn = sqlite3.connect(scratch)
+    assert conn.execute("SELECT COUNT(*) FROM evaluations").fetchone()[0] == 1
+    conn.close()
+
+
+def test_a_fixture_run_without_a_named_destination_is_REFUSED(tmp_path, monkeypatch):
+    """The guard the interactive path was missing. --fixture replays recorded data, so its
+    output is a measurement, not an evaluation; it must name its destination. Same exception
+    class as the batch path so the rule reads once."""
+    from batch.runner import DegradedRunWriteRefused
+    ev = _fast_offline(monkeypatch)
+    with pytest.raises(DegradedRunWriteRefused):
+        ev.evaluate("MU", fixture_mode=True)
+
+
+def test_the_refusal_happens_before_anything_is_written(tmp_path, monkeypatch, capsys):
+    """A refusal that has already written something is not a refusal — the same reason the
+    batch guard sits outside run_single_ticker's try/except."""
+    import store.models as models
+    prod = tmp_path / "pretend_production.db"
+    init_db(prod)
+    monkeypatch.setattr(models, "_DEFAULT_DB", prod, raising=False)
+    import hashlib
+    before = hashlib.md5(prod.read_bytes()).hexdigest()
+    from batch.runner import DegradedRunWriteRefused
+    ev = _fast_offline(monkeypatch)
+    with pytest.raises(DegradedRunWriteRefused):
+        ev.evaluate("MU", fixture_mode=True)
+    assert hashlib.md5(prod.read_bytes()).hexdigest() == before
+    out = capsys.readouterr().out
+    assert "Fetching FMP data" not in out, "the refusal came after work had already started"
+
+
+def test_the_writers_in_the_evaluate_path_have_no_production_default():
+    """REMOVE THE CLASS, NOT THE INSTANCE (ruled). Partial routing survived because a
+    default survived. Every writer evaluate.py can reach must name its destination."""
+    import inspect
+
+    from store.models import (save_evaluation, save_failed_evaluation,
+                              save_lifecycle_stage, save_synthesis_cache)
+    for fn in (save_evaluation, save_failed_evaluation, save_lifecycle_stage,
+               save_synthesis_cache):
+        p = inspect.signature(fn).parameters["db_path"]
+        assert p.default is inspect.Parameter.empty, (
+            f"{fn.__name__} grew a db_path default again — this is the incident's mechanism")
+        assert p.kind is inspect.Parameter.KEYWORD_ONLY, f"{fn.__name__}: db_path must be kw-only"
+
+
+def test_a_transient_absence_is_labelled_differently_from_missing_data():
+    """Ruled: the consumer must be able to tell a flaked feed from a real data gap. Same
+    absent leg, two different reasons and one extra flag."""
+    income = _income([(2022, 1000), (2023, 1050), (2024, 1100), (2025, 1150)],
+                     margins=[10.0] * 4)
+    structural = build_legs("SYN", income, "compounder", dividends=None,
+                            shares_series=None, fcf_fy=None, sales_to_capital_fy=None)
+    flaked = build_legs("SYN", income, "compounder", dividends=None,
+                        shares_series=None, fcf_fy=None, sales_to_capital_fy=None,
+                        transient_absences={"pays_dividend": "fmp_dividends_lookup_failed"})
+    assert structural["pays_dividend"].reason == "dividend_fetch_unknown"
+    assert flaked["pays_dividend"].reason == (
+        "feed_transient:fmp_dividends_lookup_failed")
+    assert FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT not in classify("SYN", structural,
+                                                                 "compounder").flags
+    assert FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT in classify("SYN", flaked,
+                                                            "compounder").flags
 
 
 def test_save_lifecycle_stage_refuses_to_default_its_destination():

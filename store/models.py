@@ -349,9 +349,16 @@ def save_synthesis_cache(
     eval_date: str,
     synthesis_json: str,
     price_snapshot: Optional[float],
-    db_path: Path = _DEFAULT_DB,
+    *,
+    db_path: Path,
 ) -> None:
-    """Upsert a synthesis result into the cache."""
+    """Upsert a synthesis result into the cache.
+
+    db_path IS REQUIRED (ruled L-2a, 2026-08-17). It previously defaulted to production, and
+    batch/runner called it WITHOUT a destination — so a `--db-path scratch.db` run routed its
+    evaluation to the scratch DB and its synthesis cache to PRODUCTION. Never caught, because
+    the one live verification of that flag used --no-synthesis, which writes no cache row.
+    """
     with _conn(db_path) as conn:
         conn.execute(
             """INSERT OR REPLACE INTO synthesis_cache
@@ -367,7 +374,8 @@ def save_evaluation(
     pillars: List[PillarResult],
     synthesis: Optional[SynthesisOutput],
     expected_return: Optional[float] = None,
-    db_path: Path = _DEFAULT_DB,
+    *,
+    db_path: Path,
     status: Optional[str] = None,
     supersedes_id: Optional[int] = None,
     supersede_reason: Optional[str] = None,
@@ -470,7 +478,8 @@ def backfill_no_synthesis_status(db_path: Path = _DEFAULT_DB) -> int:
 def save_failed_evaluation(
     ticker: str,
     error_msg: str,
-    db_path: Path = _DEFAULT_DB,
+    *,
+    db_path: Path,
     status: str = "failed",
 ) -> int:
     """Record a non-completing evaluation so batch runs are fully auditable.

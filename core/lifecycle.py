@@ -76,6 +76,8 @@ FLAG_CYCLICAL_GUARD_HELD = "CYCLICAL-GUARD-HELD-OUT-OF-DECLINE"
 FLAG_CYCLICAL_GUARD_HELD_YOUNG = "CYCLICAL-GUARD-HELD-OUT-OF-YOUNG"
 FLAG_GUARD_TOLERANCE_UNCALIBRATED = "GUARD-TOLERANCE-UNCALIBRATED"
 FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF = "CYCLICAL-GUARD-UNEVALUABLE-FCF-ABSENT"
+FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT = "INPUTS-INCOMPLETE-FEED-TRANSIENT"
+TRANSIENT_PREFIX = "feed_transient"
 FLAG_PEAK_GUARD_SERIES_GAP = "PEAK-GUARD-SERIES-GAP"
 FLAG_CYCLICAL_GUARD_BLIND = "CYCLICAL-GUARD-BLIND-WINDOW-TOO-SHORT"
 FLAG_REINVEST_UNCALIBRATED = "REINVESTMENT-THRESHOLD-UNCALIBRATED"
@@ -304,12 +306,26 @@ def build_legs(
     shares_series: Optional[Sequence[Tuple[str, float]]],
     fcf_fy: Optional[Sequence[Tuple[str, Optional[float]]]],
     sales_to_capital_fy: Optional[Sequence[Tuple[str, Optional[float]]]],
+    transient_absences: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Leg]:
     """Assemble every classifier leg, each either measured or asserted-absent with a reason.
 
     `dividends` and `shares_series` follow the G-4 contract: None means UNKNOWN, an empty
     sequence means the real answer is "none".
     """
+    # L-2a: A FLAKED FEED AND GENUINELY MISSING DATA ARE NOT THE SAME ABSENCE (ruled). Both
+    # render a leg asserted-absent, but the consumer needs to know which readings to distrust
+    # and which to act on: "this issuer files no capex concept" is permanent and actionable,
+    # "the dividend endpoint did not answer this minute" is neither. Callers that KNOW a
+    # lookup flaked pass the leg name here and the absence is reasoned as transient.
+    # Labelling only — no retry, no blocking.
+    transient = dict(transient_absences or {})
+
+    def _absent(name: str, structural_reason: str) -> Leg:
+        if name in transient:
+            return Leg.absent(name, f"{TRANSIENT_PREFIX}:{transient[name]}")
+        return Leg.absent(name, structural_reason)
+
     legs: Dict[str, Leg] = {}
     series, refused = _fy_series(income_annual, lens)
     n = len(series)
@@ -495,7 +511,7 @@ def build_legs(
 
     # ── FCF sign, 2 of last 3 (R2) ───────────────────────────────────────────
     if fcf_fy is None:
-        legs["fcf_negative_2of3"] = Leg.absent("fcf_negative_2of3", "no_fcf_series")
+        legs["fcf_negative_2of3"] = _absent("fcf_negative_2of3", "no_fcf_series")
     else:
         usable = [(p, v) for p, v in fcf_fy if v is not None]
         if len(usable) < 3:
@@ -549,7 +565,7 @@ def build_legs(
 
     # ── capital returns (R5) ─────────────────────────────────────────────────
     if dividends is None:
-        div_leg = Leg.absent("pays_dividend", "dividend_fetch_unknown")
+        div_leg = _absent("pays_dividend", "dividend_fetch_unknown")
     else:
         pays = len(dividends) > 0
         div_leg = Leg("pays_dividend", pays,
@@ -558,7 +574,7 @@ def build_legs(
     legs["pays_dividend"] = div_leg
 
     if shares_series is None or len(shares_series) < 2:
-        buyback_leg = Leg.absent("net_buyback", "insufficient_share_series")
+        buyback_leg = _absent("net_buyback", "insufficient_share_series")
     else:
         ordered = sorted(shares_series, key=lambda r: r[0])
         first, last = ordered[0][1], ordered[-1][1]
@@ -645,6 +661,12 @@ def classify(
     # ── the revenue basis must be established before any revenue leg is read (L-1c) ──
     # A bank whose net-revenue basis is uncomputable is stamped INPUTS-INCOMPLETE here,
     # loudly, rather than quietly classified on whatever rows survived. Never gross.
+    # A transient absence anywhere makes the whole reading provisional, and says so with a
+    # DISTINCT flag: the consumer must be able to tell a flaked feed from a real data gap.
+    if any(str(l.reason or "").startswith(TRANSIENT_PREFIX)
+           for l in legs.values() if not l.present):
+        flags.append(FLAG_INPUTS_INCOMPLETE_FEED_TRANSIENT)
+
     basis_leg = legs.get("revenue_basis")
     if basis_leg is not None and not basis_leg.present:
         note_absent(basis_leg)

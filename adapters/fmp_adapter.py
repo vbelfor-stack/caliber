@@ -275,6 +275,48 @@ def _dividends_from_rows(rows: Any) -> List[Dict[str, Any]]:
     return out
 
 
+_INCOME_ANNUAL_CACHE: Dict[str, Optional[List[Dict[str, Any]]]] = {}
+
+
+def fetch_income_annual(ticker: str,
+                        fixture_path: Optional[Path] = None,
+                        limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+    """Annual income-statement rows, newest first. **None means UNKNOWN.**
+
+    WHY THIS EXISTS SEPARATELY: TickerData does not retain the raw payload, and the
+    lifecycle classifier needs the annual ROWS (revenue levels, operating income, the bank
+    interest components) rather than the derived point values TickerData carries. Same shape
+    as fetch_splits/fetch_dividends — a named accessor over the one payload production
+    already requests, so an offline run cannot drift from what live asks for.
+
+    depth=10 is the L-1a setting (R9), MEASURED at 10 delivered rows for all nine tickers.
+
+    None is UNKNOWN and callers must NOT treat it as "no history": an empty income series
+    would classify a name YOUNG through the insufficient-history path, i.e. a feed flake
+    would manufacture a pre-earnings verdict. That is the exact error class Phase L's guards
+    exist to prevent, so the annotation is SKIPPED instead.
+    """
+    t = ticker.upper()
+    if fixture_path is not None:
+        if not fixture_path.exists():
+            raise RuntimeError(f"[fmp] fixture not found: {fixture_path}")
+        raw = json.loads(fixture_path.read_text(encoding="utf-8"))
+        rows = raw.get("income_annual")
+        return rows if isinstance(rows, list) else None
+    if t in _INCOME_ANNUAL_CACHE:
+        return _INCOME_ANNUAL_CACHE[t]
+    key = os.environ.get("FMP_API_KEY", "")
+    if not key:
+        return None
+    try:
+        rows = _get(f"income-statement?symbol={t}&period=annual&limit={limit}", key)
+    except Exception:
+        return None
+    out = rows if isinstance(rows, list) else None
+    _INCOME_ANNUAL_CACHE[t] = out
+    return out
+
+
 def _first(lst: Any, default: Optional[Dict] = None) -> Dict:
     if isinstance(lst, list) and lst:
         return lst[0]
