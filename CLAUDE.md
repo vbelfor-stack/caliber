@@ -28,7 +28,7 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 |---|---|
 | HEAD | L-2a on master, pushed |
 | Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
-| caliber.db md5 | **PRODUCTION BASELINE = `dc03507894f870f277e335ce3befbb6e`** (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
+| caliber.db md5 | **PRODUCTION BASELINE = `1e301195d756ab444641274ac732d682`** (post-backfill, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
 
@@ -642,6 +642,17 @@ under ruling.** Recorded here because the cause was a rule that looked enforced 
   window and D-2's `--db-path` (before which everything went to production by design), it has
   a matching production evaluation from the documented genuine live session, and V's fixture
   was recorded in that era. Coincidence, explained.
+
+### PHASE L PUNCH LIST (deferred, ruled)
+- Calibrate `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms.
+- **NO ETF/FUND REFUSAL GUARD EXISTS (found 2026-08-17, recorded not built).** Pointing
+  `evaluate.py` at an ETF today produces a garbage classification rather than a refusal. The
+  signal is ALREADY in the payload production fetches — FMP `profile` returns
+  `isEtf: true` (verified live on LYTE, "Roundhill Photonics & Optics ETF"). A guard is one
+  check at the adapter boundary. LYTE and FLTW are held but deliberately absent from
+  `tickers.txt` for this reason.
+- **NO SYNTHETIC CALIBRATION, EVER** — `GUARD-TOLERANCE-UNCALIBRATED` and
+  `REINVESTMENT-THRESHOLD-UNCALIBRATED` stay until REAL data calibrates them.
 
 ## How we work (relay / architect model)
 - Vic is architect and gatekeeper; Code executes work orders. Report as you go, in plain English.

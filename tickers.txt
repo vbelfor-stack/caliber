@@ -1,9 +1,49 @@
-# CALIBER v3 — batch universe
+# CALIBER v3 — HELD UNIVERSE (the portfolio, and nothing else)
+#
 # One ticker per line. Lines starting with # are comments.
-# Edit freely; this file is the sole source of truth for scheduled runs.
+# THIS FILE IS THE SOLE SOURCE OF TRUTH for what is HELD. Membership decides
+# `calibration_instrument` at write time (core/universe.py): a name here is a holding
+# (flag 0); anything absent is a calibration instrument (flag 1) and is graded normally but
+# may never appear in an output that ranks or recommends holdings.
+#
+# Rewritten 2026-08-17 on Vic's ruling. It had been seeded with the golden five at the
+# 2026-07-10 initial commit and never told about real holdings.
 
-MU
-GOOG
+# ── Taxable ───────────────────────────────────────────────────────────────────
+BE
+CAT
+DPC
+GOOGL
+LLY
+NVDA
+RKLB
+SPCX
 V
-NOW
-WU
+XE
+IONQ
+
+# ── IRA ───────────────────────────────────────────────────────────────────────
+ARM
+CBRS
+FN
+INFQ
+LITE
+LRCX
+MU
+QBTS
+SKHY
+STX
+
+# ── DELIBERATELY ABSENT — calibration population, graded, never recommended ────
+# GOOG   Alphabet class C. GOOGL is the held line; GOOG carries the entire golden-ticker
+#        history (fixtures, fundamental_series, evaluations) and keeps it — nothing is
+#        orphaned, because membership is STORED per row at write time, so historical GOOG
+#        rows retain their own story. SEE THE REPORT: GOOG and GOOGL are ONE ISSUER on ONE
+#        CIK, so carrying both would build two parallel series for one company.
+# NOW    ServiceNow — golden ticker, not a holding (ruled 2026-08-17).
+# WU     Western Union — golden ticker, not a holding (ruled 2026-08-17).
+# JPM BK USB C   bank-lens calibration instruments (D-5/D-6).
+#
+# ── EXCLUDED ENTIRELY — funds have no fundamental series to classify ──────────
+# LYTE, FLTW   ETFs. Not evaluated at all. (SPCX is a single-stock listing post-IPO and is
+#              therefore IN, above.)
