@@ -226,6 +226,18 @@ R10 (resolves D + dark-run notes). The guard is B-2, not B-1 — all code, confi
 
 ---
 
+## LENS-OVERRIDE MECHANISM — STANDING NOTE (ruled 2026-08-17, L-2b/L-3)
+
+**AN OVERRIDE CHANGES NOT JUST THE LENS BUT THE GUARD SET THAT TRAVELS WITH IT.** Rule 2's
+cyclical guard (L-1e's fail-closed FCF rule) is scoped to the cyclical lens, so moving a name
+OFF cyclical removes that protection and can change its stage. Measured live: IONQ was
+overridden cyclical -> growth and moved HIGROWTH -> YOUNG, because its negative margin now
+reaches rule 2 unguarded. Nothing was wrong — on the growth lens it is pre-earnings and YOUNG
+is the honest tag — but the effect is not obvious from the override itself.
+**THE TRANSITION REPORT IS THE REQUIRED EVIDENCE THAT THE MOVER WAS REVIEWED.**
+`lifecycle_transitions` recorded IONQ HIGROWTH -> YOUNG, which is the system working. No code
+change; this is a standing reading requirement for any future override.
+
 ## RECORDING NOTE (Code, 2026-08-16) — NOT PART OF THE ORDER
 
 ### Status after completion
