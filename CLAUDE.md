@@ -11,7 +11,12 @@ section is the cold-start record; everything below it is the durable detail.
 **ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
 (ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
 step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: L-2a step 1 is COMMITTED; the sanctioned golden-five-plus-banks run is the last action before STOP.**
+ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC.** §5 step 1 is ARMED and its sanctioned run is done
+(docs/l2a-step1-run.md): 9 stage rows, verdicts identical to the L-1d dark table, 0 transient
+readings. **ONE ITEM NEEDS A RULING BEFORE STEP 2:** the run also wrote nine REAL live
+evaluations (ids 229-237), four of which are the CALIBRATION BANKS (JPM/BK/USB/C) — they will
+be GRADEABLE in ~90 days, and the never-holdings ruling never anticipated bank rows entering
+the grading set. Nothing changed; see the report §5.
 **STANDING: NO SYNTHETIC CALIBRATION, EVER** — `GUARD-TOLERANCE-UNCALIBRATED` and
 `REINVESTMENT-THRESHOLD-UNCALIBRATED` stay until REAL data calibrates them. A tolerance
 tuned on generated series is worse than no tolerance.
@@ -23,7 +28,7 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 |---|---|
 | HEAD | L-2a on master, pushed |
 | Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
-| caliber.db md5 | **e5f337b806d3590a9a5cb484cb1edada** — CHANGED 2026-08-17 (contamination + purge + retained lifecycle tables; see the INCIDENT section). Step 1's sanctioned write will change it again. |
+| caliber.db md5 | **PRODUCTION BASELINE = `dc03507894f870f277e335ce3befbb6e`** (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
 
@@ -535,9 +540,20 @@ provenance relabel.
   `db_path` as a REQUIRED KEYWORD-ONLY argument — no production default to fall back to.
   Pinned by `test_the_writers_in_the_evaluate_path_have_no_production_default` and by
   `test_db_path_leaves_production_BYTE_IDENTICAL_across_a_whole_evaluate_run`.
-  STILL DEFAULTED, DELIBERATELY (their callers legitimately target production and changing
-  them is its own order): `init_db`, `save_override` (web/app.py), `save_grade`
-  (core/grading.py), `save_lifecycle_override`.
+  STILL DEFAULTED, DELIBERATELY — **each with its reason, because a list of exceptions
+  without reasons decays into a list nobody dares shrink** (ruled 2026-08-17). Changing any
+  of these is its own order:
+    `init_db`               web/app.py:48 calls it argument-less at import to guarantee the
+                            UI's tables exist; there is no request context to name a path.
+    `save_override`         web/app.py:451 — a human accepting a field override in the UI IS
+                            a production act; the UI has exactly one database by design.
+    `save_grade`            core/grading.py (4 sites) — grading reads production evaluations
+                            and writes production grades; a grade about a production row
+                            belongs nowhere else.
+    `save_lifecycle_override` written only by Vic, deliberately, one ticker at a time. No
+                            automated path reaches it, so a forgotten argument cannot happen
+                            in a loop. **Carries the identical exposure and is the first
+                            candidate if the class is closed further.**
 - DARK BEFORE ARM on any new comparison surface.
 - Golden diffs are REVIEWED, never asserted.
 - **EXPECTED-DELTA SETS NAME THEIR DEPENDENTS (standing, ruled 2026-08-15).** A
@@ -605,6 +621,27 @@ under ruling.** Recorded here because the cause was a rule that looked enforced 
   destination, and that sentence was true of the batch path and false of the interactive
   one. **A rule recorded without naming its enforcement point is a belief, not a guard.**
   Every guard entry in this file now names the file it lives in.
+- **AND THE SECOND LESSON, from the batch leak (ruled worth recording 2026-08-17):**
+  **A FLAG VERIFICATION ONLY COVERS THE WRITES THE VERIFYING RUN ACTUALLY PERFORMS.** The
+  2026-08-09 `--db-path` verification passed honestly and proved nothing about
+  `save_synthesis_cache`, because `--no-synthesis` meant the leaking write never executed.
+  When verifying a routing flag, enumerate every write the path CAN make and make the
+  verifying run perform all of them.
+- **AUDIT, 2026-08-17 — NO CONTAMINATED `synthesis_cache` ROWS EXIST. Closed.** Question
+  asked: did any batch run between 2026-08-09 and today execute `--fixture` WITH synthesis?
+  **Answer: no**, on three independent measurements. (a) ORPHAN TEST: all 16 cache rows have
+  a matching production evaluation for the same ticker+date — a `--fixture --db-path` run
+  would by construction leave a cache row with its evaluation in the scratch DB, i.e. an
+  orphan; there are none. (b) The only post-08-09 cache rows are the five from the sanctioned
+  live re-run of 2026-08-15, and every price is a LIVE value differing from the fixture value
+  (GOOG 343.54 vs 343, MU 971.66 vs 979.3, NOW 124.0 vs 127.54, V 364.15 vs 348.97,
+  WU 7.45 vs 7.08). (c) The only `--fixture` batch invocation in the repo record is
+  `--fixture --no-synthesis --db-path /tmp/h1_scratch.db` (docs/h1-series.md:191), which
+  writes no cache row. **RED HERRING, named so nobody re-opens it:** cache row
+  `V 2026-07-12 price=348.97` matches V's fixture price EXACTLY — but it predates both the
+  window and D-2's `--db-path` (before which everything went to production by design), it has
+  a matching production evaluation from the documented genuine live session, and V's fixture
+  was recorded in that era. Coincidence, explained.
 
 ## How we work (relay / architect model)
 - Vic is architect and gatekeeper; Code executes work orders. Report as you go, in plain English.
