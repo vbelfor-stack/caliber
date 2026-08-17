@@ -34,6 +34,7 @@ from core.lifecycle import (
     FLAG_CYCLICAL_GUARD_BLIND,
     FLAG_CYCLICAL_GUARD_HELD,
     FLAG_CYCLICAL_GUARD_HELD_YOUNG,
+    FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF,
     FLAG_GUARD_TOLERANCE_UNCALIBRATED,
     FLAG_INPUTS_INCOMPLETE,
     FLAG_INSUFFICIENT_HISTORY,
@@ -573,20 +574,84 @@ def test_a_genuinely_pre_earnings_cyclical_still_reaches_YOUNG():
     assert FLAG_CYCLICAL_GUARD_HELD_YOUNG not in r.flags
 
 
-def test_the_rule2_guard_needs_an_FCF_series_and_says_so_when_it_has_none():
-    """THE GUARD'S REACH IS LIMITED AND THE LIMIT IS ON THE RECORD. Establishing "has
-    earned" needs BOTH a margin and an FCF reading. With no FCF series the block cannot be
-    established, so YOUNG stays reachable (R1's direction: a missing input never satisfies a
-    condition, including one that would block). MU has an FCF series; V and every bank do
-    not — a cyclical-lens name without one is still exposed to the trough-reads-YOUNG
-    behaviour."""
+def test_an_unevaluable_rule2_guard_FAILS_CLOSED_and_blocks_YOUNG():
+    """ORDERED PIN (L-1e). FLIPPED: this previously asserted YOUNG stayed reachable when the
+    guard could not evaluate — the R1 "a missing input never satisfies a condition" reading,
+    applied to a condition that BLOCKS.
+
+    RULED OTHERWISE, and the rationale is asymmetric on purpose: the exposure is
+    trough-reads-YOUNG, so the protective direction WITHHOLDS YOUNG from a cyclical we
+    cannot clear rather than granting it. A genuinely pre-earnings cyclical with no FCF
+    series is a feed problem to fix, not a classification to guess.
+
+    MU truncated at FY2023 with no FCF series: margin −36.97% would fire rule 2, and the
+    guard cannot evaluate. YOUNG must be blocked anyway.
+    """
     rows = json.loads(Path("tests/fixtures/fmp/MU.json").read_text())["income_annual"]
     through_2023 = [r for r in sorted(rows, key=lambda x: x["date"])
                     if r["date"][:4] <= "2023"]
     legs = _legs(through_2023, "cyclical", dividends=PAYS_DIVIDEND, fcf=None)
     assert legs["cyclical_has_earned"].present is False
     assert "cannot_establish_earnings" in legs["cyclical_has_earned"].reason
-    assert classify("MU", legs, "cyclical").stage == STAGE_YOUNG
+    assert legs["margin_sign"].value < 0
+    r = classify("MU", legs, "cyclical")
+    assert r.stage != STAGE_YOUNG
+    assert FLAG_CYCLICAL_GUARD_HELD_YOUNG in r.flags
+    assert FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF in r.flags
+
+
+def test_a_cyclical_with_no_fcf_series_and_negative_margins_does_not_read_YOUNG():
+    """The ordered pin, stated on synthetic data so it does not depend on MU's history."""
+    income = _income([(2016, 100), (2017, 120), (2018, 140), (2019, 120), (2020, 100),
+                      (2021, 130), (2022, 160), (2023, 140), (2024, 120), (2025, 100)],
+                     margins=[-5.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND, fcf=None)
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage != STAGE_YOUNG
+    assert FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF in r.flags
+
+
+def test_a_gap_in_the_revenue_window_REFUSES_the_peak_guard():
+    """ORDERED PIN (L-1e). Contiguity is a PRECONDITION, not a semantic to define: a peak
+    detected against a phantom neighbour is fabricated structure. A hole anywhere in the
+    measured window refuses the permit — the same closed fail as fewer than two peaks — and
+    the reason names the remedy as feed repair.
+
+    Peaks are not even computed on a gapped series, so no invented structure reaches the
+    calibration set.
+    """
+    # 2021 missing. Without the precondition, 2020 would read as a peak against 2022.
+    income = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 1200),
+                      (2022, 900), (2023, 800), (2024, 700), (2025, 600)],
+                     margins=[10.0] * 9)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    guard = legs["cyclical_peak_to_peak"]
+    assert guard.present is True and guard.value is False
+    assert "PEAK-GUARD-SERIES-GAP" in guard.detail
+    assert "missing FY 2021" in guard.detail
+    assert "repair the feed" in guard.detail
+    assert legs["cyclical_peaks"].value == []
+    assert "NOT COMPUTED" in legs["cyclical_peaks"].detail
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage != STAGE_DECLINE
+    # Gate-level refusal: the verdict is not voided, so no absence is claimed for the guard.
+    assert not any("cyclical_peak_to_peak" in e for e in r.absent_legs)
+
+
+def test_both_gates_deny_the_tag_they_guard_when_they_cannot_measure():
+    """THE SYMMETRY, asserted directly: the peak gate denies DECLINE, the FCF gate denies
+    YOUNG. Neither grants a tag it could not measure."""
+    gapped = _income([(2016, 500), (2017, 900), (2018, 1100), (2019, 700), (2020, 1200),
+                      (2022, 900), (2023, 800), (2024, 700), (2025, 600)],
+                     margins=[10.0] * 9)
+    assert classify("SYN", _legs(gapped, "cyclical", dividends=PAYS_DIVIDEND),
+                    "cyclical").stage != STAGE_DECLINE
+
+    no_fcf = _income([(2016, 100), (2017, 120), (2018, 140), (2019, 120), (2020, 100),
+                      (2021, 130), (2022, 160), (2023, 140), (2024, 120), (2025, 100)],
+                     margins=[-5.0] * 10)
+    assert classify("SYN", _legs(no_fcf, "cyclical", dividends=PAYS_DIVIDEND, fcf=None),
+                    "cyclical").stage != STAGE_YOUNG
 
 
 def test_the_rule2_guard_does_not_apply_to_non_cyclical_lenses():

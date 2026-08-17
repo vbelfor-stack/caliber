@@ -5,19 +5,20 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT L-1d 2026-08-17
+### STATE AT L-1e 2026-08-17
 **PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
 (COMPLETE, rulings R1–R11, amended by the L-1c ruling 2026-08-17).
-**NEXT: AWAITING VIC'S REVIEW of the L-1d dark table (docs/l1d-dark-run.md). §5 arming
-order is discussed only after he believes the cyclical semantics.**
+**NEXT: AWAITING VIC'S ARMING RULING.** Dark tables: docs/l1d-dark-run.md (verdicts),
+docs/l1e-preconditions.md (L-1e + the arming-order argument). §5 arms one behaviour at a
+time, and the FIRST step requires flipping the dark-surface pin — see the report.
 Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
 **STANDING RULE ADDED 2026-08-17: any commit closing a ruled work order PUSHES IMMEDIATELY
 — no per-commit approval. Unpushed-at-close is the exception, not the norm.**
 
 | | |
 |---|---|
-| HEAD | L-1d on master, pushed |
-| Suite | **761** (682 + 79 in tests/test_lifecycle.py) |
+| HEAD | L-1e on master, pushed |
+| Suite | **764** (682 + 82 in tests/test_lifecycle.py) |
 | caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
@@ -53,10 +54,20 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
   holds an FY with positive operating margin AND positive FCF (earned ⇒ trough, not
   pre-earnings). MU FY2023 now reads **MATURE**, measured. `YOUNG-UNCALIBRATED` still fires
   wherever YOUNG is reached; a block emits `CYCLICAL-GUARD-HELD-OUT-OF-YOUNG`.
-- **OPEN LIMIT ON RECORD (not a defect, a reach limit):** rule 2's guard needs BOTH a margin
-  and an FCF reading. **V and every bank have no FCF series**, so a cyclical-lens name
-  without one is still exposed to trough-reads-YOUNG. No cyclical name lacks it today (MU is
-  the only cyclical and it has one). Pinned by test.
+- **L-1e (2026-08-17) — BOTH GUARD PRECONDITIONS FAIL CLOSED. THE SYMMETRY IS THE POINT:
+  the peak gate denies DECLINE when it cannot measure, the FCF gate denies YOUNG when it
+  cannot measure.** Neither grants a tag on evidence it could not gather.
+  (1) Cyclical name with NO FCF series → YOUNG BLOCKED, `CYCLICAL-GUARD-UNEVALUABLE-FCF-
+  ABSENT`. **This departs from R1's usual direction on purpose** (a missing input now DENIES
+  a tag rather than permitting one) because the exposure is trough-reads-YOUNG; a
+  pre-earnings cyclical with no FCF series is a feed problem, not a guess.
+  (2) Any missing FY in the measured window → peak guard REFUSES, `PEAK-GUARD-SERIES-GAP`;
+  peaks are not even computed on a gapped series, so fabricated structure cannot reach the
+  calibration set. Contiguity is a PRECONDITION — "adjacent across a hole" is deliberately
+  undefined. A real hit is a feed-repair ticket and the reason says so.
+  **BOTH ARE PROVABLY INERT LIVE, measured not assumed:** all nine names are contiguous
+  FY2016–2025, and MU (the only cyclical lens) has 6 FY FCF points. No dark run was ordered
+  or needed.
 - **PHASE L PUNCH LIST (ruled, deferred):** calibrate
   `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms. 1.50 stands
   until then and every reading that consults it stays flagged

@@ -75,6 +75,8 @@ FLAG_INSUFFICIENT_HISTORY = "INSUFFICIENT-HISTORY"
 FLAG_CYCLICAL_GUARD_HELD = "CYCLICAL-GUARD-HELD-OUT-OF-DECLINE"
 FLAG_CYCLICAL_GUARD_HELD_YOUNG = "CYCLICAL-GUARD-HELD-OUT-OF-YOUNG"
 FLAG_GUARD_TOLERANCE_UNCALIBRATED = "GUARD-TOLERANCE-UNCALIBRATED"
+FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF = "CYCLICAL-GUARD-UNEVALUABLE-FCF-ABSENT"
+FLAG_PEAK_GUARD_SERIES_GAP = "PEAK-GUARD-SERIES-GAP"
 FLAG_CYCLICAL_GUARD_BLIND = "CYCLICAL-GUARD-BLIND-WINDOW-TOO-SHORT"
 FLAG_REINVEST_UNCALIBRATED = "REINVESTMENT-THRESHOLD-UNCALIBRATED"
 FLAG_YOUNG_UNCALIBRATED = "YOUNG-UNCALIBRATED"
@@ -395,12 +397,28 @@ def build_legs(
     # whether this downcycle has taken revenue below where the LAST cycle topped out.
     streak_val = legs["decline_streak"].value if legs["decline_streak"].present else None
 
+    # CONTIGUITY IS A PRECONDITION, NOT A SEMANTIC (L-1e ruling). A peak detected against a
+    # phantom neighbour is FABRICATED STRUCTURE, so a hole anywhere in the measured revenue
+    # window disqualifies peak detection outright rather than being papered over with a
+    # definition of "adjacent across a gap". Peaks are not even computed on a gapped series:
+    # logging them would put invented structure into the calibration set.
+    _gap_years: List[int] = []
+    if series:
+        _years = [_fy_year(lbl) for lbl, _r, _m in series]
+        _gap_years = [y for y in range(_years[0], _years[-1] + 1) if y not in set(_years)]
+
     # PEAKS ARE LOGGED FOR EVERY CYCLICAL EVALUATION, not only the ones where the guard
     # reaches a comparison. The ruling asks for the peak pair so a tolerance can be
     # calibrated later; MU is the only cyclical name in the universe and its guard does not
     # fire (streak 0), so logging only on comparison would leave the calibration set EMPTY —
     # which is the opposite of what the instruction was for.
-    if lens == "cyclical":
+    if lens == "cyclical" and _gap_years:
+        _peaks = []
+        legs["cyclical_peaks"] = Leg(
+            "cyclical_peaks", [],
+            detail=f"NOT COMPUTED — series gap at {', '.join(str(y) for y in _gap_years)}; "
+                   f"peak detection against a non-adjacent FY would fabricate structure")
+    elif lens == "cyclical":
         _peaks = _local_peaks(series)
         legs["cyclical_peaks"] = Leg(
             "cyclical_peaks", [f"{lbl[:4]}:{rev:,.0f}" for lbl, rev in _peaks],
@@ -432,6 +450,17 @@ def build_legs(
         legs["cyclical_peak_to_peak"] = Leg.absent(
             "cyclical_peak_to_peak",
             f"streak_{streak_val}_spans_measured_window_no_prior_peak")
+    elif _gap_years:
+        # THE GATE FAILS CLOSED, exactly as it does for fewer than two peaks: present-and-
+        # False, so DECLINE is denied while the name still classifies on the other rules.
+        # The reason names the remedy — a real hit here is a FEED-REPAIR ticket, not a
+        # modelling call, and the refusal says so.
+        legs["cyclical_peak_to_peak"] = Leg(
+            "cyclical_peak_to_peak", False,
+            detail=f"permit REFUSED — {FLAG_PEAK_GUARD_SERIES_GAP}: missing FY "
+                   f"{', '.join(str(y) for y in _gap_years)} in the measured window. "
+                   f"Contiguity is a precondition; repair the feed rather than infer a peak "
+                   f"across the hole")
     else:
         # PEAK-TO-PEAK (L-1d ruling). The two most recent local peaks in the measured
         # window; the guard permits DECLINE only if the LATER peak is BELOW the EARLIER one.
@@ -704,14 +733,26 @@ def classify(
     # A cyclical name that has earned inside the window is in a TROUGH, not pre-earnings.
     # Blocked -> fall through to the remaining rules. YOUNG-UNCALIBRATED keeps firing
     # wherever YOUNG is still reached, so R10's net stays live.
+    # L-1e: THE GATE FAILS CLOSED ON YOUNG. Two ways to block, and an unevaluable guard is
+    # one of them: the exposure is trough-reads-YOUNG, so the protective direction WITHHOLDS
+    # YOUNG from any cyclical we cannot clear rather than granting it. A genuinely
+    # pre-earnings cyclical with no FCF series is a FEED PROBLEM TO FIX, not a
+    # classification to guess.
+    #
+    # SYMMETRY WITH THE PEAK GATE: the peak gate denies DECLINE when it cannot measure; this
+    # gate denies YOUNG when it cannot measure. Each gate refuses the tag it guards.
     earned_leg = legs.get("cyclical_has_earned")
-    young_blocked = bool(cyclical and earned_leg is not None
-                         and earned_leg.present and earned_leg.value)
+    earned_true = bool(cyclical and earned_leg is not None
+                       and earned_leg.present and earned_leg.value)
+    guard_unevaluable = bool(cyclical and earned_leg is not None and not earned_leg.present)
+    young_blocked = earned_true or guard_unevaluable
     if cyclical and earned_leg is not None:
-        _record(assertions, "rule2_young", earned_leg, young_blocked)
+        _record(assertions, "rule2_young", earned_leg, earned_true)
         note_absent(earned_leg)
     if young_blocked and (margin_neg or fcf_neg):
         flags.append(FLAG_CYCLICAL_GUARD_HELD_YOUNG)
+        if guard_unevaluable:
+            flags.append(FLAG_CYCLICAL_GUARD_UNEVALUABLE_FCF)
 
     if (margin_neg or fcf_neg) and not young_blocked:
         return StageResult(

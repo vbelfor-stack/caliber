@@ -98,10 +98,18 @@ Evaluated top-down; first match wins:
 >   series with a streak → 9,966 compared two peaks, **4,648 permits (46.6%) and 5,318
 >   refuses (53.4%)**; 23 gate-refused for fewer than two peaks; 1 asserted-absent. The
 >   definition is genuinely two-sided, against L-1c's 9,989 permits and 0 refuses.
-> - DOCUMENTED LIMITATION: adjacency is adjacency in the MEASURED series, so a missing FY
+> - ~~DOCUMENTED LIMITATION: adjacency is adjacency in the MEASURED series, so a missing FY
 >   would make a "neighbour" non-year-adjacent. No gap exists in FMP `income_annual` for any
 >   of the nine (FY2016–2025 contiguous), so this is latent and recorded rather than
->   resolved — gap semantics for peak detection would be a ruling, not a detail.
+>   resolved — gap semantics for peak detection would be a ruling, not a detail.~~
+>   **CLOSED BY THE L-1e RULING, 2026-08-17: CONTIGUITY IS A PRECONDITION, not a semantic to
+>   define.** Any missing FY in the measured revenue window → the peak-to-peak guard REFUSES
+>   to evaluate, same closed fail as fewer than two peaks, reason `PEAK-GUARD-SERIES-GAP`.
+>   "Adjacent" is deliberately NOT defined across a hole — a peak detected against a phantom
+>   neighbour is fabricated structure. Peaks are not even COMPUTED on a gapped series, so no
+>   invented structure can reach the tolerance calibration set. A real hit is a FEED-REPAIR
+>   ticket and the refusal reason says so. Measured cost live: ZERO — all nine names are
+>   contiguous FY2016–2025.
 2. **YOUNG**: operating margin negative OR FCF negative in ≥2 of last 3 years OR history < 2 fiscal years.
 
 > **AMENDED BY THE L-1d RULING, 2026-08-17 — RULE 2 NOW CARRIES A CYCLICAL GUARD.**
@@ -121,11 +129,25 @@ Evaluated top-down; first match wins:
 > measured series — gives the SAME answer on both cases the ruling pins, so the choice is
 > not load-bearing today; it is recorded because it would matter for a name that earned a
 > decade ago and has not since.
-> **KNOWN LIMIT OF THE GUARD'S REACH:** establishing "has earned" needs a margin AND an FCF
+> ~~**KNOWN LIMIT OF THE GUARD'S REACH:** establishing "has earned" needs a margin AND an FCF
 > reading. With no FCF series the block cannot be established and YOUNG stays reachable
 > (R1's direction — a missing input never satisfies a condition, including one that blocks).
 > MU has an FCF series; **V and every bank do not**, so a cyclical-lens name without one is
-> still exposed to the trough-reads-YOUNG behaviour. Pinned by test.
+> still exposed to the trough-reads-YOUNG behaviour. Pinned by test.~~
+> **CLOSED BY THE L-1e RULING, 2026-08-17: THE GATE FAILS CLOSED ON YOUNG.** A cyclical-lens
+> name lacking an FCF series → the guard cannot evaluate → **YOUNG is BLOCKED**, reason
+> `CYCLICAL-GUARD-UNEVALUABLE-FCF-ABSENT` recorded, and the name falls through to the
+> remaining rules. Rationale: the exposure is trough-reads-YOUNG, so the protective direction
+> WITHHOLDS YOUNG from any cyclical we cannot clear rather than granting it. A genuinely
+> pre-earnings cyclical with no FCF series is a FEED PROBLEM TO FIX, not a classification to
+> guess. **This deliberately DEPARTS from R1's usual direction** — R1 says a missing input
+> never satisfies a condition, and here the condition being blocked means the absence now
+> denies a tag instead of permitting one. Recorded as a departure so it is not read as an
+> inconsistency later.
+>
+> **THE SYMMETRY, ruled and now built (L-1e):** the **peak gate fails closed on DECLINE**, the
+> **FCF gate fails closed on YOUNG** — each gate denies the tag it guards when it cannot
+> measure. Neither gate grants a classification on evidence it could not gather.
 3. **HIGROWTH**: revenue 3y CAGR ≥ 15% AND reinvestment ratio high (top-half of sector) AND capital returns absent or de minimis.
 4. **MATURE**: everything else (positive earnings, moderate growth, capital returns present or reinvestment moderate).
 
