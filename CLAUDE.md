@@ -17,7 +17,7 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 | | |
 |---|---|
 | HEAD | L-1d on master, pushed |
-| Suite | **760** (682 + 78 in tests/test_lifecycle.py) |
+| Suite | **761** (682 + 79 in tests/test_lifecycle.py) |
 | caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
@@ -41,6 +41,10 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
   (MU fell ~50% in FY2023 while secularly fine). Fewer than two local peaks REFUSES the
   permit as a GATE (no `INPUTS-INCOMPLETE`; other rules still classify) — distinct from the
   streak-spans-window case, which is verdict-level.
+  Peaks are logged for EVERY cyclical evaluation (not only on comparison) — MU's guard does
+  not fire, so comparison-only logging left the calibration set EMPTY; fixed in c87815a.
+  **NOTE THE LIVE TABLE HAS NEVER EXERCISED THE GUARD:** MU is the only cyclical name and
+  its streak is 0. The evidence the guard works is the harness + synthetics, not the table.
   **HARNESS, ordered re-run, same seed:** 9,966 evaluable → **46.6% permit / 53.4% refuse**
   (L-1c was 100%/0%). The guard is two-sided at last;
   `test_the_guard_can_both_permit_and_refuse_so_it_is_not_vacuous` exists to catch a fourth

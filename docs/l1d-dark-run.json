@@ -4,6 +4,7 @@
     "rule": "rule4_mature",
     "lens": "cyclical",
     "flags": [
+      "GUARD-TOLERANCE-UNCALIBRATED",
       "REINVESTMENT-THRESHOLD-UNCALIBRATED"
     ],
     "absent": [],
@@ -33,6 +34,12 @@
         "leg": "cyclical_peak_to_peak",
         "outcome": "not_satisfied",
         "detail": "does not fire \u2014 no decline streak to gate (streak 0)"
+      },
+      {
+        "rule": "rule1_decline",
+        "leg": "cyclical_peaks",
+        "outcome": "not_satisfied",
+        "detail": "2 local peak(s): 2018 30,391,000,000; 2022 30,758,000,000 \u2014 two most recent delta +1.21%"
       },
       {
         "rule": "rule2_young",
