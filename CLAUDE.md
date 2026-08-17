@@ -11,7 +11,15 @@ section is the cold-start record; everything below it is the durable detail.
 **ARMING ORDER RULED 2026-08-17:** step 0 housekeeping → step 1 tags in evaluate.py
 (ANNOTATE-AND-PERSIST, a sanctioned production write) → step 2 full-universe dark run →
 step 3 B-2 stage-conditioned tolerances → step 4 YOUNG supply block. ONE STEP PER WORK
-ORDER, dark-verified before the next arms. **NEXT: AWAITING VIC ON THE STEP-2 UNIVERSE TABLE (docs/l2-universe-run.md).** Step 3 arms
+ORDER, dark-verified before the next arms. **NEXT: STEP 3 (B-2 stage-conditioned tolerances) IS UNBLOCKED AND AWAITS VIC'S ORDER.**
+L-2b closed both step-2 defects (docs/l2b-fixes-and-reruns.md): the standard lens now
+withholds cheap rungs from NEGATIVE multiples (RKLB Valuation 5 -> 1), and the lens map was
+rewritten at SEC granularity (pharma carved out of the chemicals range -> LLY compounder;
+heavy machinery 3510-3570 added -> CAT cyclical; IONQ/INFQ/BE overridden to growth with
+mandatory rationale). Six superseding re-runs landed. **STEP 4 REMAINS BLOCKED behind
+fundamental_series coverage expansion (ruled) — the YOUNG/blocked boundary currently reflects
+which names have FCF data, not business reality.**
+(superseded) AWAITING VIC ON THE STEP-2 UNIVERSE TABLE (docs/l2-universe-run.md). Step 3 arms
 only after review. **TWO SCORING DEFECTS FOUND BY THE RUN, NEITHER FIXED (scoring logic =
 Vic's ruling):** (1) RKLB scores Valuation **5/5 on EV/EBITDA -372.6x** — the standard lens's
 fallback ladder rung `ev_eb < 10` admits NEGATIVE multiples, so a loss-maker reads maximally
@@ -36,7 +44,7 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 |---|---|
 | HEAD | L-2a on master, pushed |
 | Suite | **776** (682 + 94 in tests/test_lifecycle.py) |
-| caliber.db md5 | **PRODUCTION BASELINE = `e7be34a9315bbd03e4711dcce6c57576`** (post step-2 universe run, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
+| caliber.db md5 | **PRODUCTION BASELINE = `24df814597b6bab52b979e7fee6ca034`** (post L-2b re-runs, WAL-checkpointed). Earlier same-day values were recorded WITHOUT a checkpoint — **always `PRAGMA wal_checkpoint(TRUNCATE)` before recording an md5**, or a later checkpoint moves bytes with no logical write. Previous: `dc03507894f870f277e335ce3befbb6e` (§5 step 1's sanctioned write, 2026-08-17). Trail: `e13cbee6` → `195e6687` (contaminated) → `e5f337b8` (purged) → **`dc035078`**. **Every future "unchanged" claim verifies against the CURRENT value**, not e13cbee6. |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
 
@@ -652,6 +660,25 @@ under ruling.** Recorded here because the cause was a rule that looked enforced 
   was recorded in that era. Coincidence, explained.
 
 ### PHASE L PUNCH LIST (deferred, ruled)
+- **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17).**
+  `fundamental_series` covers 4 of 28 names, so the YOUNG population (4, with 4 more blocked
+  by L-1e's fail-closed guard) currently reflects **which names happen to have FCF data**,
+  not business reality. A hard block driven by feed coverage would be arbitrary in exactly
+  the way this system exists to avoid. **Sequence: fundamental_series coverage expansion →
+  then step 4.** The two feed-repair tickets below join that work.
+  **STEP 3 (B-2 stage-conditioned tolerances) MAY PROCEED after L-2b** — tolerances are
+  bounded and inspectable; blocks are not.
+- **FEED-REPAIR TICKETS (from the step-2 run):** `income_annual` series gaps —
+  **IONQ missing FY2020**, **XE missing FY2023 and FY2024**. Both had peak detection REFUSED
+  rather than inferred across the hole (L-1e contiguity precondition, which fired on live
+  data despite being recorded as latent).
+- **SHARE-CLASS DEDUP AT CIK LEVEL (ruled 2026-08-17, not built).** GOOG and GOOGL are ONE
+  issuer on ONE CIK (0001652044) and both are now evaluated. Two rows with near-identical
+  fundamentals would DOUBLE-WEIGHT one forecast in any grade rollup. GOOGL is canonical
+  (held); GOOG is calibration. Dedup by CIK before grading aggregates, not by ticker.
+- **REPLACE THE `_CYCLICAL_INDUSTRY` KEYWORD SWEEP with explicit SIC entries** as names
+  accumulate. Matching keywords against a vendor's free-text industry string is what put
+  IONQ/INFQ on the cyclical lens and forced the L-2b overrides.
 - Calibrate `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms.
 - **NO ETF/FUND REFUSAL GUARD EXISTS (found 2026-08-17, recorded not built).** Pointing
   `evaluate.py` at an ETF today produces a garbage classification rather than a refusal. The
