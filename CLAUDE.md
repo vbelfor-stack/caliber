@@ -502,6 +502,11 @@ prior session notes. If any peer process exists: STOP, report the full ps with s
 labeled, and await ruling before touching the tree. Never execute a kill against a PID not
 verified this session.
 
+ALSO CHECK FOR ORPHANED CHILDREN OF A DEAD SESSION (added 2026-08-17): processes with
+`ppid 1` running python / evaluate.py / batch.runner. A session died mid-order on 2026-08-16,
+and anything of its that can still WRITE TO caliber.db is a data hazard, not just clutter.
+Enumerate by ppid, per the close protocol — do not pattern-match for them.
+
 WHY THIS EXISTS (2026-08-15, real incident): an orphaned peer session shared this checkout
 and wrote the entire H-1 build into it WHILE a fresh session was re-orienting after an
 interrupt — the tree changed between two `git status` calls minutes apart. The successor
@@ -511,6 +516,17 @@ LEFT THE WRITER RUNNING. A PPID read settled it in one command. Two sessions on 
 checkout is a data-loss hazard; an unverified kill target is a worse one.
 
 ## SESSION-CLOSE PROTOCOL (standing rule, 2026-08-09)
+- **ENUMERATE CHILD PROCESSES BY PPID AND STOP THEM. A PATTERN GREP IS NOT A PROCESS CHECK.**
+  `ps -eo pid,ppid,etime,cmd --no-headers | awk '$2==<own pid>'` — the parent/child link is
+  STRUCTURAL; a grep pattern is a guess about what you happened to name things. Stop harness
+  tasks with **TaskStop** (keeps its bookkeeping straight), not a bare kill.
+  ORIGIN 2026-08-17: the close reported "zero processes" after grepping
+  `python|evaluate.py|pytest` — a pattern that CANNOT match a bash `until ... sleep` loop —
+  while two wait-loops had been spinning for 2h27m and 55m. Vic caught it, not the check.
+- **`pgrep -f "X"` MATCHES THE WATCHER'S OWN COMMAND LINE.** Both leaked loops used
+  `until ! pgrep -f "evaluate.py"`, and their own `bash -c` contained that literal string, so
+  the exit condition was UNREACHABLE FROM THE FIRST SECOND. Self-exclude (`| grep -v $$`),
+  match on something the watcher does not contain, or wait on the harness task instead.
 - EVERY session ends with a PUSH TO ORIGIN after the session-close commit. Unpushed local
   commits are a single-container-failure loss — committing is NOT backing up. The close is
   not done until `git rev-list --count origin/master..master` reads 0.
