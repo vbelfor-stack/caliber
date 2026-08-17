@@ -47,6 +47,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from core.lifecycle_config import (
+    BANK_LENS,
+    BANK_NET_REVENUE_CROSSCHECK_TOL,
+    BANK_NET_REVENUE_FORMULA,
     BUYBACK_DE_MINIMIS_NET_REDUCTION,
     CAGR_WINDOW_YEARS,
     CYCLICAL_MIN_FY,
@@ -131,22 +134,71 @@ class StageResult:
 
 # ── Input assembly ───────────────────────────────────────────────────────────
 
-def _fy_series(income_annual: Sequence[Dict]) -> List[Tuple[str, float, Optional[float]]]:
-    """[(fy_label, revenue, operating_margin_pct)], OLDEST FIRST.
+def _revenue_on_basis(row: Dict, lens: Optional[str]) -> Tuple[Optional[float], Optional[str]]:
+    """(revenue_on_the_basis_this_lens_requires, refusal_reason).
+
+    NON-BANK: the filed `revenue`, as before.
+
+    BANK (L-1c ruling): NET revenue, `revenue - interestExpense`. FMP's bank `revenue` is
+    gross of interest expense and therefore tracks the rate cycle rather than the
+    business — see core/lifecycle_config for the measured case. The published
+    netInterestIncome identity is CHECKED, not assumed, and a disagreement REFUSES the row
+    instead of picking a side. **There is no gross fallback**: refusing is the ruling.
+    """
+    rev = row.get("revenue")
+    try:
+        rev = None if rev in (None, 0) else float(rev)
+    except (TypeError, ValueError):
+        rev = None
+    if rev is None:
+        return None, "no_revenue"
+    if lens != BANK_LENS:
+        return rev, None
+
+    ie = row.get("interestExpense")
+    try:
+        ie = None if ie is None else float(ie)
+    except (TypeError, ValueError):
+        ie = None
+    if ie is None:
+        return None, "bank_net_revenue_components_missing"
+    net = rev - ie
+
+    ii, nii = row.get("interestIncome"), row.get("netInterestIncome")
+    if ii is not None and nii is not None:
+        try:
+            alt = float(nii) + (rev - float(ii))
+        except (TypeError, ValueError):
+            alt = None
+        if alt is not None and abs(alt - net) > BANK_NET_REVENUE_CROSSCHECK_TOL * max(
+                abs(net), 1.0):
+            return None, "bank_net_revenue_formulas_disagree"
+    if net <= 0:
+        return None, "non_positive_net_revenue"
+    return net, None
+
+
+def _fy_series(income_annual: Sequence[Dict], lens: Optional[str] = None
+               ) -> Tuple[List[Tuple[str, float, Optional[float]]], List[str]]:
+    """([(fy_label, revenue, operating_margin_pct)] OLDEST FIRST, [refused_row_notes]).
 
     Rows lacking a usable revenue are DROPPED, not zero-filled — a zero revenue would
     manufacture a 100% decline. A dropped row leaves a HOLE, and holes break streaks
     rather than spanning them (R4).
+
+    THE MARGIN SHARES THE BASIS. For a bank the denominator is net revenue, because an
+    operating margin struck on gross interest income is not a margin anyone uses and would
+    drift with rates exactly as the revenue leg did.
     """
     out: List[Tuple[str, float, Optional[float]]] = []
+    refused: List[str] = []
     for row in income_annual or []:
         date = str(row.get("date", ""))[:10]
-        rev = row.get("revenue")
-        if not date or rev in (None, 0):
+        rev, reason = _revenue_on_basis(row, lens)
+        if not date:
             continue
-        try:
-            rev = float(rev)
-        except (TypeError, ValueError):
+        if rev is None:
+            refused.append(f"{date[:4]}:{reason}")
             continue
         oi = row.get("operatingIncome")
         margin = None
@@ -157,7 +209,7 @@ def _fy_series(income_annual: Sequence[Dict]) -> List[Tuple[str, float, Optional
                 margin = None
         out.append((date, rev, margin))
     out.sort(key=lambda r: r[0])
-    return out
+    return out, refused
 
 
 def _fy_year(label: str) -> int:
@@ -229,10 +281,31 @@ def build_legs(
     sequence means the real answer is "none".
     """
     legs: Dict[str, Leg] = {}
-    series = _fy_series(income_annual)
+    series, refused = _fy_series(income_annual, lens)
     n = len(series)
 
     legs["fy_count"] = Leg("fy_count", n, detail=f"{n} usable fiscal years")
+
+    # ── which revenue basis this classification stands on (L-1c) ──────────────
+    # Recorded as a leg so the basis travels with the row. A bank classified on net
+    # revenue and one classified on gross are not the same measurement, and after the
+    # L-1c ruling the gross one is not a permitted measurement at all.
+    if lens == BANK_LENS:
+        if refused:
+            legs["revenue_basis"] = Leg.absent(
+                "revenue_basis",
+                f"bank_net_revenue_uncomputable[{';'.join(refused)}]")
+        else:
+            legs["revenue_basis"] = Leg(
+                "revenue_basis", "net_revenue",
+                detail=f"net_revenue ({BANK_NET_REVENUE_FORMULA}) — bank lens, "
+                       f"{n} FY on basis")
+    else:
+        legs["revenue_basis"] = Leg(
+            "revenue_basis", "gross_revenue",
+            detail=f"gross_revenue (as filed) — lens={lens}"
+                   + (f"; {len(refused)} row(s) unusable: {';'.join(refused)}"
+                      if refused else ""))
 
     # ── revenue trend ────────────────────────────────────────────────────────
     if n < 2:
@@ -282,7 +355,17 @@ def build_legs(
             detail=f"latest FY operating margin {latest_margin:.2f}% "
                    f"({'negative' if latest_margin < 0 else 'positive'})")
 
-    # ── cyclical through-cycle guard (R9) ────────────────────────────────────
+    # ── cyclical through-cycle guard — RULED DEFINITION (L-1c, 2026-08-17) ────
+    # PRIOR PEAK = max(FY revenue) over all FYs strictly BEFORE the decline-streak START
+    # year. The guard permits DECLINE only if the latest revenue is BELOW that prior peak.
+    #
+    # WHAT THIS REPLACES AND WHY. The first implementation compared the latest revenue to
+    # the peak of everything except the latest year. That is vacuous: a declining latest
+    # year is BY CONSTRUCTION below the prior peak, so it returned LOWER for every cyclical
+    # name with a streak — it could not refuse in the only situation it exists for.
+    # Anchoring the peak BEFORE the streak begins makes it a real comparison: it asks
+    # whether this downcycle has taken revenue below where the LAST cycle topped out.
+    streak_val = legs["decline_streak"].value if legs["decline_streak"].present else None
     if lens != "cyclical":
         legs["cyclical_peak_to_peak"] = Leg(
             "cyclical_peak_to_peak", None,
@@ -290,17 +373,31 @@ def build_legs(
     elif n < CYCLICAL_MIN_FY:
         legs["cyclical_peak_to_peak"] = Leg.absent(
             "cyclical_peak_to_peak", f"under_{CYCLICAL_MIN_FY}_fy_cannot_see_a_cycle")
+    elif not streak_val:
+        # No decline to gate. The guard does not fire, and it is NOT absent — nothing is
+        # missing. DECLINE is already unreachable on the streak leg alone.
+        legs["cyclical_peak_to_peak"] = Leg(
+            "cyclical_peak_to_peak", None,
+            detail="does not fire — no decline streak to gate (streak 0)")
+    elif streak_val >= n - 1:
+        # The streak covers the whole measured window, so no PRIOR PEAK was ever observed
+        # — the earliest reading is the left edge of the window, not a cycle top. Say so
+        # rather than treat the edge as a peak.
+        legs["cyclical_peak_to_peak"] = Leg.absent(
+            "cyclical_peak_to_peak",
+            f"streak_{streak_val}_spans_measured_window_no_prior_peak")
     else:
-        # Peak-to-peak: is the most recent local peak BELOW the prior one? Peaks are read
-        # off the measured series; "lower" is what the guard requires to allow DECLINE.
-        peak_all = max(r[1] for r in series)
+        pre_streak = series[:n - streak_val]         # FYs BEFORE the streak start year
+        prior_peak = max(r[1] for r in pre_streak)
+        peak_label = next(r[0] for r in pre_streak if r[1] == prior_peak)
         latest_rev = series[-1][1]
-        earlier_peak = max(r[1] for r in series[:-1])
-        lower = latest_rev < earlier_peak and latest_rev < peak_all
+        lower = latest_rev < prior_peak
         legs["cyclical_peak_to_peak"] = Leg(
             "cyclical_peak_to_peak", lower,
-            detail=f"latest {latest_rev:,.0f} vs prior peak {earlier_peak:,.0f} — "
-                   f"through-cycle {'LOWER' if lower else 'NOT lower'} ({n} FY measured)")
+            detail=f"latest {latest_rev:,.0f} vs pre-streak peak {prior_peak:,.0f} "
+                   f"@ {peak_label[:4]} — through-cycle "
+                   f"{'LOWER' if lower else 'NOT lower'} "
+                   f"(streak {streak_val}, {n} FY measured)")
 
     # ── FCF sign, 2 of last 3 (R2) ───────────────────────────────────────────
     if fcf_fy is None:
@@ -372,6 +469,16 @@ def build_legs(
 
 # ── Rule engine ──────────────────────────────────────────────────────────────
 
+def _uniq(flags: Sequence[str]) -> List[str]:
+    """Order-preserving dedupe. INPUTS-INCOMPLETE can now be raised by the basis check AND
+    by a rule's own absent legs; a flag list that repeats itself reads like two findings."""
+    out: List[str] = []
+    for f in flags:
+        if f not in out:
+            out.append(f)
+    return out
+
+
 def _record(assertions: List[Assertion], rule: str, leg: Leg,
             satisfied: Optional[bool]) -> None:
     outcome = "absent" if not leg.present else ("satisfied" if satisfied
@@ -403,6 +510,16 @@ def classify(
 
     fy_count = legs["fy_count"].value or 0
 
+    # ── the revenue basis must be established before any revenue leg is read (L-1c) ──
+    # A bank whose net-revenue basis is uncomputable is stamped INPUTS-INCOMPLETE here,
+    # loudly, rather than quietly classified on whatever rows survived. Never gross.
+    basis_leg = legs.get("revenue_basis")
+    if basis_leg is not None and not basis_leg.present:
+        note_absent(basis_leg)
+        flags.append(FLAG_INPUTS_INCOMPLETE)
+        assertions.append(Assertion("basis", basis_leg.name, "absent",
+                                    basis_leg.detail or ""))
+
     # ── Rule 2 pre-empted: insufficient history (order §2) ───────────────────
     # Ordered FIRST because it is a statement about whether the OTHER rules can be
     # evaluated at all, not a competing classification.
@@ -413,7 +530,7 @@ def classify(
         return StageResult(
             ticker=ticker, stage=STAGE_YOUNG, rule_fired="rule2_young_insufficient_history",
             lens=lens, assertions=assertions,
-            flags=[FLAG_INSUFFICIENT_HISTORY, FLAG_YOUNG_UNCALIBRATED],
+            flags=_uniq(flags + [FLAG_INSUFFICIENT_HISTORY, FLAG_YOUNG_UNCALIBRATED]),
             # Same "name(reason)" shape every other path writes. This return used bare
             # names, so the one row where absence is the WHOLE story was the one row whose
             # absent_legs did not say why.
@@ -453,7 +570,7 @@ def classify(
     if all_present and streak_ok and margin_ok and returns_ok and guard_ok:
         return StageResult(
             ticker=ticker, stage=STAGE_DECLINE, rule_fired="rule1_decline", lens=lens,
-            assertions=assertions, flags=flags, absent_legs=absent,
+            assertions=assertions, flags=_uniq(flags), absent_legs=absent,
             inputs={k: v.value for k, v in legs.items()})
 
     # The guard EARNED its keep whenever a cyclical name cleared the non-cyclical bar and
@@ -475,7 +592,7 @@ def classify(
     if margin_neg or fcf_neg:
         return StageResult(
             ticker=ticker, stage=STAGE_YOUNG, rule_fired="rule2_young", lens=lens,
-            assertions=assertions, flags=flags + [FLAG_YOUNG_UNCALIBRATED],
+            assertions=assertions, flags=_uniq(flags + [FLAG_YOUNG_UNCALIBRATED]),
             absent_legs=absent, inputs={k: v.value for k, v in legs.items()})
 
     # ── Rule 3 — HIGROWTH (AND, remaining-legs for R7's named absences) ──────
@@ -509,8 +626,8 @@ def classify(
         return StageResult(
             ticker=ticker, stage=STAGE_HIGROWTH, rule_fired="rule3_higrowth", lens=lens,
             assertions=assertions,
-            flags=flags + ([FLAG_INPUTS_INCOMPLETE]
-                           if any(not l.present for l in higrowth_legs) else []),
+            flags=_uniq(flags + ([FLAG_INPUTS_INCOMPLETE]
+                                 if any(not l.present for l in higrowth_legs) else [])),
             absent_legs=absent, inputs={k: v.value for k, v in legs.items()})
 
     # ── Rule 4 — MATURE (residual) ───────────────────────────────────────────
@@ -521,7 +638,7 @@ def classify(
     return StageResult(
         ticker=ticker, stage=STAGE_MATURE, rule_fired="rule4_mature", lens=lens,
         assertions=assertions,
-        flags=flags + ([FLAG_INPUTS_INCOMPLETE] if absent else []),
+        flags=_uniq(flags + ([FLAG_INPUTS_INCOMPLETE] if absent else [])),
         absent_legs=absent, inputs={k: v.value for k, v in legs.items()})
 
 

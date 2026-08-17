@@ -59,7 +59,21 @@ Every classification decision carries **per-point assertions**: which input, whi
 
 Evaluated top-down; first match wins:
 
-1. **DECLINE**: revenue declining ≥2 consecutive years AND (margin trend flat/down) AND capital returns or debt paydown dominant. Cyclical guard: if lens = cyclical, revenue decline alone never triggers DECLINE — require ≥3 consecutive years AND through-cycle peak-to-peak revenue lower. (Prevents MU-type downcycle misclassification.)
+1. **DECLINE**: revenue declining ≥2 consecutive years AND (margin trend flat/down) AND capital returns or debt paydown dominant. Cyclical guard: if lens = cyclical, revenue decline alone never triggers DECLINE — require ≥3 consecutive years AND ~~through-cycle peak-to-peak revenue lower~~. (Prevents MU-type downcycle misclassification.)
+
+> **AMENDED BY THE L-1c RULING, 2026-08-17** (struck text above kept in place, not deleted,
+> per the recording discipline). The guard's definition is now explicit:
+> **prior peak = max(FY revenue) over all FYs strictly BEFORE the decline-streak start
+> year**, and DECLINE is permitted only if the latest revenue is below that prior peak.
+> Streak = 0 → the guard does not fire (there is no decline to gate). Streak spanning the
+> entire measured window → the guard is asserted-absent and the row is stamped
+> INPUTS-INCOMPLETE; no prior peak was observed, so no verdict is given.
+> **REPORTED UNRESOLVED (L-1c report §3):** the amended definition is still provably
+> incapable of refusing — `latest < max(pre-streak)` holds for every streak ≥ 1, because
+> the year immediately preceding the streak is itself in the pre-streak window and is by
+> construction above every year in the streak. Measured: 9,989 random cyclical series with
+> a streak, 0 refusals. The raised streak bar (3 vs 2) remains the only cyclical
+> protection. Awaiting a further ruling.
 2. **YOUNG**: operating margin negative OR FCF negative in ≥2 of last 3 years OR history < 2 fiscal years.
 3. **HIGROWTH**: revenue 3y CAGR ≥ 15% AND reinvestment ratio high (top-half of sector) AND capital returns absent or de minimis.
 4. **MATURE**: everything else (positive earnings, moderate growth, capital returns present or reinvestment moderate).
@@ -123,7 +137,7 @@ R6. **Reinvestment threshold:** "top-half of sector" is struck — no compliant 
 
 ## Ruling R11 — 2026-08-16 (Vic, via chat), resolving Code's open question E
 
-R11 (resolves E). Margin-trend window = 3 fiscal years (latest FY vs FY-3, i.e. 4 data points), matching the CAGR leg's horizon — all DECLINE legs measure the same recent window, and DECLINE is a current-state classification, not a decade verdict. Window is a versioned config value, Vic-tunable, default 3y. Flat band stays ±100bp and is understood as calibrated to the default window; anyone widening the window revisits the band. Under R11, WU classifies DECLINE on measured data (four down revenue years, −36bp margin over 3y, dividend-paying) — this is the intended verdict; §7's WU expectation is settled as DECLINE. Additional confirmations adopted into the record: FMP honours limit=10 on income_annual (nine tickers, FY2016–2025 contiguous); MU held out of DECLINE twice over on through-cycle evidence, §7 confirmed; dividend endpoint usable with G-4 contract discipline mandatory — empty list = pays-none, fetch failure = unknown/asserted-absent, the two must never collapse; GOOG-gap correction accepted, gap-breaking logic still built defensively with a synthetic test case since no live one exists.
+R11 (resolves E). Margin-trend window = 3 fiscal years (latest FY vs FY-3, i.e. 4 data points), matching the CAGR leg's horizon — all DECLINE legs measure the same recent window, and DECLINE is a current-state classification, not a decade verdict. Window is a versioned config value, Vic-tunable, default 3y. Flat band stays ±100bp and is understood as calibrated to the default window; anyone widening the window revisits the band. Under R11, WU classifies DECLINE on measured data (four down revenue years, −36bp margin over 3y, dividend-paying) — this is the intended verdict; §7's WU expectation is settled as DECLINE. Additional confirmations adopted into the record: FMP honours limit=10 on income_annual (nine tickers, FY2016–2025 contiguous); ~~MU held out of DECLINE twice over on through-cycle evidence~~ **[CORRECTED 2026-08-17 by the L-1c ruling: MU is held out of DECLINE BY ITS STREAK ALONE (0 — FY2025 rose). The guard performed no check. Under the amended definition streak 0 means the guard does not fire at all, so there is no second reason and never was]**, §7 confirmed; dividend endpoint usable with G-4 contract discipline mandatory — empty list = pays-none, fetch failure = unknown/asserted-absent, the two must never collapse; GOOG-gap correction accepted, gap-breaking logic still built defensively with a synthetic test case since no live one exists.
 
 ## Rulings — 2026-08-16 (Vic, via chat), second set, resolving Code's audit A–D
 
@@ -262,8 +276,24 @@ function, no code changed, no writes. Nine tickers.
 - **MU, cyclical guard now evaluable and it holds:** revenue peaks FY2018 30,391M → FY2022
   30,758M → FY2025 37,378M, i.e. peak-to-peak RISING, so "through-cycle revenue lower" is
   FALSE. Longest consecutive decline streak is 2 (FY2019, FY2020) — under the ≥3 cyclical
-  bar — and the streak ending at the latest FY is 0 (FY2025 rose). MU is held out of DECLINE
-  twice over, on measured through-cycle evidence. §7's expectation confirmed.
+  bar — and the streak ending at the latest FY is 0 (FY2025 rose). ~~MU is held out of
+  DECLINE twice over, on measured through-cycle evidence.~~ §7's expectation confirmed.
+  **[CORRECTED 2026-08-17, L-1c ruling: MU IS HELD OUT BY ITS STREAK ALONE (0). The "twice
+  over" reading credited the guard with a check it never performed — the as-built leg
+  compared the latest revenue to the peak of everything-but-the-latest, which cannot refuse
+  a decline. Under the amended definition a streak of 0 means the guard does not fire at
+  all. The peak-to-peak sequence quoted above is the right IDEA and was computed BY HAND in
+  this note; it is not what the code measured then and still is not what it measures now.
+  See the L-1c report §3 — the amended definition remains provably unable to refuse, and
+  the raised streak bar is the only cyclical protection in force.]**
+- **MU MID-DOWNCYCLE, ordered counterfactual (L-1c, measured on MU's own filed series
+  truncated at FY2023):** revenue 30,758M → 15,540M. The guard PERMITS decline (15,540M <
+  pre-streak peak 30,758M @ FY2022) and the streak is 1, under the cyclical bar of 3, so
+  rule 1 cannot fire regardless. **But MU classifies YOUNG, not MATURE and not DECLINE** —
+  FY2023 operating margin −36.97% and FCF −6,117M fire rule 2, which HAS NO CYCLICAL GUARD.
+  A 1978-vintage memory maker reads 'Young / Pre-earnings' at a trough. Reported, not
+  patched: a cyclical guard on rule 2 is a rule change and therefore Vic's call. The
+  YOUNG-UNCALIBRATED tripwire fires, which is the designed net catching it.
 - **DIVIDEND ENDPOINT (R5) IS USABLE:** `dividends?symbol=WU&limit=8` returns 8 quarterly
   records (dividend, paymentDate, declarationDate, frequency). `dividends?symbol=NOW&limit=8`
   returns an EMPTY LIST — NOW pays no dividend. **G-4's contract discipline applies directly:

@@ -30,6 +30,35 @@ CYCLICAL_MIN_FY = 8
 # Order §2: below this, classify YOUNG with a data-insufficiency assertion.
 MIN_FY_FOR_CLASSIFICATION = 2
 
+# ── Bank revenue basis (L-1c ruling, 2026-08-17) ──────────────────────────────
+# RULED: bank-lens names are classified on a NET-REVENUE basis. Never gross.
+#
+# WHY. FMP's `revenue` for a bank is GROSS of interest expense — JPM FY2025 reads
+# 279.7B against 181.8B net (interestIncome 193.3B, interestExpense 97.9B). Gross interest
+# income tracks the RATE CYCLE, so on the gross basis all four calibration banks posted a
+# 3y revenue CAGR of 16-27% and read as high-growth businesses. Measured consequence
+# before the fix: JPM with its dividend suspended classified HIGROWTH — a bank cutting its
+# dividend in a crisis tagged as high growth, reachable on one input change.
+#
+# THE CHOICE OF FORMULA (the order requires one, exactly computable, documented here):
+#     net_revenue = revenue - interestExpense
+# Both components are published directly by FMP, so nothing is derived on the way in.
+# The alternative, netInterestIncome + (revenue - interestIncome), was MEASURED to agree
+# EXACTLY on all 40 bank-years (JPM/BK/USB/C x FY2016-2025), so the choice is about
+# directness, not about which number is right.
+#
+# THE IDENTITY IS STILL CHECKED, not assumed: when interestIncome and netInterestIncome
+# are both published, the alternative formula must agree within
+# BANK_NET_REVENUE_CROSSCHECK_TOL. Disagreement means the vendor's shape moved under us,
+# and the row is refused — WITHHOLD, never pick a side (the G-2 corroboration precedent).
+#
+# NEVER FALL BACK TO GROSS. A row whose components are missing or whose formulas disagree
+# is dropped, which breaks streaks and voids windows, and the classification is stamped
+# INPUTS-INCOMPLETE. An unavailable basis is not a licence to use the wrong one.
+BANK_LENS = "bank"
+BANK_NET_REVENUE_FORMULA = "revenue - interestExpense"
+BANK_NET_REVENUE_CROSSCHECK_TOL = 0.005      # 0.5% vs netInterestIncome identity
+
 # ── Rule thresholds ───────────────────────────────────────────────────────────
 # R11: the flat band is calibrated TO THE DEFAULT 3y WINDOW. Widening the window means
 # revisiting this number — drift accumulates with length, so ±100bp over 10y is a much
@@ -56,6 +85,10 @@ HIGROWTH_MIN_CAGR = 0.15              # 15% revenue 3y CAGR
 # side, which matches the businesses. FOUR TICKERS IS NOT A CALIBRATION — this is a
 # reasoned default awaiting Vic's ruling, and it is flagged REINVESTMENT-THRESHOLD-
 # UNCALIBRATED on every reading that consults it.
+#
+# RULED 2026-08-17 (L-1c): 1.50 STANDS and the flag STAYS ON EVERY READING. No tightening
+# or loosening on a four-name sample. Real calibration is on the Phase L punch list, to be
+# done on the FULL UNIVERSE after §5 arms — not before.
 REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL = 1.50
 
 # Rule 3 needs "capital returns absent or DE MINIMIS". A buyback counts as a real capital

@@ -342,28 +342,135 @@ def test_the_guard_is_not_applied_to_non_cyclical_lenses():
     assert leg.present and leg.value is None and "not applicable" in leg.detail
 
 
-def test_cyclical_guard_AS_BUILT_compares_latest_to_prior_peak_NOT_peak_to_peak():
-    """PINS A REPORTED DEFECT, NOT DESIRED BEHAVIOUR. Flips when Vic rules.
+def test_the_prior_peak_is_measured_BEFORE_the_streak_start_year():
+    """THE RULED DEFINITION (L-1c). Prior peak = max(FY revenue) over all FYs strictly
+    BEFORE the decline-streak start year; DECLINE is permitted only if the latest revenue
+    is below it.
 
-    §3 rule 1 requires 'through-cycle peak-to-peak revenue lower'. As built, the leg
-    compares the LATEST revenue against the prior peak. Those differ, and the difference
-    is not academic: a declining latest year is BY CONSTRUCTION below the prior peak, so
-    the leg returns LOWER=True for every cyclical name with a decline streak — i.e. it is
-    vacuous in exactly the situation it gates.
+    THIS TEST WAS FLIPPED. It previously pinned the as-built semantic (latest vs the peak
+    of everything-but-the-latest), which was vacuous: a declining latest year is BY
+    CONSTRUCTION below that peak, so the leg could never refuse. Anchoring the peak before
+    the streak makes it a real question — has this downcycle taken revenue below where the
+    LAST cycle topped out?
 
-    Below: successive cycle peaks 2018=700 -> 2022=1100 are RISING, which is the order's
-    'not lower' and should hold the name out of DECLINE. The as-built leg says LOWER and
-    DECLINE fires. Reported in the L-1b report; a fix needs a peak-detection definition,
-    which is Vic's to rule, not Code's to invent.
+    Series below: streak of 3 (2023-2025), so the pre-streak window is 2016-2022 and the
+    prior peak is 1100 @ 2022. Latest 800 < 1100, so the guard permits and DECLINE fires.
     """
     income = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 600),
                       (2021, 1000), (2022, 1100), (2023, 1000), (2024, 900), (2025, 800)],
                      margins=[10.0] * 10)
     legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
     assert legs["decline_streak"].value == 3
-    assert legs["cyclical_peak_to_peak"].value is True      # as-built
+    guard = legs["cyclical_peak_to_peak"]
+    assert guard.value is True
+    assert "pre-streak peak 1,100 @ 2022" in guard.detail
+    assert classify("SYN", legs, "cyclical").stage == STAGE_DECLINE
+
+
+def test_the_RULED_guard_still_cannot_refuse_a_streak_REPORTED_UNRESOLVED():
+    """PINS A MEASURED FACT, NOT DESIRED BEHAVIOUR. Reported to Vic; flips on a ruling.
+
+    The L-1c ruling anchored the prior peak BEFORE the streak start year. Implemented
+    faithfully — and it is still vacuous, for a reason that is provable rather than
+    empirical:
+
+        let k = streak >= 1, series oldest-first, latest = index n-1.
+        the streak means rev[n-1] < rev[n-2] < ... < rev[n-k-1]   (adjacent FYs)
+        the pre-streak window is series[0 .. n-k-1], which CONTAINS rev[n-k-1]
+        so prior_peak = max(pre-streak) >= rev[n-k-1] > rev[n-1] = latest
+        therefore latest < prior_peak ALWAYS.                                    QED
+
+    Measured to match: over 9,989 random cyclical series with a streak and an evaluable
+    guard, the guard permitted DECLINE 9,989 times and refused 0.
+
+    The case below is the one the guard should arguably catch — three years off a record
+    high but still ABOVE the previous cycle's top (700 @ 2018) — and it does not, because
+    the ruled window includes the current cycle's own run-up (1200 @ 2022).
+
+    CONSEQUENCE: the raised streak bar (3 vs 2) remains the ONLY cyclical protection.
+    Options put to Vic in the L-1c report; Code does not pick one.
+    """
+    income = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 800),
+                      (2021, 1000), (2022, 1200), (2023, 1100), (2024, 1000), (2025, 900)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    assert legs["decline_streak"].value == 3
+    guard = legs["cyclical_peak_to_peak"]
+    assert guard.value is True                       # permits, though 900 > 700
+    assert "pre-streak peak 1,200 @ 2022" in guard.detail
+    assert classify("SYN", legs, "cyclical").stage == STAGE_DECLINE
+
+
+def test_with_no_decline_streak_the_guard_does_not_fire_and_is_not_absent():
+    """Ruled: streak 0 -> the guard does not fire, because there is no decline to gate.
+    It must NOT read as asserted-absent — nothing is missing, so nothing is incomplete.
+    This is MU's live situation."""
+    income = _income([(2016, 500), (2017, 600), (2018, 700), (2019, 650), (2020, 600),
+                      (2021, 1000), (2022, 1100), (2023, 1000), (2024, 900), (2025, 1200)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    assert legs["decline_streak"].value == 0
+    guard = legs["cyclical_peak_to_peak"]
+    assert guard.present is True and guard.value is None
+    assert "no decline streak to gate" in guard.detail
     r = classify("SYN", legs, "cyclical")
-    assert r.stage == STAGE_DECLINE                          # as-built consequence
+    assert r.stage != STAGE_DECLINE
+    # The guard specifically must not appear as an absence. (Other legs may be absent here
+    # — no share or sales-to-capital series was passed — so the row-level
+    # INPUTS-INCOMPLETE flag is not the thing under test.)
+    assert not any("cyclical_peak_to_peak" in e for e in r.absent_legs)
+
+
+def test_a_streak_spanning_the_whole_window_yields_INPUTS_INCOMPLETE_not_a_verdict():
+    """Ruled: if the streak covers the measured window there IS no prior peak — the
+    earliest reading is the left edge of the window, not a cycle top. Say so, don't guess.
+    """
+    income = _income([(2016, 1600), (2017, 1500), (2018, 1400), (2019, 1300),
+                      (2020, 1200), (2021, 1100), (2022, 1000), (2023, 900),
+                      (2024, 800), (2025, 700)],
+                     margins=[10.0] * 10)
+    legs = _legs(income, "cyclical", dividends=PAYS_DIVIDEND)
+    assert legs["decline_streak"].value == 9                      # every transition down
+    guard = legs["cyclical_peak_to_peak"]
+    assert guard.present is False
+    assert "spans_measured_window_no_prior_peak" in guard.reason
+    r = classify("SYN", legs, "cyclical")
+    assert r.stage != STAGE_DECLINE, "DECLINE awarded with no prior peak to compare"
+    assert FLAG_INPUTS_INCOMPLETE in r.flags
+
+
+def test_MU_mid_downcycle_classifies_YOUNG_on_real_filed_data_REPORTED():
+    """PINS A MEASURED FINDING FROM THE FY2023 COUNTERFACTUAL. Reported to Vic.
+
+    Ordered re-run: MU's own filed series truncated at FY2023 (the memory trough, revenue
+    30,758M -> 15,540M). Results, all measured:
+
+      - the cyclical guard PERMITS decline (15,540M < pre-streak peak 30,758M @ 2022)
+      - but the streak is 1, under the cyclical bar of 3, so rule 1 cannot fire anyway
+      - and the classification is NEITHER DECLINE NOR MATURE: MU's FY2023 operating margin
+        was -36.97% and its FCF -6,117M, so **rule 2 fires and MU classifies YOUNG.**
+
+    THE FINDING: rule 2 has NO cyclical guard, and a cyclical trough produces negative
+    margins and negative FCF by nature. A 1978-vintage memory maker is tagged
+    'Young / Pre-earnings', which under §5 would attract the widest distribution prior, the
+    30% anchor-divergence tolerance, and a mandatory supply-layer block about lockup dates
+    and insider overhang. The YOUNG-UNCALIBRATED tripwire does fire, which is the designed
+    net catching it.
+
+    NOT PATCHED — a cyclical guard on rule 2 is a rule change and therefore Vic's call.
+    """
+    rows = json.loads(Path("tests/fixtures/fmp/MU.json").read_text())["income_annual"]
+    through_2023 = [r for r in sorted(rows, key=lambda x: x["date"])
+                    if r["date"][:4] <= "2023"]
+    legs = _legs(through_2023, "cyclical", dividends=PAYS_DIVIDEND)
+    assert legs["fy_count"].value == 8                      # meets CYCLICAL_MIN_FY
+    assert legs["decline_streak"].value == 1
+    assert legs["cyclical_peak_to_peak"].value is True      # guard permits
+    assert legs["margin_sign"].value < 0                    # -36.97%
+    r = classify("MU", legs, "cyclical")
+    assert r.stage == STAGE_YOUNG
+    assert r.rule_fired == "rule2_young"
+    assert FLAG_YOUNG_UNCALIBRATED in r.flags
 
 
 def test_the_streak_is_anchored_at_the_latest_fy_not_the_worst_run_anywhere():
@@ -375,6 +482,124 @@ def test_the_streak_is_anchored_at_the_latest_fy_not_the_worst_run_anywhere():
     legs = _legs(income, "compounder", dividends=PAYS_DIVIDEND)
     assert legs["decline_streak"].value == 0
     assert classify("SYN", legs, "compounder").stage != STAGE_DECLINE
+
+
+# ── L-1c: the bank net-revenue basis ──────────────────────────────────────────
+
+def _bank_rows(pairs, *, int_exp_share=0.35, margin=30.0, drop_interest_expense=False):
+    """Bank-shaped FMP income rows: gross revenue plus the interest components.
+
+    `int_exp_share` of gross revenue is interest expense, so net revenue is the remainder —
+    the same shape as the real payload, where interestIncome/interestExpense/
+    netInterestIncome all reconcile.
+    """
+    rows = []
+    for year, gross in pairs:
+        int_exp = gross * int_exp_share
+        int_inc = gross * 0.70
+        row = {"date": f"{year}-12-31", "revenue": gross,
+               "operatingIncome": (gross - int_exp) * margin / 100.0,
+               "interestIncome": int_inc,
+               "netInterestIncome": int_inc - int_exp,
+               "interestExpense": int_exp}
+        if drop_interest_expense:
+            del row["interestExpense"]
+        rows.append(row)
+    return rows
+
+
+def test_a_bank_is_classified_on_net_revenue_never_gross():
+    rows = _bank_rows([(2022, 100.0), (2023, 200.0), (2024, 260.0), (2025, 280.0)])
+    legs = _legs(rows, "bank", dividends=PAYS_DIVIDEND)
+    assert legs["revenue_basis"].value == "net_revenue"
+    assert "revenue - interestExpense" in legs["revenue_basis"].detail
+    # 65% of gross survives, so the CAGR is struck on 65 -> 182, not 100 -> 280.
+    gross_cagr = (280.0 / 100.0) ** (1 / 3) - 1
+    assert abs(legs["revenue_cagr"].value - gross_cagr) < 1e-9, (
+        "the ratio is basis-invariant here by construction — see the JPM test for the "
+        "case where the basis changes the verdict")
+
+
+def test_a_non_bank_lens_keeps_the_gross_filed_revenue():
+    income = _income([(2022, 1000), (2023, 1050), (2024, 1100), (2025, 1150)],
+                     margins=[10.0] * 4)
+    legs = _legs(income, "compounder", dividends=PAYS_DIVIDEND)
+    assert legs["revenue_basis"].value == "gross_revenue"
+
+
+def test_a_bank_with_missing_components_is_INPUTS_INCOMPLETE_and_never_falls_back():
+    """Ruled: 'If the required components aren't all present: INPUTS-INCOMPLETE. Never fall
+    back to gross.' The gross figure IS present on every row here — it must not be used."""
+    rows = _bank_rows([(2022, 100.0), (2023, 200.0), (2024, 260.0), (2025, 280.0)],
+                      drop_interest_expense=True)
+    legs = _legs(rows, "bank", dividends=PAYS_DIVIDEND)
+    basis = legs["revenue_basis"]
+    assert basis.present is False
+    assert "bank_net_revenue_uncomputable" in basis.reason
+    assert legs["fy_count"].value == 0, "a row was kept on the gross basis"
+    r = classify("BANKX", legs, "bank")
+    assert FLAG_INPUTS_INCOMPLETE in r.flags
+    assert any("revenue_basis" in e for e in r.absent_legs)
+
+
+def test_a_bank_whose_two_net_revenue_formulas_disagree_refuses_the_row():
+    """WITHHOLD, never pick a side (the G-2 corroboration precedent). The identity
+    interestIncome - interestExpense == netInterestIncome is checked, not assumed."""
+    rows = _bank_rows([(2022, 100.0), (2023, 200.0), (2024, 260.0), (2025, 280.0)])
+    rows[-1]["netInterestIncome"] = rows[-1]["netInterestIncome"] * 1.5   # vendor drift
+    legs = _legs(rows, "bank", dividends=PAYS_DIVIDEND)
+    assert legs["revenue_basis"].present is False
+    assert "formulas_disagree" in legs["revenue_basis"].reason
+
+
+def test_JPM_with_its_dividend_suspended_does_NOT_classify_HIGROWTH():
+    """THE POINT OF THE FIX, on JPM's real filed income series.
+
+    On the GROSS basis JPM's 3y revenue CAGR is 22.06% — the rate cycle, not growth — and
+    with the dividend suspended (measured [] = pays none) rule 3's legs all passed and JPM
+    classified HIGROWTH. A bank cutting its dividend in a crisis, tagged high growth, one
+    input away. On the ruled net-revenue basis the CAGR falls under the 15% bar and the
+    rule cannot fire.
+    """
+    rows = json.loads(Path("tests/fixtures/fmp/JPM.json").read_text())["income_annual"]
+    legs = _legs(rows, "bank", dividends=[])            # dividend SUSPENDED
+    r = classify("JPM", legs, "bank")
+    assert legs["revenue_basis"].value == "net_revenue"
+    assert legs["revenue_cagr"].value < HIGROWTH_MIN_CAGR, (
+        f"net-basis CAGR {legs['revenue_cagr'].value:.4f} still clears the HIGROWTH bar")
+    assert r.stage != STAGE_HIGROWTH
+    assert r.stage == STAGE_MATURE
+
+
+def test_every_calibration_bank_reads_under_the_higrowth_bar_on_the_net_basis():
+    """All four read 16-27%/y on gross. If any still clears 15% on the net basis, the fix
+    is incomplete and this test says which."""
+    for t in ("JPM", "BK", "USB", "C"):
+        rows = json.loads(Path(f"tests/fixtures/fmp/{t}.json").read_text())["income_annual"]
+        legs = _legs(rows, "bank", dividends=PAYS_DIVIDEND)
+        assert legs["revenue_basis"].value == "net_revenue"
+        assert legs["revenue_cagr"].present
+        assert legs["revenue_cagr"].value < HIGROWTH_MIN_CAGR, (
+            f"{t}: net-basis CAGR {legs['revenue_cagr'].value*100:.2f}% clears the bar")
+
+
+def test_the_bank_margin_shares_the_net_basis():
+    """An operating margin struck on gross interest income is not a margin anyone uses,
+    and it would drift with rates exactly as the revenue leg did."""
+    rows = _bank_rows([(2022, 100.0), (2023, 110.0), (2024, 120.0), (2025, 130.0)],
+                      margin=30.0)
+    legs = _legs(rows, "bank", dividends=PAYS_DIVIDEND)
+    assert abs(legs["margin_sign"].value - 30.0) < 1e-6, (
+        "margin was struck on gross revenue, not on the net basis")
+
+
+def test_flags_never_repeat_themselves():
+    """INPUTS-INCOMPLETE can now be raised by the basis check AND by a rule's absent legs.
+    A duplicated flag reads like two findings."""
+    rows = _bank_rows([(2022, 100.0), (2023, 200.0), (2024, 260.0), (2025, 280.0)],
+                      drop_interest_expense=True)
+    r = classify("BANKX", _legs(rows, "bank", dividends=None), "bank")
+    assert len(r.flags) == len(set(r.flags))
 
 
 # ── R7: the margin flat band ──────────────────────────────────────────────────

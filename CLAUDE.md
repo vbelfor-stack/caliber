@@ -5,15 +5,18 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### STATE AT L-1b 2026-08-17
+### STATE AT L-1c 2026-08-17
 **PHASE L IS IN FLIGHT.** Order: `docs/orders/2026-08-16-phase-l-lifecycle-classifier.md`
-(COMPLETE, rulings R1–R11). **NEXT: the LIVE DARK RUN + report, then STOP for Vic.**
+(COMPLETE, rulings R1–R11, amended by the L-1c ruling 2026-08-17).
+**NEXT: re-run the live dark table under corrected semantics + report, then STOP for Vic.**
 Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.py`.
+**STANDING RULE ADDED 2026-08-17: any commit closing a ruled work order PUSHES IMMEDIATELY
+— no per-commit approval. Unpushed-at-close is the exception, not the norm.**
 
 | | |
 |---|---|
-| HEAD | L-1b on master — push at close |
-| Suite | **740** (682 + 58 in tests/test_lifecycle.py) |
+| HEAD | L-1c on master, pushed |
+| Suite | **752** (682 + 70 in tests/test_lifecycle.py) |
 | caliber.db md5 | **e13cbee6f204da1f117beca193e5b7df** — UNCHANGED by all Phase L work so far |
 | evaluations | 36 rows, max id **225** |
 | Backup | `caliber.db.pre-rerun-2026-08-15.bak` @ 54aa42e5 (pre-write, local only) |
@@ -26,15 +29,27 @@ Nothing in §5 is armed. The classifier is not wired into `batch/` or `evaluate.
 - **L-1b (this commit):** `core/lifecycle.py` + `core/lifecycle_config.py` +
   `tools/probe_lifecycle.py` + `fetch_dividends` + three `lifecycle_*` tables, and the §7
   test gates. **TWO LATENT DEFECTS FIXED** in the adopted build — see the commit message.
-- **A SEMANTIC DEFECT IS REPORTED AND UNRULED — the cyclical guard.** §3 rule 1 requires
-  "through-cycle **peak-to-peak** revenue lower"; the leg as built compares the LATEST
-  revenue to the prior peak. A declining latest year is BY CONSTRUCTION below the prior
-  peak, so the leg returns LOWER=True for every cyclical name carrying a decline streak —
-  **vacuous in exactly the case it gates.** MU is held out of DECLINE today by its STREAK
-  (0 — FY2025 rose), not by the guard. Pinned as-built in
-  `test_cyclical_guard_AS_BUILT_compares_latest_to_prior_peak_NOT_peak_to_peak`, which
-  FLIPS when Vic rules. A fix needs a peak-detection definition — Vic's to rule, not
-  Code's to invent.
+- **L-1c (2026-08-17):** cyclical-guard definition ruled and implemented (prior peak =
+  max FY revenue strictly BEFORE the streak start year); **bank-lens names now classify on
+  NET REVENUE** (`revenue - interestExpense`), never gross; R6 default 1.50 ratified with
+  the flag kept on every reading.
+- **STILL OPEN AFTER L-1c — THE CYCLICAL GUARD CANNOT REFUSE, AND THAT IS NOW PROVEN.**
+  The amended definition is implemented faithfully and is still vacuous: for any streak
+  ≥ 1, the year immediately before the streak sits in the pre-streak window and is by
+  construction above every year in the streak, so `latest < max(pre-streak)` ALWAYS.
+  Measured: 9,989 random cyclical series with a streak → **0 refusals.** The raised streak
+  bar (3 vs 2) is the ONLY cyclical protection in force. Pinned in
+  `test_the_RULED_guard_still_cannot_refuse_a_streak_REPORTED_UNRESOLVED`. Awaiting ruling.
+- **NEW FINDING, L-1c — RULE 2 HAS NO CYCLICAL GUARD, AND A TROUGH READS AS YOUNG.**
+  Ordered MU FY2023 counterfactual on real filed data: operating margin −36.97%, FCF
+  −6,117M → **MU classifies YOUNG**, which under §5 would attract the widest distribution
+  prior, the 30% divergence tolerance and a lockup/insider-overhang supply block. Reported,
+  NOT patched (a rule change is Vic's). `YOUNG-UNCALIBRATED` fires and is the net that
+  catches it. Pinned in `test_MU_mid_downcycle_classifies_YOUNG_on_real_filed_data_REPORTED`.
+- **PHASE L PUNCH LIST (ruled, deferred):** calibrate
+  `REINVESTMENT_HEAVY_MAX_SALES_TO_CAPITAL` on the FULL UNIVERSE after §5 arms. 1.50 stands
+  until then and every reading that consults it stays flagged
+  `REINVESTMENT-THRESHOLD-UNCALIBRATED`. No tuning on a four-name sample.
 - **PHASE H CLOSED EXCEPT H-4** (deferred; blocker is the missing D&A spec). **PHASE M
   still parked**, and L blocks it.
 
