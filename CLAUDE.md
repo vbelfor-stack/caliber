@@ -1,35 +1,48 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-17)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-19)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4a (STX diagnosis).
-Do not start coverage expansion before L-4a and L-4b land.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then ASK VIC FOR THE B-2 BAND
+RULING — it is the only thing he reserved to himself at the L-4a close, and BOTH remaining
+L-4 steps sit behind it.** `L-4b (batch tolerance arming) IS BLOCKED BY RULING` until the band
+is settled; coverage expansion (L-4c) sits behind L-4b. Do not arm anything first.
+**Nothing in the tree is mid-flight — L-4a closed complete, tree clean, pushed.**
 
-### STATE AT CLOSE 2026-08-17 — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-19 — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `633d300a5717a662fdd8f98c394a755f913f3998`** ("L-3 report: consumer census, dark table, zero flips"). A block cannot contain its own hash; this was caught by the close verification pass rather than left as a false claim. |
+| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `f417001`** ("L-4a rulings 3-6: defect_tags on all 68 rows, STX superseded, standing rule"). A block cannot contain its own hash. |
+| This session's commits | `cc8756c` archive trim · `afe9d75` L-4a diagnosis · `cd6b70f` L-4a fix (ruling 1) · `f417001` L-4a rulings 3-6 · + this close |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
-| Suite | **825 passed** |
-| caliber.db md5 | **24df814597b6bab52b979e7fee6ca034** (WAL checkpointed at close) |
-| evaluations | **79** rows, max id **271** · held 50 / calibration 29 / NULL 0 |
-| lifecycle_stage | **43** rows |
+| Suite | **853 passed** (was 825; +28 from `tests/test_l4a_technicals_ordering.py`) |
+| caliber.db md5 | **8557a157ee92e22df01cfe04cb1e1d55** (WAL checkpointed at close; no wal/shm alongside) |
+| md5 trail this session | `24df8145` (open) → `4a7ab584` (ruling-3 tag) → **`8557a157`** (ruling-2 STX re-synthesis). Backups kept locally at both pre-write points. |
+| evaluations | **80** rows, max id **272** · ok 67 / failed 11 / anchor_divergence 2 · held 51 / calibration 29 |
+| **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
+| lifecycle_stage | **44** rows (+1: STX re-synthesis, MATURE unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
-| field_provenance | **1416** rows |
-| fundamental_series | 557 rows (4 tickers only — MU/GOOG/NOW/WU) · grades 0 · synthesis_cache 16 |
+| field_provenance | **1437** rows (+21 for eval 272) |
+| fundamental_series | 557 rows (4 tickers only — MU/GOOG/NOW/WU) · grades 0 · synthesis_cache 16 (+0 — evaluate.py never writes the cache) |
 
 ### ARMED STATE — what reads what, precisely
 
 - **§5 step 3 IS ARMED, IN `evaluate.py` ONLY.** The B-2 anchor-divergence band is
   stage-conditioned: **YOUNG 30% · HIGROWTH 20% · MATURE 15% · DECLINE 15%**, read from the
   PERSISTED `lifecycle_stage` table via `core/stage_tolerance.tolerance_for()`.
-- **KNOWN DIVERGENCE, FIX RULED FOR L-4a:** `batch/runner.py` still calls the guard on the
-  **flat 15%**. The two write paths currently disagree about tolerance. Bounded and legible,
-  but it must not persist.
+- **KNOWN DIVERGENCE, STILL OPEN — NOW RULED TO L-4b AND L-4b IS BLOCKED:** `batch/runner.py`
+  still calls the guard on the **flat 15%**. The two write paths still disagree about
+  tolerance. **This did NOT get fixed at L-4a** — L-4a turned out to be a real defect hunt, and
+  Vic then blocked L-4b pending the B-2 band ruling, so the divergence survives this session
+  deliberately. Bounded and legible, but it must not persist.
+- **`core/technicals.py` NOW OWNS ITS ORDERING CONTRACT (armed 2026-08-19, `cd6b70f`).** It
+  sorts by date internally and REFUSES (fail-closed) when order cannot be established. It no
+  longer trusts caller order, so the adapter's newest-first contract and this module can no
+  longer silently disagree. Pinned by `tests/test_l4a_technicals_ordering.py` (28 tests),
+  including the suite's FIRST value-level assertions on an MA and a boolean.
 - **THE TOLERANCE LOOKUP IS THE ONLY SCORING-PATH CONSUMER OF LIFECYCLE STAGE.** Pinned by
   `test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage`. `core/pillars.py`,
   `core/valuation_anchors.py`, `batch/runner.py` and `synthesis/schema.py` contain no
@@ -65,11 +78,24 @@ Code's reading, stated separately and NOT part of the order:
   FMP exonerated; the model anchored to a stale price WE PUT IN THE PROMPT. Diagnosis only, zero
   writes, caliber.db md5 unchanged. FIX NOT APPLIED — awaiting ruling, and it must land BEFORE
   L-4b arms a divergence band.**
-- **L-4b — BATCH TOLERANCE ARMING.** Bring `batch/runner.py` onto the same stage-conditioned
-  band so the two write paths stop disagreeing. Flips the batch dark pin — expect to retire
-  it by name and replace it, exactly as L-3 did for evaluate.py.
+- **L-4b — BATCH TOLERANCE ARMING. ★ BLOCKED BY RULING (2026-08-19), NOT MERELY UNSTARTED.**
+  Bring `batch/runner.py` onto the same stage-conditioned band so the two write paths stop
+  disagreeing. Flips the batch dark pin — expect to retire it by name and replace it, exactly
+  as L-3 did for evaluate.py. **IT MAY NOT START UNTIL VIC RULES ON THE B-2 BAND**, because
+  arming a divergence tolerance on the current calibration would bake the L-4a technicals
+  defect into the guard: 27 of the 28 latest rows are defect-tagged, so the distribution the
+  band would be set from is still the contaminated one.
 - **L-4c — COVERAGE EXPANSION, CAPPED AT ONE ORDER.** Extend `fundamental_series` beyond the
-  four names it covers. **Step 4 is then ruled on that evidence**, not before.
+  four names it covers. **Step 4 is then ruled on that evidence**, not before. Sits behind L-4b.
+
+**WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
+docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
+to obtain a clean calibration population — **ruled NO for now**, so the band may have to be set
+on tagged data with that stated; (b) **the method must be pinned to the eval date** — L-3's
+"stored anchor vs live price" comparison is only meaningful same-day, and re-run two days later
+it showed 8 flags at flat 15% against ZERO at eval time, the gap being pure price drift
+(STX itself -16.3% in two days); (c) INFQ still sits **0.37pp** from tripping (14.63% vs its
+fail-closed 15%), which is the live held name that makes the band decision non-theoretical.
 
 ### PUNCH LIST — current at close
 
