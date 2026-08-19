@@ -60,6 +60,11 @@ Code's reading, stated separately and NOT part of the order:
   level (the MU 2026-08-07 shape, which turned out to be a stale LLM anchor while the feed
   was correct)? Both are ~10x-shaped, and the MU precedent says do not assume which.
   E(R) is currently withheld on STX, which is the guard working.
+  **DONE 2026-08-19 — docs/l4a-stx-diagnosis.md. ANSWER: NEITHER. It is a THIRD cause and it is
+  OURS — the `core/technicals.py` newest-first/oldest-first defect (see punch-list TOP ITEM).
+  FMP exonerated; the model anchored to a stale price WE PUT IN THE PROMPT. Diagnosis only, zero
+  writes, caliber.db md5 unchanged. FIX NOT APPLIED — awaiting ruling, and it must land BEFORE
+  L-4b arms a divergence band.**
 - **L-4b — BATCH TOLERANCE ARMING.** Bring `batch/runner.py` onto the same stage-conditioned
   band so the two write paths stop disagreeing. Flips the batch dark pin — expect to retire
   it by name and replace it, exactly as L-3 did for evaluate.py.
@@ -67,6 +72,43 @@ Code's reading, stated separately and NOT part of the order:
   four names it covers. **Step 4 is then ruled on that evidence**, not before.
 
 ### PUNCH LIST — current at close
+
+- **★ TOP ITEM — `core/technicals.py` READS THE PRICE HISTORY FROM THE WRONG END. FOUND
+  2026-08-19 BY L-4a, DIAGNOSED, NOT FIXED, AWAITING RULING. Full report:
+  docs/l4a-stx-diagnosis.md.** FMP serves `price_history` **newest-first** (documented at
+  `adapters/fmp_adapter.py:33`); `analyze_technicals` assumes oldest-first (`closes[-1]`,
+  `closes[-period:]`), so **every MA, RSI, boolean and volume reading describes AUGUST 2021,
+  not today** — and RSI is computed on a time-reversed series. Aggravated by the known quirk
+  that FMP ignores `limit` (asks 365, returns 1254), making the stale end ~5y old, not ~1y.
+  - **THIS IS THE STX CAUSE (id 258) AND THE MU id 209 CAUSE.** Both anchor_divergence rows
+    are this defect. FMP is EXONERATED: price verified to the cent against a second source
+    ($832.56), no splits, series continuous, the 9.31x is real appreciation.
+  - **BLAST RADIUS — pillar scores UNAFFECTED (structural: no pillar/lens/anchor reads
+    technicals; only evaluate.py, batch/runner.py and the prompt do). Grades: 0 rows.
+    `_price_on_or_before` is order-agnostic so own-history/G-4/H-3 are immune.** What IS hit:
+    **all 68 evaluations carrying a synthesis** (FMP became the feed 2026-07-11; first ok eval
+    2026-07-12 — there is NO clean pre-defect population), via prompt → trend/redFlags/
+    narrative/verdictConfidence → and on the 2 caught rows → priceTargets → E(R).
+  - **THE B-2 HEALTHY BAND IS CONTAMINATED CALIBRATION** — "0.6-8.2%, 15% with ~6x margin" was
+    measured entirely on poisoned prompts, and six 2026-08-17 rows already read 9.9-14.6%.
+    **RECALIBRATE ON CLEAN PROMPTS BEFORE L-4b ARMS A BAND** — L-4b arms a divergence
+    tolerance, so arming first would bake this defect into the guard.
+  - **DO NOT RE-SYNTHESIZE STX YET.** The prompt still carries 2021 technicals, so a re-run
+    today would reproduce the poisoning or (worse, given the B-2 prompt fix) mask it into a
+    healthy-looking divergence. Fix first, THEN supersede-link `supersedes_id=258`.
+  - **RECOMMENDED SEQUENCE FOR THE RULING:** technicals fix (sort ascending INSIDE
+    core/technicals.py, leaving the adapter contract alone) + a both-orders-identical-output
+    pin + the first-ever value-level assertion on an MA/boolean → re-synthesize STX
+    supersede-linked → recalibrate B-2 → then L-4b. Fix flips **8 of 18** boolean cells on
+    the fixtures (WU both True→False, NOW both False→True, BK/JPM/USB/C one each; GOOG/MU/V
+    unmoved — right by luck, because strong trends sit above both MAs at either end).
+  - **WHY 825 GREEN TESTS AND THE GOLDEN HARNESS MISSED IT:** all nine FMP fixtures are
+    newest-first (recorders reuse the adapter's live path, correctly), so **the baseline agrees
+    with the bug**; the retired yfinance fixtures were ascending, under which the code was
+    CORRECT — the feed migration introduced the defect and the fixture migration hid it, which
+    is the already-recorded "migrating a baseline onto the source it checks retires the check"
+    warning coming true, with the thing given up never named. And the ONE test touching
+    `analyze_technicals` asserts a **provenance source string**, not a single numeric value.
 
 - **`field_provenance.field_name` is NULL on all 1,416 rows** — provenance is unqueryable by
   field, only by `(evaluation_id, pillar)`. **DIAGNOSIS QUESTION, not yet a fix order:** is
@@ -322,14 +364,28 @@ real data ~Oct 2026 when the 8 Visa evals mature.
   MU 90.8%. Healthy band 0.6-8.2%; 15% isolates the pathological case with ~6x margin.
   null-model-E(R) rate 0/5 (and 0/8 historical) → anchor_unverified rarely fires; no prompt fix
   needed for that.
-- MU root cause RESOLVED: it was a genuine stale LLM anchor, NOT a feed bug. Model anchored to
-  ~$81 (stale training data); MU really trades ~$881 (~$1T mkt cap, May-2026 HBM-cycle 10x
-  re-rate, no split) — FMP was CORRECT. The guard caught its motivating Phase-B case on first
-  live outing. Canonical positive preserved as eval id=209 (retroactively set anchor_divergence,
-  E(R) NULL). Do NOT delete id=209.
-- Prompt fix (root cause): synthesis/prompt.py now instructs the model to anchor ALL targets to
-  the provided current_price and never use remembered price levels. Verified: MU re-eval (id=214,
-  force_refresh) re-anchored targets to $525/$800/$1225, divergence 90.8% -> 1.1%, status ok.
+- ~~MU root cause RESOLVED: it was a genuine stale LLM anchor, NOT a feed bug. Model anchored
+  to ~$81 (stale training data)~~ **← THIS ATTRIBUTION IS WRONG. OVERTURNED 2026-08-19 BY L-4a
+  ON id 209's OWN STORED DATA (docs/l4a-stx-diagnosis.md §4).** The $81 was NOT recalled from
+  training data — it was **IN THE PROMPT**, put there by the `core/technicals.py` ordering
+  defect (§ punch list). id 209's stored technicals notes read "Price $80.21 above MA50 $72.12
+  and MA200 $78.10" — MU's **2021** prices — and its implied anchor $80.88 matches that
+  injected price to within 0.8%. **The model anchored to a price we handed it, which is correct
+  behaviour.** MU really trades ~$881 (~$1T mkt cap, May-2026 HBM-cycle 10x re-rate, no split)
+  — **FMP was CORRECT, that half stands.** The guard caught its motivating Phase-B case on
+  first live outing (also stands — it caught a REAL defect, just not the one recorded).
+  Canonical positive preserved as eval id=209 (retroactively set anchor_divergence, E(R) NULL).
+  Do NOT delete id=209.
+- Prompt fix (~~root cause~~ **MASK, not root cause — see L-4a**): synthesis/prompt.py now
+  instructs the model to anchor ALL targets to the provided current_price and never use
+  remembered price levels. Verified: MU re-eval (id=214, force_refresh) re-anchored targets to
+  $525/$800/$1225, divergence 90.8% -> 1.1%, status ok. **THE FIX IS STILL WORTH KEEPING — it is
+  correct guidance on its own terms — BUT IT SUPPRESSED THE ONLY VISIBLE SYMPTOM OF A LIVE
+  DEFECT.** id 214's stored notes STILL carry the poisoned 2021 values ("Price above both MA50
+  (72.12) and MA200 (78.10)") on a stock at $885: the model was made to IGNORE the contradiction
+  rather than the contradiction being removed, and the defect then ran unnoticed for 12 days
+  across 5 further batch sessions. **"Loud failure beats silent degradation", inverted by
+  accident.**
 - NOTE the guard is anchor-AGNOSTIC: it flags model-vs-live disagreement regardless of which side
   is wrong (stale LLM anchor OR bad feed price). Withholding a laundered E(R) is correct either way.
 
