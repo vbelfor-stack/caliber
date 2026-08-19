@@ -57,9 +57,20 @@ def _prov(val: Optional[float], source: str, conf: Confidence = "medium") -> Pro
 def analyze_technicals(price_history: List[Dict], feed_source: str = "unknown") -> TechnicalOverlay:
     """
     Compute technical overlay from OHLCV daily price records.
-    price_history: list of dicts with keys Open, High, Low, Close, Volume (case-sensitive).
+    price_history: list of dicts with keys Open, High, Low, Close, Volume (case-sensitive),
+        plus a 'date'. ORDER DOES NOT MATTER — this function sorts internally; see below.
     feed_source: the feed that supplied price_history (e.g. 'fmp'); stamped into Prov source.
     Returns TechnicalOverlay. Never raises — missing data returns 'insufficient_data'.
+
+    ORDERING CONTRACT (L-4a, 2026-08-19) — THIS MODULE OWNS ITS OWN REQUIREMENT.
+    Every computation below is OLDEST-FIRST: closes[-1] is "now" and closes[-period:] is the
+    trailing window. FMP serves price_history NEWEST-FIRST and the adapter preserves that
+    order deliberately (adapters/fmp_adapter.py:33), so trusting caller order is what broke:
+    between 2026-07-11 and 2026-08-19 every MA, RSI, boolean and volume reading described
+    the OLDEST end of a ~5-year window (~August 2021) instead of today, and RSI was computed
+    on a time-reversed series. See docs/l4a-stx-diagnosis.md. The sort below is the fix; the
+    both-orders-identical test in tests/test_l4a_technicals_ordering.py is the guard — the
+    sort alone would be a belief.
     """
     src = f"{feed_source}/price_history"
     if not price_history or len(price_history) < 5:
@@ -75,10 +86,28 @@ def analyze_technicals(price_history: List[Dict], feed_source: str = "unknown") 
             data_rows=len(price_history),
         )
 
+    # Establish chronological order before ANY computation. Fail CLOSED if it cannot be
+    # established: a technicals overlay computed on unknown ordering is precisely the defect
+    # this replaces, so refusing beats guessing.
+    dates = [str(r.get("date") or "")[:10] for r in price_history]
+    if not all(dates):
+        return TechnicalOverlay(
+            trend="insufficient_data",
+            above_ma50=None, above_ma200=None, rsi_14=None,
+            volume_confirmation=None,
+            price_vs_ma50_pct=missing_prov(src, TODAY_STR),
+            price_vs_ma200_pct=missing_prov(src, TODAY_STR),
+            notes="Price history rows carry no 'date' — chronological order cannot be "
+                  "established, so technicals are REFUSED rather than computed on an "
+                  "unverified order.",
+            data_rows=len(price_history),
+        )
+    rows = sorted(price_history, key=lambda r: str(r.get("date"))[:10])
+
     try:
-        closes = [float(r["Close"]) for r in price_history
+        closes = [float(r["Close"]) for r in rows
                   if r.get("Close") is not None and not math.isnan(float(r["Close"]))]
-        volumes = [float(r["Volume"]) for r in price_history
+        volumes = [float(r["Volume"]) for r in rows
                    if r.get("Volume") is not None]
     except (KeyError, TypeError, ValueError):
         return TechnicalOverlay(
