@@ -73,9 +73,19 @@ Code's reading, stated separately and NOT part of the order:
 
 ### PUNCH LIST — current at close
 
-- **★ TOP ITEM — `core/technicals.py` READS THE PRICE HISTORY FROM THE WRONG END. FOUND
-  2026-08-19 BY L-4a, DIAGNOSED, NOT FIXED, AWAITING RULING. Full report:
-  docs/l4a-stx-diagnosis.md.** FMP serves `price_history` **newest-first** (documented at
+- **★ CLOSED 2026-08-19 — `core/technicals.py` READ THE PRICE HISTORY FROM THE WRONG END.
+  FOUND, DIAGNOSED, RULED AND FIXED IN ONE SESSION. Fix `cd6b70f`; report + execution record
+  docs/l4a-stx-diagnosis.md (§9 carries the rulings-1-5 outcomes).** Kept in full because the
+  blast-radius facts below still govern how the 68 tagged rows may be read.
+  **WHAT LANDED:** ascending sort inside core/technicals.py (adapter untouched) + fail-closed
+  refusal when rows carry no `date` + 28 pins including both-orders-identical, a shuffled-input
+  test so a reverse-only fix cannot pass, and the suite's FIRST value-level assertions on an MA
+  and a boolean. Suite 825 -> 853, no pre-existing test broke. STX re-synthesised as id 272
+  superseding 258: **divergence 90.08% -> 1.73%, E(R) restored from WITHHELD to -6.61%.**
+  All 68 affected rows carry `evaluations.defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`
+  (ruled: TAG, do NOT re-run). **STILL OPEN: the B-2 band ruling — Vic rules next session;
+  L-4b STAYS BLOCKED.** Original diagnosis retained:
+  FMP serves `price_history` **newest-first** (documented at
   `adapters/fmp_adapter.py:33`); `analyze_technicals` assumes oldest-first (`closes[-1]`,
   `closes[-period:]`), so **every MA, RSI, boolean and volume reading describes AUGUST 2021,
   not today** — and RSI is computed on a time-reversed series. Aggravated by the known quirk
@@ -110,7 +120,22 @@ Code's reading, stated separately and NOT part of the order:
     warning coming true, with the thing given up never named. And the ONE test touching
     `analyze_technicals` asserts a **provenance source string**, not a single numeric value.
 
-- **`field_provenance.field_name` is NULL on all 1,416 rows** — provenance is unqueryable by
+- **WHAT OPENED A BACKUP AS A LIVE DATABASE AT 19:52 ON 2026-08-17? DIAGNOSIS QUESTION, ruled
+  onto the punch list 2026-08-19 (L-4a ruling 6), NOT this session's work.**
+  `caliber.db.pre-rerun-2026-08-15.bak-shm` (32 KB) and `-wal` (0 bytes) exist, timestamped
+  19:52 on 2026-08-17 — **inside the contamination window** (the fixture runs were 19:50-19:52).
+  The WAL is EMPTY so nothing was pending and the `.bak` itself is intact, but a `-shm`/`-wal`
+  pair only appears when something OPENS a file as a SQLite database. A backup is evidence; a
+  process that can open it read-write is a hazard to the evidence. Question to answer: which
+  call opened it — a stray `--db-path` pointing at the `.bak`, an `init_db`, or a manual probe?
+- **`evaluate.py --db-path`'s HELP STRING UNDERSTATES WHAT IT ROUTES** (found 2026-08-19,
+  recorded not fixed). It reads "Destination for the lifecycle stage write", which was true
+  before L-2a and is now false — the flag routes EVERY write. **This is the exact shape of the
+  2026-08-17 contamination: a flag whose stated scope was narrower than its real one, read by a
+  human as covering the run.** Left alone because it is outside the L-4a order, but it is a
+  one-line fix and it misleads in the dangerous direction.
+- **`field_provenance.field_name` is NULL on all 1,437 rows** (re-measured at close 2026-08-19;
+  was 1,416 before the STX re-synthesis added 21) — provenance is unqueryable by
   field, only by `(evaluation_id, pillar)`. **DIAGNOSIS QUESTION, not yet a fix order:** is
   the writer dropping the name, or was it never populated?
 - **SHARE-CLASS DEDUP AT CIK LEVEL.** GOOG and GOOGL are ONE issuer on ONE CIK
@@ -155,6 +180,19 @@ Code's reading, stated separately and NOT part of the order:
   moves bytes with no logical write behind it.
 - **A RULE RECORDED WITHOUT NAMING ITS ENFORCEMENT POINT IS A BELIEF, NOT A GUARD** — and a
   flag verification only covers the writes the verifying run actually performs.
+- **NEVER FIX A CONTRADICTION BY TEACHING THE MODEL TO IGNORE IT — REMOVE IT AT SOURCE.**
+  (Ruled 2026-08-19, L-4a ruling 4.) A prompt instruction that tells the model which of two
+  disagreeing inputs to trust **MASKS the defect that made them disagree**: the bad input keeps
+  flowing, and the one symptom that would have exposed it disappears. ORIGIN, and it is exact:
+  B-2's 2026-08-07 prompt fix ("anchor to the provided current_price, never remembered levels")
+  was filed as the MU **root cause**. It was not. The real cause was `core/technicals.py`
+  handing the model a 2021 price in the same prompt as a 2026 one. The instruction made the
+  model prefer the right number, divergence fell 90.8% -> 1.1%, everyone read that as fixed —
+  **and the poisoned technicals then ran for 12 more days across 5 batch sessions with nothing
+  objecting.** A contradiction between two inputs is EVIDENCE; suppressing it destroys the
+  evidence. If two inputs disagree, fix the producer or fail loudly — never arbitrate in the
+  prompt. Corollary: when a guard's symptom disappears after a fix, verify the CAUSE is gone
+  and not merely the symptom.
 
 ## ▶ ARCHIVE — FINISHED HISTORY NOW LIVES IN docs/phase-archive.md (trimmed 2026-08-19)
 Pure relocation under ruling; nothing deleted. **READ THE ARCHIVE BEFORE TOUCHING A SURFACE IT

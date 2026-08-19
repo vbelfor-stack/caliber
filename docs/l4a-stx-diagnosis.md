@@ -310,3 +310,131 @@ damage is to narrative quality, not to the numbers that feed grading.
 2026-08-17 19:52 — inside the contamination window. The WAL is empty so nothing is pending and
 the `.bak` itself is intact, but something opened a **backup** as a live database that evening.
 Recorded for the punch list, not investigated.
+
+---
+
+# §9 — EXECUTION UNDER RULINGS 1–5 (2026-08-19)
+
+Vic's rulings on this report, and what each one produced. Commits: `cd6b70f` (ruling 1),
+plus the session-close commit carrying rulings 3–6.
+
+**md5 trail:** `24df8145` (session open) → `4a7ab584` (ruling 3 tag) → `8557a157` (ruling 2
+STX re-synthesis). Read-only passes verified md5 unchanged.
+
+## Ruling 1 — technicals fix + pins. DONE (`cd6b70f`, pushed).
+
+Ascending sort inside `core/technicals.py`; **adapter untouched**, as ruled. Rows are sorted by
+`date` before any computation and `closes`/`volumes` are both rebuilt from the sorted rows so
+they stay index-aligned. **Fail-closed** per standing rule: a row lacking `date` means order
+cannot be established, so technicals are REFUSED (`insufficient_data`, cause named in the
+reading) rather than computed on an unverified order — only one site in the tree constructs
+rows and it supplies a date, so nothing depended on dateless input.
+
+**Pins — `tests/test_l4a_technicals_ordering.py`, 28 tests.** Both-orders-identical across all
+nine fixtures (as-served vs reversed vs explicitly-ascending); a **shuffled** series must agree
+too, so a reverse-only fix cannot pass; value-level assertions on an MA and a boolean with WU
+as the validating case; the exact pre-fix numbers pinned as **forbidden** so a regression is
+named on sight; RSI-not-reversed; NOW's double flip; MU unchanged; and the **premise** pinned
+(the fixtures really are newest-first), so if FMP ever flips the reason the sort exists stays
+documented instead of becoming folklore.
+
+**Suite 825 → 853 (+28). No pre-existing test broke**, even though the fix moves technicals
+output for every ticker — which is itself the evidence that the suite never asserted a
+technicals value.
+
+MEASURED while writing the pins, correcting a number I had reasoned rather than measured: the
+defect gave WU **RSI 78.42** (overbought) where the correct series gives **28.42** (oversold) —
+near-mirrored about 50, as a sign flip implies. This also explains the one row §5b flagged as
+unreliable: id 212's regex hit of `78.40` was WU's **RSI**, not a price. The caveat was right.
+
+## Ruling 2 — STX re-synthesised, supersede-linked. DONE.
+
+Live full run, EDGAR pre-flighted on the adapter's own path immediately before
+(STX CIK 0001137789, SIC 3572, 23 concepts — reachable, so the run could proceed).
+
+**New row id 272, `supersedes_id=258`**, status `ok`, lens cyclical, avg_score 3.6,
+`defect_tags` NULL (post-fix run).
+
+| | id 258 (pre-fix) | id 272 (post-fix) |
+|---|---|---|
+| technicals given to the model | Price $89.03, MA50 84.81, MA200 94.09 — **Aug 2021** | Price $832.56, MA50 890.67, MA200 559.98 — **today** |
+| weighted target | $94.55 | $777.50 |
+| model E(R) | -4.2% | -8.2% |
+| implied anchor | $98.70 | $846.95 |
+| live price | $994.91 | $832.56 |
+| **divergence** | **90.08% — TRIPPED** | **1.73% — no trip** |
+| stored E(R) | **WITHHELD (NULL)** | **-6.61%** |
+
+The fix is verified end-to-end in production: id 272's red flags now read *"Price below MA50
+($890.67) … above MA200"* — matching exactly the values computed as correct in §2 before any
+code changed. **id 258's original columns are byte-identical** (appended-and-linked, never
+edited); its only change is the ruling-3 annotation.
+
+**Delta audit — every delta inside the stated set:** `evaluations` +1 · `field_provenance` +21
+(standing companion) · `synthesis_cache` **+0** (evaluate.py never writes the cache) ·
+`lifecycle_stage` +1 (id 44, stage MATURE unchanged) · `lifecycle_transitions` +0 · `grades` +0
+· `sqlite_sequence` bookkeeping on two existing tables. Nothing outside the set.
+
+## Ruling 3 — the 67 are TAGGED, not re-run. DONE.
+
+Additive nullable column `evaluations.defect_tags TEXT`, via the existing idempotent
+`_ensure_columns` mechanism (same pattern as the supersede trail), added to both the fresh-DB
+DDL and the migration list so production and a fresh test DB cannot diverge. A single UPDATE
+set `TECHNICALS-REVERSED-AT-SYNTHESIS` on every row carrying a synthesis.
+
+**Blast-radius assertion held exactly: 68 rows, else ROLLBACK.** Verified after: 68 tagged,
+11 untagged and all of them `failed` no-synthesis rows from 2026-07-10 (ids 1–11, which
+includes an earlier STX yfinance DOA); zero tag/synthesis mismatches; **every pre-existing
+column on all 79 rows byte-identical**, proven by a per-row hash of all prior columns taken
+before the write and re-compared before commit; all sibling tables and `sqlite_sequence`
+unmoved.
+
+The tag is deliberately **not** a supersede and **not** a restatement — the rows stand, their
+numbers are untouched, and no re-run is implied. It exists so rollups can slice rather than
+silently blend.
+
+## Ruling 5 — B-2 divergence distribution, read-only. NO band changes.
+
+Read-only confirmed twice (md5 `8557a157` before and after each pass).
+
+**AT-EVAL divergence — what the guard actually computed at write time** (price at eval
+recovered as `weighted_target / (1 + stored_ER/100)`), n=28 latest rows per name:
+
+```
+min 0.38%   median 2.97%   p90 12.23%   max 14.63%   names above 15%: ZERO
+INFQ 14.63 · SPCX 13.86 · IONQ 12.23 · RKLB 11.88 · NVDA 9.93 · BE 7.21 · XE 6.40
+WU 5.56 · USB 5.32 · GOOGL 5.08 · V 4.76 · CAT 4.35 · QBTS 3.87 · FN 2.98 · DPC 2.96
+MU 2.41 · C 2.39 · ARM 2.06 · STX 1.73 (POST-FIX) · GOOG 1.61 · LITE 2.79 · LRCX 1.26
+CBRS 1.28 · LLY 1.04 · SKHY 1.00 · BK 0.70 · NOW 0.67 · JPM 0.38
+```
+
+**ONE NUMBER MOVED, AND IT IS THE ONE THAT MATTERED: STX 90.08% → 1.73%.** The single
+pathological outlier is gone and the distribution now tops out at INFQ's 14.63%. Every other
+value is **identical to the L-3 table** — necessarily so, because ruling 3 re-ran nothing.
+
+**INFQ's near-miss survives unchanged: 14.63% against the 15% band the fail-closed rule holds
+it to — 0.37pp from tripping** on a live held name.
+
+### TWO REASONS THIS IS NOT YET CLEAN CALIBRATION DATA — stated because band-setting depends on it
+
+1. **27 of 28 rows are still defect-tagged.** Only STX id 272 is post-fix. Under ruling 3 (no
+   re-runs) the population does not become clean by itself, so there is no new calibration
+   information beyond the one STX row.
+2. **A METHODOLOGICAL FINDING ON THE L-3 METHOD ITSELF.** Ruling 5 asked for "same method as
+   the L-3 dark table". L-3's method compares a **stored** anchor to a **live** price. That is
+   sound only when run on the eval's own day, which L-3 was. Re-run two days later it also
+   absorbs price drift. Measured both ways today:
+
+   | | flags @flat 15% | flags @stage band | max |
+   |---|---|---|---|
+   | at-eval (isolates anchor error) | **0** | **0** | 14.63% |
+   | vs live price, 2 days later | **8** | **4** | 35.60% (FN) |
+
+   The eight are **price drift, not anchor error** — STX itself fell 994.79 → 832.56 (-16.3%)
+   in those two days and the whole AI-storage complex sold off. FN 35.60%, INFQ 22.98%,
+   IONQ 21.24%, RKLB 21.08%, BE 20.45%, LITE 20.34%, SPCX 19.23%, CBRS 18.32%.
+   **Recommendation for next session's band ruling: the L-3 method must be pinned to the eval
+   date, or it silently measures a different quantity.** A band calibrated on the live-price
+   variant would be calibrated partly on market weather.
+
+**No band was changed. L-4b remains blocked.**

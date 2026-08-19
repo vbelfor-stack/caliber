@@ -71,6 +71,14 @@ _EVALUATIONS_ADDED_COLUMNS = {
     # directions. Rows written before this column read NULL = MEMBERSHIP UNRECORDED, which
     # is deliberately NOT the same as 0; see core/universe.
     "calibration_instrument": "INTEGER",
+    # Ruled 2026-08-19 (L-4a ruling 3). Comma-separated defect tags naming a KNOWN DEFECT
+    # the row was produced under. NOT a supersede: the row stands, its numbers are not
+    # restated, and no re-run is implied — the tag exists so grading rollups can SLICE the
+    # affected population later instead of silently blending it. NULL = no known defect.
+    # First and only value so far: TECHNICALS-REVERSED-AT-SYNTHESIS (all 68 rows carrying a
+    # synthesis; see docs/l4a-stx-diagnosis.md). Ruled in preference to re-running 67 rows,
+    # because pillar scores were never affected and grades were empty.
+    "defect_tags": "TEXT",
 }
 
 
@@ -116,7 +124,11 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 supersede_reason  TEXT,
                 -- 1 = the ticker was NOT in tickers.txt when this row was written. NULL on
                 -- rows predating the column: unrecorded, which is not the same as 'held'.
-                calibration_instrument INTEGER
+                calibration_instrument INTEGER,
+                -- Defect annotation (ruled 2026-08-19, L-4a). Names a known defect the row
+                -- was produced under, so rollups can slice rather than blend. NOT a
+                -- supersede and NOT a restatement: the row's numbers stand untouched.
+                defect_tags TEXT
             );
 
             CREATE TABLE IF NOT EXISTS field_provenance (
