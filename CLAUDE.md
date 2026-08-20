@@ -1,53 +1,87 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-19)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-20)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then ASK VIC FOR THE B-2 BAND
-RULING — it is the only thing he reserved to himself at the L-4a close, and BOTH remaining
-L-4 steps sit behind it.** `L-4b (batch tolerance arming) IS BLOCKED BY RULING` until the band
-is settled; coverage expansion (L-4c) sits behind L-4b. Do not arm anything first.
-**Nothing in the tree is mid-flight — L-4a closed complete, tree clean, pushed.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4c — COVERAGE
+EXPANSION, capped at ONE order.** Extend `fundamental_series` beyond MU/GOOG/NOW/WU; 24 of 28
+names have no FCF history. **Fail-closed: a name the filings cannot support gets a TYPED
+REASON, never a synthetic series.** §5 step 4 (YOUNG supply block) is then ruled ON THAT
+EVIDENCE, not before — do not arm it in the same order.
+**THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
+re-derivation. L-4b is DONE. Nothing is blocked on Vic.**
+**Nothing in the tree is mid-flight — L-4b closed complete, tree clean, pushed.**
+**★ CARRY THIS FORWARD: the `B2-WIDENING-SUPPRESSED-TRIP` tripwire is LIVE and unfired.** If
+any batch run emits it, that is a REPORT-TO-VIC event before the E(R) is trusted — see ARMED
+STATE below. It is the one thing L-4b left deliberately observable rather than settled.
 
-### STATE AT CLOSE 2026-08-19 — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-20 — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `f417001`** ("L-4a rulings 3-6: defect_tags on all 68 rows, STX superseded, standing rule"). A block cannot contain its own hash. |
-| This session's commits | `cc8756c` archive trim · `afe9d75` L-4a diagnosis · `cd6b70f` L-4a fix (ruling 1) · `f417001` L-4a rulings 3-6 · + this close |
+| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `52ed3d4`** ("L-4b: batch tolerance arming — both write paths on the stage band"). A block cannot contain its own hash. |
+| This session's commits | `52ed3d4` the L-4b arm · + this close. **Two commits only — L-4b was a code-path arming, not a data order.** |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
-| Suite | **853 passed** (was 825; +28 from `tests/test_l4a_technicals_ordering.py`) |
-| caliber.db md5 | **8557a157ee92e22df01cfe04cb1e1d55** (WAL checkpointed at close; no wal/shm alongside) |
-| md5 trail this session | `24df8145` (open) → `4a7ab584` (ruling-3 tag) → **`8557a157`** (ruling-2 STX re-synthesis). Backups kept locally at both pre-write points. |
-| evaluations | **80** rows, max id **272** · ok 67 / failed 11 / anchor_divergence 2 · held 51 / calibration 29 |
+| Suite | **871 passed** (was 853; −1 retired batch dark pin, +19 from `tests/test_l4b_batch_tolerance.py`) |
+| caliber.db md5 | **8557a157ee92e22df01cfe04cb1e1d55** — **UNCHANGED FROM LAST CLOSE.** WAL checkpointed (returned `(0,0,0)` — nothing pending); the empty wal/shm pair my read connections created was removed, md5 re-verified after. |
+| **PRODUCTION WRITES THIS SESSION** | **ZERO. Expected delta was the empty set and the empty set is what landed.** Every verification run was directed at a scratch db and the md5 was re-read after each one. No evaluation, stage, provenance or cache row created, altered or removed. |
+| md5 trail this session | `8557a157` (open) → **`8557a157`** (close). No write points, so no backups were taken. |
+| evaluations | **80** rows, max id **272** · ok 67 / failed 11 / anchor_divergence 2 · held 51 / calibration 29 — all identical to last close |
 | **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
-| lifecycle_stage | **44** rows (+1: STX re-synthesis, MATURE unchanged) |
+| lifecycle_stage | **44** rows (unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
-| field_provenance | **1437** rows (+21 for eval 272) |
-| fundamental_series | 557 rows (4 tickers only — MU/GOOG/NOW/WU) · grades 0 · synthesis_cache 16 (+0 — evaluate.py never writes the cache) |
+| field_provenance | **1437** rows (unchanged) |
+| fundamental_series | 557 rows (**4 tickers only — MU/GOOG/NOW/WU; this is exactly what L-4c must expand**) · grades 0 · synthesis_cache 16 (evaluate.py never writes the cache — see the L-4b coverage gap) |
+| **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
 
-- **§5 step 3 IS ARMED, IN `evaluate.py` ONLY.** The B-2 anchor-divergence band is
-  stage-conditioned: **YOUNG 30% · HIGROWTH 20% · MATURE 15% · DECLINE 15%**, read from the
-  PERSISTED `lifecycle_stage` table via `core/stage_tolerance.tolerance_for()`.
-- **KNOWN DIVERGENCE, STILL OPEN — NOW RULED TO L-4b AND L-4b IS BLOCKED:** `batch/runner.py`
-  still calls the guard on the **flat 15%**. The two write paths still disagree about
-  tolerance. **This did NOT get fixed at L-4a** — L-4a turned out to be a real defect hunt, and
-  Vic then blocked L-4b pending the B-2 band ruling, so the divergence survives this session
-  deliberately. Bounded and legible, but it must not persist.
+- **§5 step 3 IS ARMED ON BOTH WRITE PATHS (batch armed at L-4b, 2026-08-20).** The B-2
+  anchor-divergence band is stage-conditioned: **YOUNG 30% · HIGROWTH 20% · MATURE 15% ·
+  DECLINE 15%**, read from the PERSISTED `lifecycle_stage` table via
+  `core/stage_tolerance.tolerance_for()`.
+- **THE PER-PATH TOLERANCE DIVERGENCE IS CLOSED (L-4b, 2026-08-20).** `batch/runner.py` used
+  to call the guard on the flat 15% while evaluate.py used the stage band, so the same name
+  could get a different verdict by entry point. Both paths now call `tolerance_for()` once,
+  **against the DESTINATION db (`db_path or _DEFAULT_DB`), never unconditionally production** —
+  a scratch run finds no stage rows and falls to the DEFAULT band. `batch/runner.py` no longer
+  imports `ANCHOR_DIVERGENCE_THRESHOLD` at all, and the removal is pinned.
+- **THE ARM IS MONOTONE-WIDENING, AND THAT IS THE SAFETY PROPERTY IT RESTS ON.** No stage band
+  is tighter than the flat default (`min(bands) == DEFAULT_TOLERANCE == 0.15`), so it can only
+  ever SUPPRESS a trip, never create one. Pinned by `test_the_arm_is_monotone_widening`, which
+  fails loudly if a future band ever drops below 15%.
+- **★ LIVE TRIPWIRE — `B2-WIDENING-SUPPRESSED-TRIP` (codicil to the L-4b ruling).** 10 of 28
+  names widen (ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%) and **9 of those 10
+  were UNVERIFIED at arm time** — no eval-date price exists for them, so their bands are
+  reasoned, not measured. The widened band IS THE RISK DIRECTION. The first divergence landing
+  in `(15%, stage band]` — one flat-15 would have tripped — emits a grep-able full readout and
+  **REPORTS TO VIC BEFORE THAT E(R) IS TREATED AS TRUSTED.** Same pattern as the D-5 bank
+  cheap-rungs tripwire. It ADVISES, it does not withhold: E(R) is still computed and persisted,
+  because the codicil ordered a report and withholding would be a second unruled guard.
 - **`core/technicals.py` NOW OWNS ITS ORDERING CONTRACT (armed 2026-08-19, `cd6b70f`).** It
   sorts by date internally and REFUSES (fail-closed) when order cannot be established. It no
   longer trusts caller order, so the adapter's newest-first contract and this module can no
   longer silently disagree. Pinned by `tests/test_l4a_technicals_ordering.py` (28 tests),
   including the suite's FIRST value-level assertions on an MA and a boolean.
 - **THE TOLERANCE LOOKUP IS THE ONLY SCORING-PATH CONSUMER OF LIFECYCLE STAGE.** Pinned by
-  `test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage`. `core/pillars.py`,
-  `core/valuation_anchors.py`, `batch/runner.py` and `synthesis/schema.py` contain no
-  reference to the classifier or the stage table. The band is passed INTO `check_anchor` as
-  its existing `threshold`, so the guard never learns what a stage is.
+  `test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage`, **widened at L-4b**
+  to admit `batch/runner.py` as the second WRITE PATH making THE SAME ONE decision — one real
+  call site per write path, still zero anywhere else. `core/pillars.py`,
+  `core/valuation_anchors.py` and `synthesis/schema.py` contain no reference to the classifier
+  or the stage table. The band is passed INTO `check_anchor` as its existing `threshold`, so
+  the guard never learns what a stage is.
+  Two properties of that pin worth knowing before editing it: **(a)** the classifier/table
+  prohibition is ASYMMETRIC on purpose — `evaluate.py` is the ANNOTATOR (§5 step 1) and must
+  import both; batch annotates nothing and may learn only the band. **(b)** the call-site count
+  is taken over the **AST, not the text** — the old substring count was tripped by a COMMENT
+  mentioning `tolerance_for()`, and a pin that prose can break is one a later session weakens
+  instead of heeding.
+- **RETIRED BY NAME AT L-4b: `test_batch_runner_does_not_read_the_classifier`.** Its surviving
+  half (batch may never touch the classifier or the raw stage table, only the derived band) is
+  re-asserted by `test_batch_reads_the_band_and_never_the_classifier` + the widened successor
+  pin above. A retirement comment naming that handoff sits where the test was.
 - **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) is BLOCKED behind
   `fundamental_series` coverage expansion by standing ruling — 24 of 28 names have no FCF
   history, so the YOUNG/blocked boundary currently reflects FEED COVERAGE, not business
@@ -78,15 +112,22 @@ Code's reading, stated separately and NOT part of the order:
   FMP exonerated; the model anchored to a stale price WE PUT IN THE PROMPT. Diagnosis only, zero
   writes, caliber.db md5 unchanged. FIX NOT APPLIED — awaiting ruling, and it must land BEFORE
   L-4b arms a divergence band.**
-- **L-4b — BATCH TOLERANCE ARMING. ★ BLOCKED BY RULING (2026-08-19), NOT MERELY UNSTARTED.**
-  Bring `batch/runner.py` onto the same stage-conditioned band so the two write paths stop
-  disagreeing. Flips the batch dark pin — expect to retire it by name and replace it, exactly
-  as L-3 did for evaluate.py. **IT MAY NOT START UNTIL VIC RULES ON THE B-2 BAND**, because
-  arming a divergence tolerance on the current calibration would bake the L-4a technicals
-  defect into the guard: 27 of the 28 latest rows are defect-tagged, so the distribution the
-  band would be set from is still the contaminated one.
-- **L-4c — COVERAGE EXPANSION, CAPPED AT ONE ORDER.** Extend `fundamental_series` beyond the
-  four names it covers. **Step 4 is then ruled on that evidence**, not before. Sits behind L-4b.
+- **L-4b — BATCH TOLERANCE ARMING. ✅ DONE 2026-08-20 — docs/l4b-batch-tolerance.md.**
+  Vic ruled "arm now" on the existing 15/20/30 set with two codicils (coverage limit on record;
+  the `B2-WIDENING-SUPPRESSED-TRIP` tripwire — both in the ARMED STATE section above). The
+  band values were NOT re-derived: the contaminated-calibration concern bears on whether
+  30/20/15 are the RIGHT numbers, which is already-shipped state on the interactive path, and
+  L-4b changed no number — it removed an inconsistency. **Rationale for arming over clamping
+  batch to flat 15, in Vic's words: clamping "creates per-path tolerance divergence (same name,
+  different verdict by entry point), which is its own defect class. Monotone-widening + empty
+  dark diff + path consistency carries it."** Zero production writes; caliber.db md5 unchanged.
+  Suite 853 → 871.
+- **L-4c — COVERAGE EXPANSION, CAPPED AT ONE ORDER. ◀ NEXT.** Extend `fundamental_series`
+  beyond the four names it covers (MU/GOOG/NOW/WU — 24 of 28 have no FCF history). **Step 4 is
+  then ruled on that evidence**, not before. L-4b no longer blocks it.
+  **FAIL-CLOSED CONSTRAINT, carried from the order that queued it:** coverage expansion must
+  not manufacture FCF where the filings do not support it — a name that cannot be covered gets
+  a TYPED REASON, never a synthetic series. (Standing rule: NO SYNTHETIC CALIBRATION, EVER.)
 
 **WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
 docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
@@ -154,6 +195,16 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   pair only appears when something OPENS a file as a SQLite database. A backup is evidence; a
   process that can open it read-write is a hazard to the evidence. Question to answer: which
   call opened it — a stray `--db-path` pointing at the `.bak`, an `init_db`, or a manual probe?
+- **`batch/runner.py:309` READS THE SYNTHESIS CACHE FROM PRODUCTION EVEN UNDER `--db-path`**
+  (found 2026-08-20 while dark-verifying L-4b; recorded, NOT fixed — outside that order).
+  `get_cached_synthesis(ticker, today_str)` is called with NO `db_path`, so it always reads
+  production `caliber.db` — while the matching `save_synthesis_cache` twelve lines below DOES
+  honour the destination. A scratch or fixture run can therefore reuse a production synthesis.
+  It is a READ, so nothing was written anywhere it should not have been and this is not
+  contamination — **but it is the same SHAPE as the 2026-08-17 contamination and as the
+  help-string defect below: a destination flag whose real scope is narrower than a human reads
+  it.** `--db-path` is documented as routing every write; it does not route this read.
+  One-line fix, own order.
 - **`evaluate.py --db-path`'s HELP STRING UNDERSTATES WHAT IT ROUTES** (found 2026-08-19,
   recorded not fixed). It reads "Destination for the lifecycle stage write", which was true
   before L-2a and is now false — the flag routes EVERY write. **This is the exact shape of the
@@ -164,6 +215,13 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   was 1,416 before the STX re-synthesis added 21) — provenance is unqueryable by
   field, only by `(evaluation_id, pillar)`. **DIAGNOSIS QUESTION, not yet a fix order:** is
   the writer dropping the name, or was it never populated?
+- **RECORD `price_snapshot` ON EVERY COMPLETING EVAL (roadmap item, ruled 2026-08-20 as NOT
+  part of L-4b).** Today only `synthesis_cache` carries an eval-date price, only batch writes
+  it, and it holds 16 rows across 5 tickers — which is why 9 of the 10 L-4b widened names could
+  not be replay-verified. Per the L-4a ruling 5(b) an eval-date price is the ONLY thing that
+  makes a divergence recomputable later; without it, a re-run measures price drift instead.
+  Extending capture (batch and/or evaluate.py) closes the L-4b verification gap **BY
+  OPERATION** on the next real evals — no dedicated capture order needed.
 - **SHARE-CLASS DEDUP AT CIK LEVEL.** GOOG and GOOGL are ONE issuer on ONE CIK
   (`0001652044`) and both are evaluated. Two rows with near-identical fundamentals would
   DOUBLE-WEIGHT one forecast in any grade rollup. GOOGL is canonical (held); GOOG is
