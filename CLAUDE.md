@@ -13,6 +13,11 @@ EVIDENCE, not before — do not arm it in the same order.
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE. Nothing is blocked on Vic.**
 **Nothing in the tree is mid-flight — L-4b closed complete, tree clean, pushed.**
+**DELTA SINCE THAT CLOSE — one MICRO-ORDER ran 2026-08-20 (second session) and closed the
+`batch/runner.py:309` cache-read routing defect. It changed ONE code line plus a new test
+file; every other measured value in the table below still stands. Suite 871 → 876. caliber.db
+md5 STILL `8557a157`, zero production writes. See the punch list's top ✅ entry — the sweep
+result and the `web/app.py` exclusion are recorded there, so L-4c does not re-sweep.**
 **★ CARRY THIS FORWARD: the `B2-WIDENING-SUPPRESSED-TRIP` tripwire is LIVE and unfired.** If
 any batch run emits it, that is a REPORT-TO-VIC event before the E(R) is trusted — see ARMED
 STATE below. It is the one thing L-4b left deliberately observable rather than settled.
@@ -195,16 +200,32 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   pair only appears when something OPENS a file as a SQLite database. A backup is evidence; a
   process that can open it read-write is a hazard to the evidence. Question to answer: which
   call opened it — a stray `--db-path` pointing at the `.bak`, an `init_db`, or a manual probe?
-- **`batch/runner.py:309` READS THE SYNTHESIS CACHE FROM PRODUCTION EVEN UNDER `--db-path`**
-  (found 2026-08-20 while dark-verifying L-4b; recorded, NOT fixed — outside that order).
-  `get_cached_synthesis(ticker, today_str)` is called with NO `db_path`, so it always reads
-  production `caliber.db` — while the matching `save_synthesis_cache` twelve lines below DOES
-  honour the destination. A scratch or fixture run can therefore reuse a production synthesis.
-  It is a READ, so nothing was written anywhere it should not have been and this is not
-  contamination — **but it is the same SHAPE as the 2026-08-17 contamination and as the
-  help-string defect below: a destination flag whose real scope is narrower than a human reads
-  it.** `--db-path` is documented as routing every write; it does not route this read.
-  One-line fix, own order.
+- **✅ CLOSED 2026-08-20 (micro-order) — `batch/runner.py` READ THE SYNTHESIS CACHE FROM
+  PRODUCTION EVEN UNDER `--db-path`.** `get_cached_synthesis(ticker, today_str)` took no
+  destination, so the READ always resolved to production while the `save_synthesis_cache`
+  twelve lines below honoured `db_path or _DEFAULT_DB` — a scratch or fixture run could REUSE
+  a production synthesis it would never write back. Third instance of one shape (a destination
+  flag whose real scope is narrower than a human reads it; the others are the ids-226-228
+  contamination and the L-2a save-side half of this same pair). **Fix: the read now resolves
+  `db_path or _DEFAULT_DB`, identical to the save.** Zero production writes, md5 unchanged.
+  Suite 871 → 876, `tests/test_cache_read_routing.py`.
+  - **THE SAVE SIDE WAS CLOSED BY DELETING THE DEFAULT; THE READ SIDE COULD NOT BE** —
+    `get_cached_synthesis` is also called legitimately without one — so the enforcement point
+    is at the CALL SITE, written as a class pin, not an instance pin.
+  - **SWEEP RESULT (AST over every non-test `.py`, positional AND keyword routing counted):
+    NO FOURTH INSTANCE.** `batch/runner.py:309` was the only unrouted store accessor on either
+    `--db-path`-honouring path. The other candidates all route POSITIONALLY, and a
+    keyword-only sweep reports them falsely — `_validate_supersede_link` (runner :211/:507),
+    `init_db` (evaluate.py :260, smoke.py :51/:234, tools/probe_lifecycle.py :70). **A sweep
+    that only counts keywords will re-raise all five; count positionals.**
+  - **`web/app.py` IS OUT OF SCOPE BY DESIGN, not by oversight** — 14 unrouted reads and one
+    unrouted write (`save_override` :451) against production. It is the production dashboard
+    and has NO destination flag to understate, so it is not this shape. Stated in the pin's
+    docstring so a later session does not read the exclusion as a miss.
+  - Pinned four ways: the behavioural guarantee; a POSITIVE CONTROL (same run, row moved to
+    its own destination, must hit) so the pin cannot pass vacuously if the cache branch ever
+    goes dead in fixture mode; the write-side twin restated beside it; and the AST class pin
+    above. Verified to FAIL 4 of 5 against the pre-fix line before landing.
 - **`evaluate.py --db-path`'s HELP STRING UNDERSTATES WHAT IT ROUTES** (found 2026-08-19,
   recorded not fixed). It reads "Destination for the lifecycle stage write", which was true
   before L-2a and is now false — the flag routes EVERY write. **This is the exact shape of the

@@ -306,7 +306,16 @@ def run_single_ticker(
                 current_price = yf.current_price.value if not yf.current_price.is_missing() else None
                 today_str = _date.today().isoformat()
 
-                cached = None if force_refresh else get_cached_synthesis(ticker, today_str)
+                # db_path IS REQUIRED HERE FOR THE SAME REASON IT IS ON THE SAVE BELOW.
+                # This READ used to omit it and default to production caliber.db while the
+                # matching save_synthesis_cache honoured the destination — so a scratch or
+                # fixture run could REUSE A PRODUCTION SYNTHESIS it never wrote back. Same
+                # partial-routing shape as the L-2a save-side defect and the ids-226-228
+                # contamination: a destination flag whose real scope was narrower than its
+                # documentation. Read and write now resolve the destination identically.
+                cached = None if force_refresh else get_cached_synthesis(
+                    ticker, today_str, db_path or _DEFAULT_DB,
+                )
                 if cached:
                     _log("synthesis cache hit — reusing today's scenario set")
                     synthesis = parse_synthesis(cached["synthesis_json"], pillars, ticker)
