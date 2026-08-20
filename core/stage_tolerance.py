@@ -109,3 +109,24 @@ def tolerance_for(ticker: str, db_path: Path) -> StageTolerance:
         return StageTolerance(DEFAULT_TOLERANCE, stage,
                               f"stage {stage} has no configured band — default")
     return StageTolerance(band, stage, f"stage {stage} band {band * 100:.0f}%")
+
+
+def suppressed_by_widening(divergence: Optional[float], tolerance: float) -> bool:
+    """True when the STAGE BAND is the only reason this divergence did not trip.
+
+    L-4b TRIPWIRE (ruled 2026-08-20). The batch arm was landed with 9 of the 10 widened
+    names unverified — no eval-date price exists for them, so the widening was reasoned,
+    not measured. The widened band is the RISK DIRECTION: past 15% a name now needs 20%
+    or 30% to trip, so a real defect on a YOUNG/HIGROWTH name can pass silently.
+
+    This predicate names the exact event that would validate or indict the widening — a
+    divergence in `(DEFAULT_TOLERANCE, tolerance]`, i.e. one flat-15 WOULD have caught.
+    Same pattern as the D-5 BANK-RUNG-UNCALIBRATED tripwire: an uncalibrated rung stays
+    OBSERVABLE until a real event lands on it. Until one does, the readout is the only
+    thing standing between a widened band and a laundered E(R).
+
+    Returns False for the default band, where widening cannot be the cause by definition.
+    """
+    if divergence is None or tolerance <= DEFAULT_TOLERANCE:
+        return False
+    return DEFAULT_TOLERANCE < divergence <= tolerance

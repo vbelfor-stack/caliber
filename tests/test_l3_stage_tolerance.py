@@ -142,16 +142,41 @@ def test_IONQ_gets_YOUNGs_30pc_band_after_its_lens_override(tmp_path):
 
 def test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage():
     """SUCCESSOR TO THE RETIRED STEP-1 PIN (test_evaluate_annotates_but_never_consults_the
-    _stage). Step 3 makes exactly one scoring decision read a stage. If a second one appears,
-    this fails — and a second consumer needs its own order, not a quiet import."""
-    src = Path("evaluate.py").read_text(encoding="utf-8")
-    assert "from core.stage_tolerance import tolerance_for" in src
-    assert src.count("tolerance_for(") == 1, (
-        "evaluate.py has more than one stage-tolerance call site — a second scoring "
-        "consumer of stage needs its own order, not a quiet import")
-    # No other scoring surface may reach for a stage at all.
-    for path in ("core/pillars.py", "core/valuation_anchors.py", "batch/runner.py",
-                 "synthesis/schema.py"):
+    _stage). Exactly one scoring decision reads a stage. If a second one appears, this fails
+    — and a second consumer needs its own order, not a quiet import.
+
+    WIDENED AT L-4b (2026-08-20) to admit batch/runner.py as the SECOND WRITE PATH making
+    THE SAME ONE DECISION. That is not a second consumer: both paths call tolerance_for()
+    once, for the B-2 band, and nothing else. The claim the pin defends is unchanged —
+    exactly one KIND of scoring decision may consult a stage, at exactly one call site per
+    write path. A third call site anywhere, or any call site in a NON-write-path module,
+    still fails here.
+    """
+    # COUNTED OVER THE AST, NOT THE TEXT (changed at L-4b). The substring count this used to
+    # do was tripped by a COMMENT mentioning tolerance_for() — a pin that prose can break is
+    # a pin a later session weakens instead of heeding. An ast.Call count says exactly what
+    # the pin means: one real call site, comments and docstrings irrelevant.
+    import ast
+
+    for path in ("evaluate.py", "batch/runner.py"):
+        src = Path(path).read_text(encoding="utf-8")
+        assert "tolerance_for" in src, f"{path} lost its stage-tolerance call"
+        calls = [n for n in ast.walk(ast.parse(src))
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                 and n.func.id == "tolerance_for"]
+        assert len(calls) == 1, (
+            f"{path} has {len(calls)} stage-tolerance call sites — a second scoring "
+            "consumer of stage needs its own order, not a quiet import")
+    # evaluate.py is NOT checked for classifier/table access here, and the asymmetry is
+    # deliberate: it is the ANNOTATOR (§5 step 1 writes the stage row after scoring), so it
+    # must import both. batch/runner.py annotates nothing — the band is the ONLY thing it is
+    # allowed to learn about a stage, and reaching past it to the classifier or the raw table
+    # would be a new capability, not this arming.
+    _batch = Path("batch/runner.py").read_text(encoding="utf-8")
+    assert "core.lifecycle" not in _batch, "batch/runner.py imports the classifier"
+    assert "lifecycle_stage" not in _batch, "batch/runner.py reads the stage table"
+    # No NON-write-path scoring surface may reach for a stage at all.
+    for path in ("core/pillars.py", "core/valuation_anchors.py", "synthesis/schema.py"):
         s = Path(path).read_text(encoding="utf-8")
         assert "stage_tolerance" not in s, f"{path} now reads the stage band"
         assert "core.lifecycle" not in s, f"{path} imports the classifier"

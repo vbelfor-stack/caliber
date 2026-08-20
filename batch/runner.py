@@ -52,12 +52,41 @@ from core.technicals import analyze_technicals
 from store.models import (save_evaluation, save_failed_evaluation, get_cached_synthesis,
                           save_synthesis_cache, _DEFAULT_DB, _validate_supersede_link,
                           SupersedeLinkInvalid)
-from synthesis.schema import check_anchor, AnchorPriceDivergence, ANCHOR_DIVERGENCE_THRESHOLD
+from core.stage_tolerance import (DEFAULT_TOLERANCE, suppressed_by_widening,
+                                  tolerance_for)
+# ANCHOR_DIVERGENCE_THRESHOLD is deliberately NOT imported here any more (L-4b). The batch
+# path no longer has a flat threshold to reach for; its band comes from tolerance_for(). A
+# dangling import of the flat value is how a path quietly drifts back onto it.
+from synthesis.schema import check_anchor, AnchorPriceDivergence
 
 from core.universe import is_calibration_instrument
 
 DEFAULT_UNIVERSE = _ROOT / "tickers.txt"
 FX_ROOT = _ROOT / "tests" / "fixtures"
+
+# L-4b TRIPWIRE TAG. Grep-able, because the whole point is that this event must not scroll
+# past unnoticed in a 28-name batch log the way the technicals defect did for 12 days.
+WIDENING_SUPPRESSED_TAG = "B2-WIDENING-SUPPRESSED-TRIP"
+
+
+def _log_widening_suppression(ticker: str, ac, tol, log) -> None:
+    """Report the first divergence the STAGE WIDENING — and nothing else — let through.
+
+    Ruled as a codicil to the L-4b arm: 9 of the 10 widened names had no eval-date price at
+    arm time, so their bands are reasoned, not measured. This is the readout that makes the
+    widening observable rather than merely believed. E(R) IS STILL COMPUTED AND PERSISTED —
+    this is an ADVISORY, exactly like the bank cheap rungs. It says the number needs Vic's
+    eyes before it is trusted; it does not withhold it, because withholding here would be a
+    second, unruled guard smuggled in under a reporting order.
+    """
+    if not suppressed_by_widening(ac.divergence, tol.tolerance):
+        return
+    log(f"[anchor] ** {WIDENING_SUPPRESSED_TAG} ** {ticker}: divergence "
+        f"{ac.divergence * 100:.2f}% is ABOVE the flat {DEFAULT_TOLERANCE * 100:.0f}% and "
+        f"within its {tol.tolerance * 100:.0f}% stage band ({tol.reason}) — flat-15 WOULD "
+        f"have tripped this. implied=${ac.implied_anchor:.2f} vs live=${ac.live_price:.2f}. "
+        f"E(R) computed and persisted, but UNVERIFIED-BY-WIDENING: report to Vic with the "
+        f"full readout before this E(R) is treated as trusted.")
 
 
 def _fetch(ticker: str, log) -> TickerData:
@@ -309,15 +338,24 @@ def run_single_ticker(
             # Kept OUT of the generation try above so an armed divergence trip is
             # never misreported as "synthesis skipped" by the broad except.
             if synthesis is not None:
+                # §5.1 ARMED ON THE BATCH PATH (L-4b, 2026-08-20). Until now this path called
+                # the guard on the FLAT 15% while evaluate.py used the stage-conditioned band,
+                # so the same name could get a different verdict by entry point. That per-path
+                # tolerance divergence is its own defect class; this closes it.
+                # THE STAGE IS READ FROM THE DESTINATION DB, never unconditionally from
+                # production — a scratch-db run must not borrow production's classifications.
+                # It has no stage rows, so every name there gets the DEFAULT. Fail-closed.
+                _tol = tolerance_for(ticker, db_path or _DEFAULT_DB)
+                _log(f"[anchor] B-2 tolerance {_tol.tolerance * 100:.0f}% — {_tol.reason}")
                 try:
-                    _ac = check_anchor(synthesis, price_for_er)   # armed guard (threshold in synthesis.schema)
+                    _ac = check_anchor(synthesis, price_for_er, threshold=_tol.tolerance)
                     expected_return = _ac.computed_er
                     anchor_status = _ac.status
                     if _ac.divergence is not None:
-                        _thr_str = (f"armed @ {ANCHOR_DIVERGENCE_THRESHOLD * 100:.0f}%"
-                                    if ANCHOR_DIVERGENCE_THRESHOLD is not None else "DISARMED")
+                        _thr_str = f"armed @ {_tol.tolerance * 100:.0f}%"
                         _er_str = f"  E(R)={expected_return:+.1f}%" if expected_return is not None else ""
                         _log(f"[anchor] divergence={_ac.divergence * 100:.1f}%{_er_str}  ({_thr_str}, no trip)")
+                        _log_widening_suppression(ticker, _ac, _tol, _log)
                     elif anchor_status == "anchor_unverified":
                         _log("[anchor] model E(R) missing / non-derivable — E(R) withheld, anchor_unverified")
                 except AnchorPriceDivergence as e:

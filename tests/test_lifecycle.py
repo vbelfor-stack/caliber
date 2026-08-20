@@ -1103,9 +1103,15 @@ def test_valuation_anchors_does_not_read_the_classifier():
     _assert_dark("core/valuation_anchors.py")
 
 
-def test_batch_runner_does_not_read_the_classifier():
-    """The batch path stays dark until its own arming order — step 1 is evaluate.py ONLY."""
-    _assert_dark("batch/runner.py")
+# RETIRED BY NAME 2026-08-20, L-4b: test_batch_runner_does_not_read_the_classifier.
+# It asserted "the batch path stays dark until its own arming order". That order is L-4b and
+# it has landed, so the pin has done its job and is removed rather than weakened in place.
+# ITS SURVIVING HALF IS NOT LOST — batch/runner.py must still never touch the CLASSIFIER or
+# the stage TABLE; it may only read the derived band. That narrower claim is asserted by
+# test_the_tolerance_lookup_is_the_ONLY_scoring_path_consumer_of_stage below, and by
+# tests/test_l4b_batch_tolerance.py::test_batch_reads_the_band_and_never_the_classifier.
+# Deleting a pin without naming where its remaining protection went is the 2026-08-15
+# eleven-test silent-dependency shape; this comment is that naming.
 
 
 def test_synthesis_schema_does_not_read_the_classifier():
