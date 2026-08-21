@@ -21,6 +21,17 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
+### ⚠ MID-ORDER UPDATE 2026-08-21 (L-4d steps 1–2 landed; step 3 awaiting ruling)
+The table below is the L-4c close record. **These values MOVED in L-4d and the table has
+NOT been rewritten — trust these instead:** caliber.db md5
+**`c0bae79159d5d2a325c35fd87dceda88`** (was `7342f1a8`; backup
+`caliber.db.pre-l4d-7342f1a8.bak`) · `fundamental_series` **2302 rows / 18 tickers** (was
+1917 / 15; +385 = NVDA 99, V 133, LRCX 153) · **step-4 evaluable 18 of 28** (NVDA 5 FY
+points, V 6, LRCX 6) · suite **903** (was 884). Every other table is UNCHANGED from the
+table below — re-counted after the write, all +0. R2 all-negative-last-3 still
+IONQ/QBTS/RKLB/C. **V's series is on the `truncated` share basis** (2015-03-19 split
+uncorroborated, G-4 2-of-3) — affects `fcf_yield` only, not the FY FCF step 4 reads.
+
 ### STATE AT CLOSE 2026-08-21 — every value below was MEASURED at close, not remembered
 
 | | |
@@ -87,14 +98,17 @@ re-derivation. L-4b is DONE.**
   half (batch may never touch the classifier or the raw stage table, only the derived band) is
   re-asserted by `test_batch_reads_the_band_and_never_the_classifier` + the widened successor
   pin above. A retirement comment naming that handoff sits where the test was.
-- **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) was blocked behind
-  `fundamental_series` coverage expansion by standing ruling. **L-4c (2026-08-21) took
-  coverage 4 → 15 of 28 but did NOT discharge that ruling — it sharpened it.** 9 of the 13
-  still-uncovered names lack a series because of OUR extraction limits (capex spec gap,
-  mistyped reasons, ARM's 20-F blindness — see the ★ punch-list entry), not because their
-  businesses have no FCF history. So the YOUNG/blocked boundary STILL reflects feed
-  coverage rather than business reality, just less of it. **Sequence: rule the capex
-  synonym (15 → 19 of 28) → correct the typed reasons → THEN rule step 4.**
+- **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) is blocked behind
+  `fundamental_series` coverage expansion by standing ruling. L-4c took coverage 4 → 15;
+  **L-4d (2026-08-21) armed the capex synonym and took it 15 → 18 of 28.** The ruling is
+  still NOT discharged: of the 10 remaining, only JPM/USB/INFQ/SKHY are correctly
+  fail-closed. The other 6 (CBRS/DPC/SPCX/XE + ARM + LLY) are OUR limits — YTD-only TTM
+  assembly, the 20-F form filter, and LLY's unruled capex definition. **Sequence from
+  here: correct the typed reasons → rule LLY → THEN rule step 4.** ARM's 20-F admission
+  and YTD TTM assembly are ruled OUT of that path (separate orders).
+  **L-4d added NO name to the R2 YOUNG signal and removed none** — NVDA/V/LRCX are all
+  firmly FCF-positive on their newest three FY points, so all-negative-last-3 remains
+  IONQ/QBTS/RKLB/C.
 - Step 1's no-read-back pin was **RETIRED BY NAME** at L-3 and replaced by the successor pin
   above. Its surviving half is still checked: the annotation runs AFTER scoring, so a run's
   own stage row cannot feed that run's own pillars.
@@ -146,6 +160,17 @@ Code's reading, stated separately and NOT part of the order:
   feed-coverage-as-business-reality failure the standing ruling forbids. The ruling is
   better evidenced, not discharged.
 
+- **L-4d — CAPEX SYNONYM + TYPED-REASON CORRECTIONS. STEPS 1–2 DONE 2026-08-21 —
+  docs/l4d-capex-synonym.md. STEP 3 (typed reasons) IS A SEPARATE RULING, NOT YET DONE.**
+  Ordered by Vic as "a FIELD_SPECS change, not a coverage order", with the raw-facts sweep
+  amended in after step 1 proved the builder's short-circuit hides downstream gaps.
+  Step 1 diagnosed three distinct mechanisms behind the mis-typed reasons (none of them the
+  capex gap). Step 2 armed the synonym on a dark diff: **0 non-capex field changes across
+  all 28 names, 0 movement on all 15 already-covered names, and the armed cross-check moves
+  only `no_edgar` → `basis_mismatch`, which is ADVISORY ONLY** — so no value, score, E(R),
+  grade or confidence label moved anywhere. Coverage **15 → 18**, one write point, expected
+  delta +385 reconciled exactly. LLY failed its conditional gate (branch B) and is open.
+
 **WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
 docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
 to obtain a clean calibration population — **ruled NO for now**, so the band may have to be set
@@ -157,38 +182,61 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
 
 ### PUNCH LIST — current at close
 
-- **★ OPEN, RULING NEEDED — A SINGLE-TAG `capex` SPEC SILENTLY EXPIRES WHEN AN ISSUER
-  MIGRATES ITS TAXONOMY, AND IT HAS ALREADY EXPIRED ON FOUR NAMES. Found by L-4c
-  2026-08-21; full evidence docs/l4c-coverage-expansion.md §4.**
-  `FIELD_SPECS` gives `capex` exactly ONE concept,
-  `PaymentsToAcquirePropertyPlantAndEquipment` (`adapters/edgar_adapter.py:99`).
-  **NVDA, LLY, V and LRCX all file capex as `PaymentsToAcquireProductiveAssets`** — a
-  standard us-gaap concept we do not list — so the entire FCF family withholds for them
-  while they resolve 14–16 of 19 other fields fine.
-  - **NVDA IS THE SHARPEST CASE AND IT IS A REPEAT OF AN ALREADY-DIAGNOSED DEFECT.** It DOES
-    file the concept we look for — but the last fact under it ends **2020-07-26**, after
-    which NVDA migrated. Same shape as the recorded JPM bank-tag migration
-    (`CashAndCashEquivalentsAtCarryingValue` → `CashAndDueFromBanks`), which was fixed by
-    adding the synonym. **A single-tag spec does not fail loudly when a taxonomy moves — it
-    just goes quiet.** Sweep the other single-concept specs for the same exposure; `capex`
-    is unlikely to be the only one.
-  - **THE FIX IS ONE SYNONYM AND IT WAS DELIBERATELY NOT APPLIED IN L-4c** — `FIELD_SPECS`
-    feeds the EDGAR cross-check and the ARMED SET, so it changes data resolution beyond a
-    coverage order's scope. Ruling first. It takes step-4 coverage **15 → 19 of 28**.
-  - **A COMMENT IN THE TREE IS NOW KNOWN WRONG ON ONE NAME:**
-    `core/fundamental_series.py:261` says "V, JPM and USB file no
-    PaymentsToAcquirePropertyPlantAndEquipment concept at all… an ACCEPTED DATA LIMIT."
-    Correct for JPM and USB; **for V it is a SPEC GAP, not a data limit.** Fix the comment
-    with the spec.
-  - **THE TYPED REASONS THEMSELVES ARE PART OF THE DEFECT.** CBRS/DPC/SPCX/XE (10-Q only, no
-    10-K yet) and ARM report `no_operating_cashflow_tag` **when the tag IS filed** — the real
-    causes are insufficient filing history and, for ARM, that it files 20-F/6-K and resolves
-    **0 of 19 fields** (its whole EDGAR surface is blind, so lens selection and cross-check
-    run without filings too — wider than L-4c, own diagnosis).
-    Only **JPM, USB, INFQ** (no capex-like concept anywhere in their facts) and **SKHY** (no
-    XBRL facts at all) are correctly fail-closed with an accurate reason. Note **BK and C are
-    banks and DO resolve capex** — "banks file no capex" is not a rule, it was checked per
-    issuer.
+- **✅ CLOSED 2026-08-21 (L-4d) — THE SINGLE-TAG `capex` SPEC IS NOW A TWO-TAG CHAIN.
+  ARMED. Full report docs/l4d-capex-synonym.md.** `PaymentsToAcquireProductiveAssets`
+  added, generic tag FIRST, `conflict_check=False`. **NVDA, V and LRCX recovered;
+  `fundamental_series` 15 → 18 of 28 (+385 rows, expected delta reconciled exactly).**
+  Suite 884 → 903, pins verified to FAIL 8 of 19 against the pre-fix spec before landing.
+  `core/fundamental_series.py:261`'s wrong comment is corrected (V was a SPEC GAP, not a
+  data limit; JPM/USB remain a real limit).
+  - **★ LLY DID NOT RECOVER AND IS STILL OPEN — RULING NEEDED.** L-4c had it in Class 1;
+    that was wrong. LLY migrated **THREE times** and abandoned
+    `PaymentsToAcquireProductiveAssets` at 2022-09-30 (1369d lag, past the 450d gate). Its
+    current tag is `PaymentsToAcquireOtherPropertyPlantAndEquipment`, which **FAILED the
+    ruled FMP reconciliation: 53.4% off in FY2023, 39.8% in FY2024, exact in FY2025.**
+    Cause identified exactly — **FMP's `capitalExpenditure` bundles
+    `PaymentsToAcquireInProcessResearchAndDevelopment` in FY23/FY24 (to the dollar) and
+    drops it in FY25, so FMP is not self-consistent across years while the EDGAR tag is.**
+    The ruling needed: whose capex definition governs when the two disagree DEFINITIONALLY
+    and the feed is internally inconsistent. Not arbitrated in the resolver — that would be
+    the "never fix a contradiction by teaching the model to ignore it" violation.
+  - **★ THE SWEEP FOUND THE NEXT ONE: `net_income` IS A SINGLE-TAG SPEC AND
+    `NetIncomeLoss` IS ALREADY STALE ON BE AND CAT.** A core field on a bare tag with the
+    same silent-expiry shape. **9 of 19 specs have no synonym chain** (gross_profit,
+    operating_income, net_income, capex, total_assets, current_assets, total_liabilities,
+    current_liabilities, operating_lease_liability); `operating_lease_liability` is also
+    stale on LLY. Feeds L-4e scope. Measured, not fixed.
+- **★ OPEN — THE TYPED REASONS ARE STILL WRONG ON THE REMAINING NAMES (L-4d step 3,
+  SEPARATE RULING). Mechanisms diagnosed with evidence, docs/l4d-capex-synonym.md §1.**
+  `core/fundamental_series.py:257` stamps `no_operating_cashflow_tag` — a claim about the
+  FILINGS — onto a condition that only measures whether **our reader** returned points.
+  **The accurate reason already exists one layer down in `ResolvedField.reason`/`.detail`
+  and is discarded by `_flow_points`.** Three distinct mechanisms, none of them the capex
+  gap:
+  - **CBRS/DPC/SPCX/XE — `ttm_unavailable`, not a missing tag.** 10-Q-only filers whose
+    cash-flow facts are YTD cumulative (89d/178d/180d), defeating all three `_assemble_ttm`
+    paths: no 350–380d fact, no four contiguous QTD quarters, no prior-FY leg. Outcome
+    correct, label wrong. **Fail-closed is correct here — TTM assembly for YTD-only filers
+    is ruled OUT of scope, punch-listed as a capability question.**
+  - **ARM — the FORM FILTER, not the data.** `_XBRL_VALID_FORMS` admits only the
+    10-K/10-Q family, so **0 of ARM's 4,366 us-gaap facts survive extraction**. Its FY2026
+    OCF ($1,524M) and capex ($545M) are filed on 20-F in the standard tags at 364-day
+    durations and would resolve on `ttm_annual` untouched. **20-F admission is RULED OUT
+    of scope — separate order, L-4f candidate** (it moves lens selection and the
+    cross-check for every foreign private issuer, not just FCF).
+  - **XE is Class 1 AND Class 2.** It files `PaymentsToAcquireProductiveAssets` and not the
+    generic tag, so its capex reason was also wrong — undercounted because the builder
+    checks OCF first and `return`s. **A short-circuit on the first withholding hides every
+    later one**; sweep raw facts, never builder output.
+  - Only **JPM, USB, INFQ** (no PP&E-purchase concept anywhere in their facts) and **SKHY**
+    (no XBRL facts at all) are correctly fail-closed with an accurate reason. **BK and C
+    are banks and DO resolve capex** — "banks file no capex" is not a rule.
+- **LATENT COUPLING, MEASURED NOT LOAD-BEARING (L-4d, recorded not fixed).** `_resolve_one`
+  drops `concept` on its unresolved return, and `ttm_series` bails on `not rf.concept` — so
+  the HISTORICAL series reader is gated on the LIVE TTM resolving. Forcing the concept back
+  on for all four affected names yielded **forced=0 everywhere**, so no name in the universe
+  demonstrates it today. Not fixed: changing it would move series content on the armed path
+  with nothing to validate against.
 - **GOOG AND GOOGL NOW BOTH CARRY A FULL SERIES ON ONE CIK (`0001652044`)** — as the
   share-class dedup entry below predicted. This is CORRECT for step 4, which reads per ticker
   and needs GOOGL (the held line) evaluable at all; it is a double-count hazard **only for
@@ -367,12 +415,13 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
      incident record) moved to docs/phase-archive.md. Text below is unchanged. -->
 
 - **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17; STILL
-  BLOCKED after L-4c, 2026-08-21).** `fundamental_series` now covers **15 of 28** (was 4),
-  but the remaining 13 are mostly OUR extraction gap rather than the issuers' — see the ★
-  capex-spec punch-list entry. The YOUNG/blocked boundary therefore still reflects **which
-  names happen to have FCF data**, not business reality, and a hard block driven by feed
-  coverage would be arbitrary in exactly the way this system exists to avoid.
-  **Sequence: capex synonym ruling (→ 19 of 28) → correct the typed reasons → then step 4.**
+  BLOCKED after L-4d, 2026-08-21).** `fundamental_series` now covers **18 of 28** (was 4,
+  then 15). Of the 10 remaining, **only 4 are correctly fail-closed** (JPM/USB/INFQ/SKHY);
+  the other 6 are OUR extraction limits — see the ★ typed-reasons punch-list entry. The
+  YOUNG/blocked boundary therefore still reflects **which names happen to have FCF data**,
+  not business reality, and a hard block driven by feed coverage would be arbitrary in
+  exactly the way this system exists to avoid.
+  **Sequence: correct the typed reasons → rule LLY's capex definition → then step 4.**
   The two feed-repair tickets below join that work.
   **STEP 3 (B-2 stage-conditioned tolerances) MAY PROCEED after L-2b** — tolerances are
   bounded and inspectable; blocks are not.

@@ -96,9 +96,30 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
         ("NetCashProvidedByUsedInOperatingActivities", "us-gaap"),
         ("NetCashProvidedByUsedInOperatingActivitiesContinuingOperations", "us-gaap"),
     )),
+    # CAPEX TAG MIGRATION (L-4d, 2026-08-21). Same shape as the bank `cash` migration
+    # below, and found the same way — a SINGLE-TAG spec goes quiet rather than loud when
+    # an issuer restates its taxonomy. NVDA abandoned
+    # PaymentsToAcquirePropertyPlantAndEquipment at 2020-07-26 and files
+    # PaymentsToAcquireProductiveAssets now; V and LRCX file only the latter and never the
+    # former. All three withheld the ENTIRE FCF family while resolving 14-16 of the other
+    # 19 fields, so nothing failed loudly enough to notice for as long as it existed.
+    # Productive assets is the BROADER class (PP&E is a subset), so these are distinct
+    # measures that are merely substitutable in priority order — conflict_check=False,
+    # exactly as for revenue and current_debt. Generic tag stays FIRST so no already-
+    # resolving issuer changes: measured over all 28 names, zero file both tags fresh, and
+    # the stale copies (CAT 2019-12-31, WU 2020-12-31) sit behind a fresh primary and are
+    # skipped by the staleness gate before the conflict check is ever reached.
+    # DELIBERATELY NOT ADDED — PaymentsToAcquireOtherPropertyPlantAndEquipment, which is
+    # LLY's current tag after a THREE-STEP migration. It is a genuine PP&E line but does
+    # not reconcile against FMP: FMP's capitalExpenditure for LLY bundles
+    # PaymentsToAcquireInProcessResearchAndDevelopment in FY2023/FY2024 (to the dollar)
+    # and drops it again in FY2025, so the two sides are not the same measure and FMP is
+    # not self-consistent across years. Ruled to the punch list rather than arbitrated
+    # here — see docs/l4d-capex-synonym.md §3.
     FieldSpec("capex", "flow", (
         ("PaymentsToAcquirePropertyPlantAndEquipment", "us-gaap"),
-    )),
+        ("PaymentsToAcquireProductiveAssets", "us-gaap"),   # NVDA/V/LRCX current tag
+    ), conflict_check=False),
     # Instants — most recent period-end
     FieldSpec("total_assets", "instant", (("Assets", "us-gaap"),)),
     FieldSpec("current_assets", "instant", (("AssetsCurrent", "us-gaap"),)),

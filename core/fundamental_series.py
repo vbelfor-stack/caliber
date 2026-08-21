@@ -258,9 +258,13 @@ def build_fcf_series(
         result.withheld[METRIC_FCF] = WITHHELD_NO_OCF
         return result
     if not capex:
-        # V, JPM and USB file no PaymentsToAcquirePropertyPlantAndEquipment concept at
-        # all. This is an ACCEPTED DATA LIMIT already recorded for the cross-check, not a
-        # failure — the whole FCF family is unavailable and says so.
+        # CORRECTED L-4d, 2026-08-21. This comment used to read "V, JPM and USB file no
+        # PaymentsToAcquirePropertyPlantAndEquipment concept at all... an ACCEPTED DATA
+        # LIMIT". It was right about JPM and USB and WRONG ABOUT V: V files
+        # PaymentsToAcquireProductiveAssets, so V was a SPEC GAP wearing a data-limit
+        # label, and the label is why nobody looked for six months. V now resolves.
+        # JPM and USB remain a real data limit — they file no PP&E-purchase concept of
+        # any kind, checked across every us-gaap concept and not just our spec.
         result.withheld[METRIC_FCF] = WITHHELD_NO_CAPEX
         return result
 
