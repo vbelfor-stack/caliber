@@ -25,8 +25,8 @@ re-derivation. L-4b is DONE.**
 
 | | |
 |---|---|
-| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: the L-4c coverage expansion.** A block cannot contain its own hash. |
-| This session's commits | the L-4c coverage expansion (writer + tests + report + this block). Previous session's last commit was `c922d8b`. |
+| HEAD | the **session-close commit carrying this correction** — verify with `git log -1`. **Last WORK commit: `a9165a1`** ("L-4c: fundamental_series coverage expansion — 4 -> 15 tickers, +1360 rows"). A block cannot contain its own hash. |
+| This session's commits | `a9165a1` the L-4c expansion (writer + tests + report + the first draft of this block) · + this close correction. Previous session's last commit was `c922d8b`. |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
 | Suite | **884 passed** (was 876; +8 from `tests/test_l4c_coverage_expansion.py`). No pre-existing test broke. |
 | caliber.db md5 | **7342f1a87c812ab5c2f0248f97ddcf65** — **CHANGED THIS SESSION** (was `8557a157…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair my read connections created was removed, md5 re-verified after. |
