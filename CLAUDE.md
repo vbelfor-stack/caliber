@@ -1,44 +1,44 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-20)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-21)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4c — COVERAGE
-EXPANSION, capped at ONE order.** Extend `fundamental_series` beyond MU/GOOG/NOW/WU; 24 of 28
-names have no FCF history. **Fail-closed: a name the filings cannot support gets a TYPED
-REASON, never a synthetic series.** §5 step 4 (YOUNG supply block) is then ruled ON THAT
-EVIDENCE, not before — do not arm it in the same order.
-**THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
-re-derivation. L-4b is DONE. Nothing is blocked on Vic.**
-**Nothing in the tree is mid-flight — L-4b closed complete, tree clean, pushed.**
-**DELTA SINCE THAT CLOSE — one MICRO-ORDER ran 2026-08-20 (second session) and closed the
-`batch/runner.py:309` cache-read routing defect. It changed ONE code line plus a new test
-file; every other measured value in the table below still stands. Suite 871 → 876. caliber.db
-md5 STILL `8557a157`, zero production writes. See the punch list's top ✅ entry — the sweep
-result and the `web/app.py` exclusion are recorded there, so L-4c does not re-sweep.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then bring Vic the L-4c §6 RULING
+LIST — `docs/l4c-coverage-expansion.md` §4 and §6. DO NOT ARM STEP 4 UNTIL THAT IS RULED.**
+L-4c landed the coverage expansion (4 → 15 tickers, +1360 rows) **but its central finding is
+that "uncovered" is mostly OUR gap, not the filings'**: of the 13 names that got no series,
+only 4 are correctly fail-closed. See the ★ punch-list entry.
+**THE ONE-LINE RULING THAT UNBLOCKS THE MOST: add `PaymentsToAcquireProductiveAssets` to the
+`capex` FieldSpec.** It recovers NVDA/LLY/V/LRCX and takes step-4 coverage 15 → 19 of 28.
+NOT done in L-4c because `FIELD_SPECS` feeds the EDGAR cross-check and the ARMED SET, which
+is beyond a coverage order's scope.
+**Nothing in the tree is mid-flight — L-4c closed complete, tree clean, pushed.**
 **★ CARRY THIS FORWARD: the `B2-WIDENING-SUPPRESSED-TRIP` tripwire is LIVE and unfired.** If
 any batch run emits it, that is a REPORT-TO-VIC event before the E(R) is trusted — see ARMED
 STATE below. It is the one thing L-4b left deliberately observable rather than settled.
+**THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
+re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-20 — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-21 — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: `52ed3d4`** ("L-4b: batch tolerance arming — both write paths on the stage band"). A block cannot contain its own hash. |
-| This session's commits | `52ed3d4` the L-4b arm · + this close. **Two commits only — L-4b was a code-path arming, not a data order.** |
+| HEAD | the **session-close commit carrying this block** — verify with `git log -1`. **Last WORK commit: the L-4c coverage expansion.** A block cannot contain its own hash. |
+| This session's commits | the L-4c coverage expansion (writer + tests + report + this block). Previous session's last commit was `c922d8b`. |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
-| Suite | **871 passed** (was 853; −1 retired batch dark pin, +19 from `tests/test_l4b_batch_tolerance.py`) |
-| caliber.db md5 | **8557a157ee92e22df01cfe04cb1e1d55** — **UNCHANGED FROM LAST CLOSE.** WAL checkpointed (returned `(0,0,0)` — nothing pending); the empty wal/shm pair my read connections created was removed, md5 re-verified after. |
-| **PRODUCTION WRITES THIS SESSION** | **ZERO. Expected delta was the empty set and the empty set is what landed.** Every verification run was directed at a scratch db and the md5 was re-read after each one. No evaluation, stage, provenance or cache row created, altered or removed. |
-| md5 trail this session | `8557a157` (open) → **`8557a157`** (close). No write points, so no backups were taken. |
-| evaluations | **80** rows, max id **272** · ok 67 / failed 11 / anchor_divergence 2 · held 51 / calibration 29 — all identical to last close |
+| Suite | **884 passed** (was 876; +8 from `tests/test_l4c_coverage_expansion.py`). No pre-existing test broke. |
+| caliber.db md5 | **7342f1a87c812ab5c2f0248f97ddcf65** — **CHANGED THIS SESSION** (was `8557a157…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair my read connections created was removed, md5 re-verified after. |
+| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +1360 rows in `fundamental_series` across 11 new tickers. Expected delta stated before the write, reconciled exactly after: expected +1360, actual +1360, restatements 0, superseded 0 — MATCH.** No other table was written; all re-counted after and unchanged. |
+| md5 trail this session | `8557a157` (open) → `8557a157` (read-only survey + scratch validation) → **`7342f1a8`** (the single production write) → `7342f1a8` (after the suite, confirming the suite does not contaminate production). Backup before the write: **`caliber.db.pre-l4c-8557a157.bak`**, md5 verified equal to the pre-write db. |
+| evaluations | **80** rows, max id **272** · unchanged this session |
 | **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
 | lifecycle_stage | **44** rows (unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
 | field_provenance | **1437** rows (unchanged) |
-| fundamental_series | 557 rows (**4 tickers only — MU/GOOG/NOW/WU; this is exactly what L-4c must expand**) · grades 0 · synthesis_cache 16 (evaluate.py never writes the cache — see the L-4b coverage gap) |
+| fundamental_series | **1917 rows, 15 tickers** (was 557 / 4). Added: BE BK C CAT FN GOOGL IONQ LITE QBTS RKLB STX — each 6 full FY points running to a 2026 period-end, 0 superseded. · grades 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
+| **step-4 evaluable** | **15 of 28**, read through the production reader `evaluate._fy_series_from_db`. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C**. Near the boundary: LITE (neg/neg/pos), BE (neg/pos/pos). |
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
@@ -87,10 +87,14 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
   half (batch may never touch the classifier or the raw stage table, only the derived band) is
   re-asserted by `test_batch_reads_the_band_and_never_the_classifier` + the widened successor
   pin above. A retirement comment naming that handoff sits where the test was.
-- **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) is BLOCKED behind
-  `fundamental_series` coverage expansion by standing ruling — 24 of 28 names have no FCF
-  history, so the YOUNG/blocked boundary currently reflects FEED COVERAGE, not business
-  reality, and a hard block on that basis would be arbitrary.
+- **§5 STEPS 4+ ARE UNARMED.** Step 4 (YOUNG supply-layer block) was blocked behind
+  `fundamental_series` coverage expansion by standing ruling. **L-4c (2026-08-21) took
+  coverage 4 → 15 of 28 but did NOT discharge that ruling — it sharpened it.** 9 of the 13
+  still-uncovered names lack a series because of OUR extraction limits (capex spec gap,
+  mistyped reasons, ARM's 20-F blindness — see the ★ punch-list entry), not because their
+  businesses have no FCF history. So the YOUNG/blocked boundary STILL reflects feed
+  coverage rather than business reality, just less of it. **Sequence: rule the capex
+  synonym (15 → 19 of 28) → correct the typed reasons → THEN rule step 4.**
 - Step 1's no-read-back pin was **RETIRED BY NAME** at L-3 and replaced by the successor pin
   above. Its surviving half is still checked: the annotation runs AFTER scoring, so a run's
   own stage row cannot feed that run's own pillars.
@@ -127,12 +131,20 @@ Code's reading, stated separately and NOT part of the order:
   different verdict by entry point), which is its own defect class. Monotone-widening + empty
   dark diff + path consistency carries it."** Zero production writes; caliber.db md5 unchanged.
   Suite 853 → 871.
-- **L-4c — COVERAGE EXPANSION, CAPPED AT ONE ORDER. ◀ NEXT.** Extend `fundamental_series`
-  beyond the four names it covers (MU/GOOG/NOW/WU — 24 of 28 have no FCF history). **Step 4 is
-  then ruled on that evidence**, not before. L-4b no longer blocks it.
-  **FAIL-CLOSED CONSTRAINT, carried from the order that queued it:** coverage expansion must
-  not manufacture FCF where the filings do not support it — a name that cannot be covered gets
-  a TYPED REASON, never a synthetic series. (Standing rule: NO SYNTHETIC CALIBRATION, EVER.)
+- **L-4c — COVERAGE EXPANSION. ✅ DONE 2026-08-21 — docs/l4c-coverage-expansion.md.**
+  `fundamental_series` 557 rows / 4 tickers → **1917 rows / 15 tickers**; step-4 evaluable
+  4 → **15 of 28**. One write point, expected delta reconciled exactly (+1360, 0
+  restatements, 0 superseded), no other table touched. New surface
+  `tools/expand_fcf_series.py` — the first writer of this table that does NOT run an
+  evaluation, which is what let the order stay inside its "no writes outside
+  fundamental_series" constraint. Suite 876 → 884.
+  **THE FAIL-CLOSED CONSTRAINT HELD ON ITS FIRST HALF AND FAILED ON ITS SECOND, AND THAT IS
+  THE FINDING.** Nothing synthetic, partial or placeholder was written for the 13 uncovered
+  names — but the TYPED REASON is wrong or misdescribes the cause for **9 of those 13**. See
+  the ★ punch-list entry. **STEP 4 IS THEREFORE STILL NOT RULEABLE** — arming it now would
+  block names on which XBRL concept their accountants chose, which is precisely the
+  feed-coverage-as-business-reality failure the standing ruling forbids. The ruling is
+  better evidenced, not discharged.
 
 **WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
 docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
@@ -144,6 +156,43 @@ it showed 8 flags at flat 15% against ZERO at eval time, the gap being pure pric
 fail-closed 15%), which is the live held name that makes the band decision non-theoretical.
 
 ### PUNCH LIST — current at close
+
+- **★ OPEN, RULING NEEDED — A SINGLE-TAG `capex` SPEC SILENTLY EXPIRES WHEN AN ISSUER
+  MIGRATES ITS TAXONOMY, AND IT HAS ALREADY EXPIRED ON FOUR NAMES. Found by L-4c
+  2026-08-21; full evidence docs/l4c-coverage-expansion.md §4.**
+  `FIELD_SPECS` gives `capex` exactly ONE concept,
+  `PaymentsToAcquirePropertyPlantAndEquipment` (`adapters/edgar_adapter.py:99`).
+  **NVDA, LLY, V and LRCX all file capex as `PaymentsToAcquireProductiveAssets`** — a
+  standard us-gaap concept we do not list — so the entire FCF family withholds for them
+  while they resolve 14–16 of 19 other fields fine.
+  - **NVDA IS THE SHARPEST CASE AND IT IS A REPEAT OF AN ALREADY-DIAGNOSED DEFECT.** It DOES
+    file the concept we look for — but the last fact under it ends **2020-07-26**, after
+    which NVDA migrated. Same shape as the recorded JPM bank-tag migration
+    (`CashAndCashEquivalentsAtCarryingValue` → `CashAndDueFromBanks`), which was fixed by
+    adding the synonym. **A single-tag spec does not fail loudly when a taxonomy moves — it
+    just goes quiet.** Sweep the other single-concept specs for the same exposure; `capex`
+    is unlikely to be the only one.
+  - **THE FIX IS ONE SYNONYM AND IT WAS DELIBERATELY NOT APPLIED IN L-4c** — `FIELD_SPECS`
+    feeds the EDGAR cross-check and the ARMED SET, so it changes data resolution beyond a
+    coverage order's scope. Ruling first. It takes step-4 coverage **15 → 19 of 28**.
+  - **A COMMENT IN THE TREE IS NOW KNOWN WRONG ON ONE NAME:**
+    `core/fundamental_series.py:261` says "V, JPM and USB file no
+    PaymentsToAcquirePropertyPlantAndEquipment concept at all… an ACCEPTED DATA LIMIT."
+    Correct for JPM and USB; **for V it is a SPEC GAP, not a data limit.** Fix the comment
+    with the spec.
+  - **THE TYPED REASONS THEMSELVES ARE PART OF THE DEFECT.** CBRS/DPC/SPCX/XE (10-Q only, no
+    10-K yet) and ARM report `no_operating_cashflow_tag` **when the tag IS filed** — the real
+    causes are insufficient filing history and, for ARM, that it files 20-F/6-K and resolves
+    **0 of 19 fields** (its whole EDGAR surface is blind, so lens selection and cross-check
+    run without filings too — wider than L-4c, own diagnosis).
+    Only **JPM, USB, INFQ** (no capex-like concept anywhere in their facts) and **SKHY** (no
+    XBRL facts at all) are correctly fail-closed with an accurate reason. Note **BK and C are
+    banks and DO resolve capex** — "banks file no capex" is not a rule, it was checked per
+    issuer.
+- **GOOG AND GOOGL NOW BOTH CARRY A FULL SERIES ON ONE CIK (`0001652044`)** — as the
+  share-class dedup entry below predicted. This is CORRECT for step 4, which reads per ticker
+  and needs GOOGL (the held line) evaluable at all; it is a double-count hazard **only for
+  grade rollups, which do not exist yet.** Dedup by CIK before any aggregate.
 
 - **★ CLOSED 2026-08-19 — `core/technicals.py` READ THE PRICE HISTORY FROM THE WRONG END.
   FOUND, DIAGNOSED, RULED AND FIXED IN ONE SESSION. Fix `cd6b70f`; report + execution record
@@ -317,12 +366,14 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
 <!-- promoted ### -> ## by the 2026-08-19 archive trim: its parent section (the 2026-08-17
      incident record) moved to docs/phase-archive.md. Text below is unchanged. -->
 
-- **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17).**
-  `fundamental_series` covers 4 of 28 names, so the YOUNG population (4, with 4 more blocked
-  by L-1e's fail-closed guard) currently reflects **which names happen to have FCF data**,
-  not business reality. A hard block driven by feed coverage would be arbitrary in exactly
-  the way this system exists to avoid. **Sequence: fundamental_series coverage expansion →
-  then step 4.** The two feed-repair tickets below join that work.
+- **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17; STILL
+  BLOCKED after L-4c, 2026-08-21).** `fundamental_series` now covers **15 of 28** (was 4),
+  but the remaining 13 are mostly OUR extraction gap rather than the issuers' — see the ★
+  capex-spec punch-list entry. The YOUNG/blocked boundary therefore still reflects **which
+  names happen to have FCF data**, not business reality, and a hard block driven by feed
+  coverage would be arbitrary in exactly the way this system exists to avoid.
+  **Sequence: capex synonym ruling (→ 19 of 28) → correct the typed reasons → then step 4.**
+  The two feed-repair tickets below join that work.
   **STEP 3 (B-2 stage-conditioned tolerances) MAY PROCEED after L-2b** — tolerances are
   bounded and inspectable; blocks are not.
 - **FEED-REPAIR TICKETS (from the step-2 run):** `income_annual` series gaps —
