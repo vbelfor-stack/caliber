@@ -628,6 +628,16 @@ checkout is a data-loss hazard; an unverified kill target is a worse one.
        "logged in" and `git push` STILL FAILS: gh's token does not reach git on its own.
   Do NOT read a successful `git ls-remote origin` as proof push will work — the repo is
   public, so reads succeed anonymously while pushes reject. Only a real push proves auth.
+  **★ OBSERVED 2026-08-21 (L-4f close) — RUN `gh auth setup-git` IMMEDIATELY BEFORE THE
+  PUSH, NOT ONCE AT SESSION OPEN.** It WAS run at session open and reported OK, with the
+  helpers visible in `git config`. The close push then still failed with the documented
+  "Password authentication is not supported", and by then `git config --list | grep
+  credential` returned **NOTHING** — the helper entries had gone. Re-running
+  `gh auth setup-git` restored them and the push succeeded on the retry, same token, no
+  `gh auth login` needed. So the helper config **can disappear mid-session** on this
+  container. Note also that everything else looked healthy throughout: `gh auth status`
+  read logged in, `gh api user` returned the login, and `gh repo view` reported ADMIN —
+  **none of which proves git can push.** Cheap fix, run it every time.
 - The `gitsafe-backup` remote is NOT a usable fallback: its pre-receive hook allows pushes to
   `main` ONLY, and its `main` (88cd9fd) is an UNRELATED history line. Reaching it would mean
   force-pushing over unrelated commits — destructive, never done unattended.
