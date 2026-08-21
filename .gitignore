@@ -33,3 +33,11 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Pending-LLY scratch (L-4d.1). Read-only dark-diff scripts + raw-facts dumps from the
+# aborted 2026-08-21 LLY session; the ONLY surviving record of that ruling's dark evidence.
+# Ruled 2026-08-21 (L-4f open): KEEP until the L-4d.1 order lands, cleaned in ITS close.
+.scratch_lly/
+
+# L-4f step-1 scope scratch (read-only measurement). Cleaned at the L-4f close.
+.scratch_l4f/

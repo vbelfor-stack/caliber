@@ -90,34 +90,46 @@ def test_no_absence_claim_is_contradicted_by_observed_facts(ticker):
 
 def test_the_invariant_BITES_positive_control():
     """POSITIVE CONTROL. The test above passes trivially if the checker can never fire, so
-    construct the exact ARM shape — a concept present in companyfacts but filed only on a
-    form we do not read — and assert the checker WOULD flag it if the reason stayed
-    `no_tag`. Without this, the fixture sweep proves nothing."""
-    payload = _merge(_facts(OCF, "20-F", "2025-04-01", "2026-03-31", 1_524_000_000),
-                     _facts(PPE, "20-F", "2025-04-01", "2026-03-31", 545_000_000))
+    construct the shape — a concept present in companyfacts but filed only on a form we do
+    not read — and assert the checker WOULD flag it if the reason stayed `no_tag`. Without
+    this, the fixture sweep proves nothing.
+
+    ★ EXEMPLAR FORM CHANGED AT L-4f (2026-08-21), DELIBERATELY. This was written with 20-F,
+    which WAS the live ARM case. L-4f ADMITTED 20-F/6-K, so ARM now resolves and 20-F can no
+    longer stand for "a form we do not read". The mechanism this pins is unchanged and still
+    load-bearing — it is what will surface the NEXT form gap — so the test keeps its job and
+    swaps to S-1, a registration statement that remains outside `_XBRL_VALID_FORMS`.
+    Rewriting the exemplar is the honest move; deleting the test would retire a live guard
+    because one issuer stopped needing it.
+    """
+    payload = _merge(_facts(OCF, "S-1", "2025-04-01", "2026-03-31", 1_524_000_000),
+                     _facts(PPE, "S-1", "2025-04-01", "2026-03-31", 545_000_000))
     fin = _extract_xbrl_facts(payload)
 
     # Extraction dropped everything, so the resolver honestly sees nothing...
     assert fin.concepts == {}
     assert fin.fields["operating_cashflow"].reason == "no_tag"
     # ...but we RECORDED what we discarded, so the contradiction is detectable.
-    assert fin.form_excluded[OCF] == {"20-F": 1}
+    assert fin.form_excluded[OCF] == {"S-1": 1}
     flagged = _absence_claims_contradicted_by_evidence(fin)
     assert ("operating_cashflow", OCF, 0, 1) in flagged, flagged
 
 
 def test_the_builder_reports_form_excluded_NOT_no_tag():
-    """THE ARM CASE, end to end. The whole point: the reason a consumer sees must say the
-    facts exist and we did not read them — the opposite of 'the issuer does not file it'."""
-    payload = _merge(_facts(OCF, "20-F", "2025-04-01", "2026-03-31", 1_524_000_000),
-                     _facts(PPE, "6-K", "2025-04-01", "2026-03-31", 545_000_000))
-    result = FS.build_fcf_series("ARMLIKE", _Edgar(_extract_xbrl_facts(payload)), None, None)
+    """End to end. The reason a consumer sees must say the facts exist and we did not read
+    them — the opposite of 'the issuer does not file it'.
+
+    ★ Exemplar changed 20-F → S-1 at L-4f for the reason in the positive control above.
+    """
+    payload = _merge(_facts(OCF, "S-1", "2025-04-01", "2026-03-31", 1_524_000_000),
+                     _facts(PPE, "S-1/A", "2025-04-01", "2026-03-31", 545_000_000))
+    result = FS.build_fcf_series("REGONLY", _Edgar(_extract_xbrl_facts(payload)), None, None)
     reason = result.withheld[FS.METRIC_FCF]
     assert "form_excluded" in reason
     assert "no_tag" not in reason
     detail = result.withheld_detail[FS.METRIC_FCF]
     assert "NOT absent from the filings" in detail
-    assert "20-F" in detail
+    assert "S-1" in detail
 
 
 # ── the reason IS the resolver's reason ──────────────────────────────────────
@@ -200,8 +212,11 @@ def test_the_tag_absence_constants_are_GONE_and_must_not_return():
 def test_form_excluded_is_a_diagnostic_and_moves_no_resolution():
     """The record of dropped facts must not become an input. Resolution with and without
     the diagnostic populated is identical — it exists to explain a reason, never to
-    change one."""
-    payload = _merge(_facts(OCF, "20-F", "2025-04-01", "2026-03-31", 1_524_000_000))
+    change one.
+
+    ★ Exemplar changed 20-F → S-1 at L-4f (2026-08-21) — see the positive control above.
+    """
+    payload = _merge(_facts(OCF, "S-1", "2025-04-01", "2026-03-31", 1_524_000_000))
     fin = _extract_xbrl_facts(payload)
     assert fin.form_excluded                      # populated
     baseline = resolve_financials(fin.concepts, fin.latest_period_end)

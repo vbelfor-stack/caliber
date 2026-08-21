@@ -211,7 +211,27 @@ _CORPORATE_ACTION_NAMES = {c for c, _ in CORPORATE_ACTION_CONCEPTS}
 XBRL_CONCEPTS: List[Tuple[str, str]] = [
     syn for spec in FIELD_SPECS for syn in spec.synonyms
 ] + CORPORATE_ACTION_CONCEPTS
-_XBRL_VALID_FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A"}
+# FORM ADMISSION (L-4f, 2026-08-21). Split ANNUAL from INTERIM because two different
+# decisions read this: extraction asks "may I keep this fact at all", and `_fy_ends` asks
+# "is this period-end a FISCAL YEAR end". Those were previously the same question by
+# accident — every admitted annual form began "10-K" — and `_fy_ends` encoded it as a
+# string prefix. ARM broke that coincidence: it tags fp='FY' correctly, on 20-F.
+#
+# 20-F/6-K are the foreign-private-issuer equivalents of 10-K/10-Q. ARM is the live case:
+# 4,373 facts, 100% previously dropped, 0 of 19 fields resolved while every tag WAS filed.
+# BOTH families are needed, not just 20-F — ARM's TTM assembles on ttm_reconstructed, whose
+# prior_fy leg comes from the 20-F and whose current + prior-year YTD legs come from 6-Ks.
+#
+# The admission is a strict SUPERSET, which is the safety property: a superset filter can
+# only keep MORE facts, so no name that resolved before can stop resolving. Pinned by
+# test_the_admission_is_MONOTONE_it_can_only_add_facts.
+#
+# DELIBERATELY NOT ADMITTED — F-1 (SKHY's only form: a REGISTRATION STATEMENT whose entire
+# XBRL is an SEC filing-fee table, not financial statements) and 40-F (no universe name
+# files one, so admitting it would be unmeasured). Each is its own ruling.
+_XBRL_ANNUAL_FORMS = {"10-K", "10-K/A", "20-F", "20-F/A"}
+_XBRL_INTERIM_FORMS = {"10-Q", "10-Q/A", "6-K", "6-K/A"}
+_XBRL_VALID_FORMS = _XBRL_ANNUAL_FORMS | _XBRL_INTERIM_FORMS
 
 # Per-concept staleness gate: a concept whose newest period-end lags the entity's latest
 # filed period by more than this resolves to None. One fiscal year + a quarter of margin —

@@ -1,55 +1,92 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-21)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-21, after L-4f)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then bring Vic the L-4d §5
-PUNCH LIST — `docs/l4d-capex-synonym.md` §5. DO NOT ARM STEP 4 UNTIL LLY IS RULED.**
-**L-4d CLOSED COMPLETE 2026-08-21 (all three steps): capex synonym armed, coverage
-15 → 18 of 28, and the typed-reason mislabel killed AS A CLASS rather than per name.**
-**Nothing in the tree is mid-flight — tree clean, pushed.**
-**THE RULING THAT UNBLOCKS THE MOST NOW: LLY's capex basis.** It is the only remaining
-name whose FCF history exists and is blocked on a DECISION rather than on data — see the
-★ entry below. It takes coverage 18 → 19. Everything else remaining is correctly
-fail-closed or is its own order.
-**★ THE ONE THING MOST LIKELY TO MISLEAD A LATER SESSION: `tests/fixtures/edgar/V.json`
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4d.1 — the LLY
+capex-basis rider. THE RULING ALREADY EXISTS AND THE WORK IS HALF-MEASURED; see the ★
+`.scratch_lly/` entry below before doing anything else.**
+**L-4f CLOSED COMPLETE 2026-08-21: 20-F/6-K admitted, the `_fy_ends` FY gate fixed, ARM
+recovered 0 → 16 of 19 fields, coverage 18 → 19 of 28, +72 rows, one write point,
+reconciled exactly.** Tree clean, pushed.
+**★ THE ONE THING MOST LIKELY TO MISLEAD A LATER SESSION: `.scratch_lly/` IS UNTRACKED BUT
+GITIGNORED AND MUST NOT BE DELETED.** It holds the ONLY surviving record of the LLY ruling
+of 2026-08-21 — two read-only dark-diff scripts and 28 raw-facts dumps from a session that
+**died mid-order after the L-4d close commit**. Verified harmless (no write verbs, no
+production db reference, md5 was bit-identical across it). **A session was ruled, started,
+and vanished; the tree reads clean and hides that.** Its ruling: add
+`PaymentsToAcquireOtherPropertyPlantAndEquipment` as the THIRD capex chain entry. **The dark
+diff's RESULTS were never written down — only the scripts survive, so L-4d.1 must re-run
+them.** Cleaned in L-4d.1's close, not before.
+**SECOND MOST LIKELY TO MISLEAD: `tests/fixtures/edgar/V.json`
 PREDATES THE L-4d SYNONYM, so OFFLINE V withholds while LIVE V resolves $1.571B.** Adding
 a synonym silently ages every recorded fixture, because fixtures store POST-EXTRACTION
 concepts pulled from `XBRL_CONCEPTS` at record time. Pinned by name; the pin FAILS if V is
 re-recorded, which is deliberate. Do not "fix" the offline result by re-recording without
 a ruling — that moves the regression baseline for every valuation score.
+**NOTE THE ASYMMETRY L-4f ESTABLISHED: a FORM admission ages NO fixture, a SYNONYM addition
+ages every one.** Fixtures store post-extraction facts that already passed the form filter,
+so admitting a form adds nothing to a recorded dict. The corollary is worse than the
+non-problem it replaces — **the fixture replay path (`edgar_adapter.py:952`) calls
+`resolve_financials` DIRECTLY and never runs the form filter at all**, so that filter has
+ZERO offline coverage and `form_excluded` is never populated offline. Pins touching it must
+be synthetic-fact pins.
 **★ CARRY THIS FORWARD: the `B2-WIDENING-SUPPRESSED-TRIP` tripwire is LIVE and unfired.** If
 any batch run emits it, that is a REPORT-TO-VIC event before the E(R) is trusted — see ARMED
 STATE below. It is the one thing L-4b left deliberately observable rather than settled.
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-21 (L-4d) — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-21 (L-4f) — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **session-close commit** — verify with `git log -1`. **Last WORK commits: `c7a3813`** (L-4d steps 1–2) then the step-3 commit. A block cannot contain its own hash. |
-| This session's commits | `c7a3813` capex synonym armed + coverage 15→18 · the step-3 typed-reason commit · this close. Previous session's last commit was `b3458ff`. |
-| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
-| Suite | **922 passed** (was 884; +19 `test_l4d_capex_synonym.py`, +18 `test_l4d_typed_reasons.py`, +1 fixture-divergence pin). No pre-existing test broke. Three were updated DELIBERATELY where they asserted the retired constant or the false "V files no capex concept" claim. |
-| caliber.db md5 | **c0bae79159d5d2a325c35fd87dceda88** — **CHANGED THIS SESSION** (was `7342f1a8…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
-| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT, in step 2: +385 rows in `fundamental_series` across 3 new tickers (NVDA 99, V 133, LRCX 153). Expected delta stated before the write, reconciled exactly: expected +385, actual +385, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. **STEP 3 WROTE NOTHING** — measured, not assumed: zero rows have ever carried a withholding reason, because a withheld ticker writes no rows at all. |
-| md5 trail this session | `7342f1a8` (open; unchanged across all of step 1, the step-2 dark diff and the suite) → **`c0bae791`** (the single production write) → `c0bae791` (after the suite and all of step 3, confirming neither contaminates production). Backup before the write: **`caliber.db.pre-l4d-7342f1a8.bak`**, md5 verified equal to the pre-write db. |
+| HEAD | the **L-4f close commit** — verify with `git log -1`. A block cannot contain its own hash. Previous session's last commit was **`c68d0ca`** (L-4d step 3). |
+| This session's commits | ONE: the L-4f arm + write + close. |
+| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean apart from gitignored `.scratch_lly/` and `.scratch_l4f/` |
+| Suite | **953 passed** (was 922; +31 `test_l4f_foreign_forms.py`). No pre-existing test broke. **Three `test_l4d_typed_reasons.py` tests were UPDATED DELIBERATELY** — they used 20-F as the exemplar of "a form we do not read", which L-4f made false; each swaps to S-1 and carries a `★ EXEMPLAR FORM CHANGED AT L-4f` note. |
+| caliber.db md5 | **e3fe5ff9868fcb05fc60106521779769** — **CHANGED THIS SESSION** (was `c0bae791…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
+| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +72 rows in `fundamental_series` for ONE new ticker, ARM. Expected delta stated before the write, reconciled exactly: expected +72, actual +72, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. |
+| md5 trail this session | `c0bae791` (open; unchanged across step 1, the step-2 dark diff, AND the full 953-test suite) → **`e3fe5ff9`** (the single production write). Backup before the write: **`caliber.db.pre-l4f-c0bae791.bak`**, md5 verified equal to the pre-write db. |
 | evaluations | **80** rows, max id **272** · unchanged this session |
 | **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
 | lifecycle_stage | **44** rows (unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
 | field_provenance | **1437** rows (unchanged) |
-| fundamental_series | **2302 rows, 18 tickers** (was 1917 / 15). Added NVDA, V, LRCX. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
-| **step-4 evaluable** | **18 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). NVDA has 5 FY points, V and LRCX 6. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4d**, since NVDA/V/LRCX are all firmly FCF-positive. Near the boundary: LITE (n/n/p), BE (n/p/p). |
-| **the 10 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — no XBRL at all). Blocked by OUR limits, each now saying so precisely: **CBRS/DPC/SPCX/XE** `ttm_unavailable`, **ARM** `form_excluded`, **LLY** `capex:stale_tag`. |
+| fundamental_series | **2374 rows, 19 tickers** (was 2302 / 18). Added ARM. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
+| **step-4 evaluable** | **19 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). ARM has 5 FY points, NVDA 5, the other 17 six. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4f** (re-measured through the production reader; ARM's last three are `[998M, 178M, 979M]`). Near the boundary: LITE (n/n/p), BE (n/p/p). |
+| **ARM's rows** | fcf 14 (5 FY) · fcf_margin 14 (5) · reinvestment 14 (5) · fcf_growth 10 (4) · fcf_yield 10 (3) · revenue_growth 10 (4). **`sales_to_capital` 0 — ARM files no debt tag of any kind, so invested capital is uncomputable. NOT disqualifying: BE/BK/C/FN/IONQ already carry zero and count as evaluable; step-4 evaluability is the `fcf` FY series.** |
+| **the 9 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — **no us-gaap namespace at all**; see the ★ punch-list entry). Blocked by OUR limits, each saying so precisely: **CBRS/DPC/SPCX/XE** `ttm_unavailable`, **LLY** `capex:stale_tag` (ruled — L-4d.1). **ARM is no longer among them.** |
 | **V's share basis** | `truncated`, NOT `split_restated` — its 2015-03-19 split is uncorroborated (G-4 2-of-3 witnesses). Affects **`fcf_yield` only**; FCF is share-independent so the FY FCF step 4 reads is unaffected. Stamped per point. |
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
 
+- **★ 20-F/6-K ARE ADMITTED, AND THE ANNUAL/INTERIM SPLIT IS NOW LOAD-BEARING (L-4f,
+  2026-08-21).** `_XBRL_VALID_FORMS = _XBRL_ANNUAL_FORMS | _XBRL_INTERIM_FORMS`, with
+  ANNUAL = `{10-K, 10-K/A, 20-F, 20-F/A}` and INTERIM = `{10-Q, 10-Q/A, 6-K, 6-K/A}`.
+  **The split exists because TWO different decisions read this set** — extraction asks "may
+  I keep this fact", `_fy_ends` asks "is this a FISCAL YEAR end" — and they were the same
+  question only by coincidence, since every admitted annual form began "10-K".
+  **`_fy_ends` now tests MEMBERSHIP in `_XBRL_ANNUAL_FORMS`, not the string prefix
+  `startswith("10-K")`.** ARM broke the coincidence: it tags `fp='FY'` correctly, on 20-F.
+  - **THE ADMISSION IS MONOTONE, AND THAT IS ITS SAFETY PROPERTY** — a strict superset can
+    only KEEP more facts, so no name that resolved before can stop resolving. Same shape as
+    L-4b's monotone-widening argument; pinned by
+    `test_the_admission_is_MONOTONE_it_can_only_add_facts`.
+  - **The gate rewrite is EQUIVALENT on domestic filers, not merely close.** `_fy_ends`
+    reads POST-extraction concepts, so it only ever sees admitted forms; over the OLD
+    admitted set, `startswith("10-K")` IS membership in `{10-K, 10-K/A}`. Measured across
+    the universe: the only `10-K*`/`20-F*` strings that exist anywhere are `10-K`, `10-K/A`
+    and `20-F` — **no `10-KT`, no `10-K405`.** Pinned.
+  - **F-1 AND 40-F ARE DELIBERATELY STILL EXCLUDED and pinned as such.** F-1 is SKHY's only
+    form and is a REGISTRATION STATEMENT; 40-F is unmeasured because no universe name files
+    one. Each is its own ruling.
+  - **DARK DIFF BEFORE ARM: 16 of 532 cells moved, all ARM; 27 of 28 names bit-identical;
+    ZERO domestic movement — which is STRUCTURAL, not lucky, because no domestic name files
+    a single 20-F or 6-K fact.**
 - **§5 step 3 IS ARMED ON BOTH WRITE PATHS (batch armed at L-4b, 2026-08-20).** The B-2
   anchor-divergence band is stage-conditioned: **YOUNG 30% · HIGROWTH 20% · MATURE 15% ·
   DECLINE 15%**, read from the PERSISTED `lifecycle_stage` table via
@@ -169,6 +206,20 @@ Code's reading, stated separately and NOT part of the order:
   Step 3 then killed the typed-reason mislabel structurally — see the ✅ punch-list entry.
   **Sequence from here: rule LLY (18 → 19) → then rule step 4.**
 
+- **L-4f — 20-F/6-K FORM ADMISSION. ✅ DONE 2026-08-21 — docs/l4f-form-admission.md.**
+  Ordered as "foreign-filer support; motivating case ARM, primary payload SKHY and any
+  other ADR". **MEASUREMENT INVERTED THE PAYLOAD AND THAT IS THE FINDING OF STEP 1: ARM is
+  the ONLY name in the universe admission moves, SKHY gains NOTHING and cannot, and there
+  is no other ADR.** No 40-F anywhere. LYTE/FLTW measured live: **no SEC CIK at all**.
+  **Step 1 also found a SECOND GATE the order did not know about** — `_fy_ends` matched
+  `form.startswith("10-K")`, so admission ALONE would have delivered `+0` step-4
+  evaluability while writing five rows labelled `TTM_Q` about periods ARM itself tagged
+  `FY`. Vic ruled the gate into the order (option a) rather than accept a known-false
+  label. **Result: ARM 0 → 16 of 19 fields, coverage 18 → 19 of 28, +72 rows, one write
+  point, reconciled exactly.** Suite 922 → 953, pins fail 11 of 31 pre-fix.
+  **The three fields ARM still withholds are truthful `no_tag` — it files no debt concept
+  of any kind.**
+
 **WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
 docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
 to obtain a clean calibration population — **ruled NO for now**, so the band may have to be set
@@ -180,6 +231,37 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
 
 ### PUNCH LIST — current at close
 
+- **★★ TOP PRIORITY, DO NOT FOLD INTO A SPEC ORDER — SKHY IS EDGAR-UNEVALUABLE, AND IT IS A
+  DATA-SOURCE ARCHITECTURE DECISION, NOT A SPEC FIX (ruled 2026-08-21, L-4f).** SKHY was
+  named as L-4f's primary payload and gains nothing from any form admission. **Its ENTIRE
+  companyfacts is 1,863 bytes with NO `us-gaap` namespace at all** — everything in it is
+  `ffd` SEC **filing-fee** data (`NetFeeAmt`, `TtlFeeAmt`, `TtlOfferingAmt`) from SK hynix's
+  $1B **F-1 IPO registration statement** filed 2026-06-24 / amended 2026-07-06. F-1 is a
+  registration statement, NOT a periodic report; an F-1 registrant becomes a 20-F filer only
+  after its first fiscal year-end post-effectiveness. **No spec, synonym or form change can
+  reach it — there is no financial XBRL to read.** Admitting F-1 would be admitting a fee
+  table as a financial statement; pinned excluded. The open question is whether a NON-EDGAR
+  fundamentals source is wired for issuers EDGAR structurally cannot serve. Its current
+  fail-closed reason is accurate and stays. **LYTE/FLTW are a DIFFERENT case and the L-4f
+  ruling text mis-stated it: they are NOT domestic filers — they have NO SEC CIK AT ALL and
+  file nothing under those tickers** (ETFs file under their trust's CIK). Already absent
+  from `tickers.txt`; unaffected either way.
+- **★ THE ARMED CROSS-CHECK COMPARES THE LATEST PERIOD ONLY — A HISTORY-DEPTH BLIND SPOT
+  AFFECTING EVERY NAME (found by L-4f, candidate for L-4e scope).** ARM's capex reconciles
+  to FMP **to the dollar in FY25/FY26 and diverges 4.5–10.7% in FY22–FY24**; the
+  cross-check saw none of it, because it only ever inspects the live value, which agrees
+  exactly. **Those three years were found BY HAND and would otherwise have shipped
+  silently.** This is general: **every historical point in `fundamental_series` is written
+  on ONE source's word, with no corroboration at any depth.** The strongest argument yet for
+  reading the per-point `first_filed` basis stamp G-1 already captures. Measured, not fixed.
+- **ARM GAINS `high` CONFIDENCE ON 8 FIELDS (L-4f, noted NOT defective).** The armed
+  cross-check moves ARM from 15 × `no_edgar` to 8 × `agree` (gross_margin, operating_margin,
+  profit_margin, roe, roa, current_ratio, shares_outstanding, total_cash@FY), lifting
+  `medium → high` with source `fmp+EDGAR`; 3 × `basis_mismatch` (advisory: EDGAR TTM vs FMP
+  annual) and 4 × `no_edgar` (the debt fields). **This is a scoring-path change** — it makes
+  the `[ANTI-LAUNDER: high-conf miss]` NOTE reachable on ARM — and it is the system working
+  as designed, recorded here so a later session does not read it as a regression.
+
 - **✅ CLOSED 2026-08-21 (L-4d) — THE SINGLE-TAG `capex` SPEC IS NOW A TWO-TAG CHAIN.
   ARMED. Full report docs/l4d-capex-synonym.md.** `PaymentsToAcquireProductiveAssets`
   added, generic tag FIRST, `conflict_check=False`. **NVDA, V and LRCX recovered;
@@ -187,7 +269,21 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   Suite 884 → 903, pins verified to FAIL 8 of 19 against the pre-fix spec before landing.
   `core/fundamental_series.py:261`'s wrong comment is corrected (V was a SPEC GAP, not a
   data limit; JPM/USB remain a real limit).
-  - **★ LLY DID NOT RECOVER AND IS STILL OPEN — RULING NEEDED.** L-4c had it in Class 1;
+  - **★ LLY IS NOW ORDER L-4d.1 (LLY capex-basis rider) — RULED 2026-08-21, NOT YET LANDED.
+    THIS IS THE NEXT ORDER.** Named L-4d.1 by ruling because it is a follow-on from L-4d's
+    step-2 findings, not a new phase (L-4e stays reserved for the synonym census, L-4f was
+    form admission). **The ruling: add `PaymentsToAcquireOtherPropertyPlantAndEquipment` as
+    the THIRD capex chain entry, behind the two armed tags.** A session began executing it
+    and DIED mid-order; its read-only scratch survives in **`.scratch_lly/`** (gitignored,
+    do NOT delete — see the pickup block). **The dark-diff RESULTS were never recorded, so
+    L-4d.1 must re-run `.scratch_lly/dark_diff.py` and `dark_series.py`.** Takes coverage
+    19 → 20. **The L-4f ruling on ARM is the governing precedent and settles the principle:
+    intangible/IPR&D-class acquisitions are NOT capital intensity, so where FMP bundles them
+    and the issuer's own tag is definitionally consistent, the EDGAR tag stands and the
+    disagreement is an advisory basis note.** LLY's FMP series bundles
+    `PaymentsToAcquireInProcessResearchAndDevelopment`; ARM's bundles
+    `PaymentsToAcquireIntangibleAssets`. Same question, answered once. Original diagnosis
+    retained: L-4c had it in Class 1;
     that was wrong. LLY migrated **THREE times** and abandoned
     `PaymentsToAcquireProductiveAssets` at 2022-09-30 (1369d lag, past the 450d gate). Its
     current tag is `PaymentsToAcquireOtherPropertyPlantAndEquipment`, which **FAILED the
@@ -229,12 +325,15 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     paths: no 350–380d fact, no four contiguous QTD quarters, no prior-FY leg. Outcome
     correct, label wrong. **Fail-closed is correct here — TTM assembly for YTD-only filers
     is ruled OUT of scope, punch-listed as a capability question.**
-  - **ARM — the FORM FILTER, not the data.** `_XBRL_VALID_FORMS` admits only the
-    10-K/10-Q family, so **0 of ARM's 4,366 us-gaap facts survive extraction**. Its FY2026
-    OCF ($1,524M) and capex ($545M) are filed on 20-F in the standard tags at 364-day
-    durations and would resolve on `ttm_annual` untouched. **20-F admission is RULED OUT
-    of scope — separate order, L-4f candidate** (it moves lens selection and the
-    cross-check for every foreign private issuer, not just FCF).
+  - **✅ ARM — the FORM FILTER, not the data. CLOSED 2026-08-21 BY L-4f.** `_XBRL_VALID_FORMS`
+    admitted only the 10-K/10-Q family, so **0 of ARM's 4,373 facts survived extraction**.
+    Now admitted; ARM resolves 16 of 19. **One correction to the L-4d prediction, on
+    measurement: it said ARM "would resolve on `ttm_annual` untouched". That is the 20-F-ONLY
+    reading. With 6-K also admitted ARM resolves on `ttm_reconstructed` at 2026-06-30 —
+    a quarter fresher — because its cash-flow 6-K facts are YTD-cumulative (90/182/274d) with
+    no standalone Q2/Q3 and no Q4 QTD at all, which defeats `ttm_summed` even on the income
+    statement. Path 3 needs BOTH forms: the 20-F supplies `prior_fy`, the 6-Ks supply
+    `current` and `prior_ytd`.**
   - **XE is Class 1 AND Class 2.** It files `PaymentsToAcquireProductiveAssets` and not the
     generic tag, so its capex reason was also wrong — undercounted because the builder
     checks OCF first and `return`s. **A short-circuit on the first withholding hides every
@@ -436,14 +535,19 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
      incident record) moved to docs/phase-archive.md. Text below is unchanged. -->
 
 - **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17; STILL
-  BLOCKED after L-4d, 2026-08-21).** `fundamental_series` now covers **18 of 28** (was 4,
-  then 15). Of the 10 remaining, **only 4 are correctly fail-closed** (JPM/USB/INFQ/SKHY);
-  the other 6 are OUR extraction limits — see the ★ typed-reasons punch-list entry. The
+  BLOCKED after L-4f, 2026-08-21).** `fundamental_series` now covers **19 of 28** (was 4,
+  then 15, then 18). Of the 9 remaining, **only 4 are correctly fail-closed**
+  (JPM/USB/INFQ/SKHY); the other 5 are OUR limits — CBRS/DPC/SPCX/XE (`ttm_unavailable`,
+  YTD-only filers, ruled OUT of scope) and LLY (ruled, pending L-4d.1). The
   YOUNG/blocked boundary therefore still reflects **which names happen to have FCF data**,
   not business reality, and a hard block driven by feed coverage would be arbitrary in
   exactly the way this system exists to avoid.
-  **Sequence: correct the typed reasons → rule LLY's capex definition → then step 4.**
-  The two feed-repair tickets below join that work.
+  **Sequence from here: land L-4d.1 (LLY → 20 of 28) → THEN rule step 4 on its evidence.**
+  ARM's admission is done; the two feed-repair tickets below join that work.
+  **NOTE FOR THE STEP-4 RULING: `fundamental_series` coverage and step-4 evaluability are
+  no longer guaranteed to be the same number.** L-4f nearly separated them (ARM would have
+  had 72 rows and 0 FY-labelled points) and only the `_fy_ends` fix kept them equal. Count
+  evaluability through `evaluate._fy_series_from_db`, never by `SELECT DISTINCT ticker`.
   **STEP 3 (B-2 stage-conditioned tolerances) MAY PROCEED after L-2b** — tolerances are
   bounded and inspectable; blocks are not.
 - **FEED-REPAIR TICKETS (from the step-2 run):** `income_annual` series gaps —

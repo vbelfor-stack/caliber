@@ -259,13 +259,30 @@ def _instant_as_of(financials: Any, field_name: str) -> Any:
 def _fy_ends(financials: Any, concepts: List[str]) -> set:
     """Period-ends the issuer itself labelled a fiscal year end.
 
-    Taken from the filings (fp == 'FY' on a 10-K), never inferred from month-of-year: a
-    52/53-week filer's year end moves, and MU's fiscal year ends in August.
+    Taken from the filings (fp == 'FY' on an ANNUAL form), never inferred from
+    month-of-year: a 52/53-week filer's year end moves, and MU's fiscal year ends in August.
+
+    ★ L-4f. The annual form is decided by MEMBERSHIP in `_XBRL_ANNUAL_FORMS`, not by the
+    string prefix "10-K" this used to test. The prefix was correct only while every
+    admitted annual form happened to start with those four characters. ARM tags fp='FY'
+    correctly — on 20-F — so the prefix returned the EMPTY SET for it, and all five of its
+    fiscal year ends would have been written labelled TTM_Q. Step 4 reads
+    `period_type='FY'`, so that is both a false label and +0 coverage.
+
+    The rewrite is EQUIVALENT on domestic filers, not merely close: this reads
+    POST-extraction concepts, so it only ever sees admitted forms, and over the old
+    admitted set `startswith("10-K")` IS membership in {10-K, 10-K/A}. Pinned by
+    test_the_gate_rewrite_is_EQUIVALENT_on_domestic_forms.
+
+    Interim forms (10-Q, 6-K) can never mint an FY label even when they repeat a full-year
+    comparative — that is the fail-closed direction, and it is pinned too.
     """
+    from adapters.edgar_adapter import _XBRL_ANNUAL_FORMS
+
     out = set()
     for concept in concepts:
         for r in financials.concepts.get(concept, []):
-            if r.get("fp") == "FY" and str(r.get("form", "")).startswith("10-K"):
+            if r.get("fp") == "FY" and r.get("form") in _XBRL_ANNUAL_FORMS:
                 if r.get("end"):
                     out.add(r["end"])
     return out
