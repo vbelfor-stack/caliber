@@ -491,7 +491,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--db-path", type=Path, default=None,
-        help="Destination for the lifecycle stage write (default: production caliber.db)"
+        help="Destination for every write this run makes (evaluation, lifecycle stage, "
+             "provenance, cache) (default: production caliber.db)"
     )
     parser.add_argument("--supersedes", type=int, default=None,
                         help="Evaluation id this run supersedes (requires --supersede-reason)")

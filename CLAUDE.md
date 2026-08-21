@@ -226,12 +226,14 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     its own destination, must hit) so the pin cannot pass vacuously if the cache branch ever
     goes dead in fixture mode; the write-side twin restated beside it; and the AST class pin
     above. Verified to FAIL 4 of 5 against the pre-fix line before landing.
-- **`evaluate.py --db-path`'s HELP STRING UNDERSTATES WHAT IT ROUTES** (found 2026-08-19,
-  recorded not fixed). It reads "Destination for the lifecycle stage write", which was true
-  before L-2a and is now false — the flag routes EVERY write. **This is the exact shape of the
-  2026-08-17 contamination: a flag whose stated scope was narrower than its real one, read by a
-  human as covering the run.** Left alone because it is outside the L-4a order, but it is a
-  one-line fix and it misleads in the dangerous direction.
+- **✅ CLOSED 2026-08-20 (L-4c step-0 rider) — `evaluate.py --db-path`'s HELP STRING NOW STATES
+  WHAT IT ROUTES.** It read "Destination for the lifecycle stage write" — true before L-2a,
+  false since: the flag routes EVERY write (see the `write_db` resolution at evaluate.py:259 and
+  the routing comment at :249-251). Same shape as the 2026-08-17 contamination — a flag whose
+  stated scope was narrower than its real one, read by a human as covering the run. Fix is a
+  help-string only: now reads "Destination for every write this run makes (evaluation, lifecycle
+  stage, provenance, cache)". No test pinned the old string; docs/help-text change, zero
+  production writes, caliber.db md5 unchanged.
 - **`field_provenance.field_name` is NULL on all 1,437 rows** (re-measured at close 2026-08-19;
   was 1,416 before the STX re-synthesis added 21) — provenance is unqueryable by
   field, only by `(evaluation_id, pillar)`. **DIAGNOSIS QUESTION, not yet a fix order:** is
