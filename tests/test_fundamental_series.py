@@ -30,7 +30,6 @@ from core.fundamental_series import (
     METRIC_SALES_TO_CAPITAL,
     PERIOD_FY,
     PERIOD_TTM_Q,
-    WITHHELD_NO_CAPEX,
     WITHHELD_NO_DA_SPEC,
     build_fcf_series,
     run_dark_fcf_series,
@@ -120,15 +119,47 @@ def test_the_mrq_point_reproduces_the_scoping_reports_unmatched_reading():
 
 
 def test_a_no_capex_issuer_withholds_the_whole_family_rather_than_guessing():
-    """V and JPM file no PaymentsToAcquirePropertyPlantAndEquipment concept at all.
+    """JPM files no PP&E-purchase concept of ANY kind — checked at L-4d across every
+    us-gaap concept, not just our spec. A real data limit.
 
-    An accepted data limit, already recorded for the cross-check. The correct behaviour is
-    an empty series with a NAMED reason — never FCF defaulted to operating cash flow.
+    The correct behaviour is an empty series with a NAMED reason — never FCF defaulted to
+    operating cash flow.
+
+    V WAS REMOVED FROM THIS TEST AT L-4d AND THAT IS THE POINT. The docstring here used to
+    read "V and JPM file no ... concept at all", which was FALSE about V: V files
+    PaymentsToAcquireProductiveAssets, and calling its spec gap a data limit is why the
+    gap went unexamined. V resolves in production since the L-4d synonym landed. See
+    test_the_V_fixture_predates_the_L4d_synonym below for why it still withholds OFFLINE.
     """
-    for ticker in ("V", "JPM"):
-        r = _series(ticker)
-        assert r.points == []
-        assert r.withheld[METRIC_FCF] == WITHHELD_NO_CAPEX
+    r = _series("JPM")
+    assert r.points == []
+    assert r.withheld[METRIC_FCF] == "capex:no_tag"
+
+
+def test_the_V_fixture_predates_the_L4d_synonym_and_UNDERSTATES_production():
+    """★ A NAMED, DELIBERATE FIXTURE/PRODUCTION DIVERGENCE — not a passing test hiding one.
+
+    EDGAR fixtures store the POST-EXTRACTION concepts dict, and extraction pulls exactly
+    the concepts in XBRL_CONCEPTS AT RECORD TIME. tests/fixtures/edgar/V.json holds 23
+    concepts and not a single `Payments*` one, because it was recorded when `capex` was a
+    single-tag spec. So adding a synonym cannot retroactively appear in an old fixture:
+    OFFLINE V withholds, LIVE V resolves $1.571B and carries 6 FY FCF points.
+
+    This is the recorded "a baseline that agrees with the bug shows nothing" hazard in its
+    general form — ADDING A SPEC ENTRY SILENTLY AGES EVERY EXISTING FIXTURE. Pinned rather
+    than papered over: re-recording moves the regression baseline for every valuation
+    score and is a deliberate ruled step, never an incidental one. If someone re-records
+    V, this test fails and forces the divergence to be re-reasoned instead of forgotten.
+    """
+    from adapters.edgar_adapter import XBRL_CONCEPTS
+
+    concepts = _edgar("V").financials.concepts
+    assert not any(c.startswith("PaymentsToAcquire") for c in concepts), (
+        "the V fixture now carries a capex concept — it has been re-recorded. Re-reason "
+        "the offline/live divergence and update this pin deliberately.")
+    # The spec DOES list the tag; only the recording predates it.
+    assert "PaymentsToAcquireProductiveAssets" in {c for c, _ns in XBRL_CONCEPTS}
+    assert _series("V").withheld[METRIC_FCF] == "capex:no_tag"
 
 
 # ── RULING 1 — grain ─────────────────────────────────────────────────────────

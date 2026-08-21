@@ -39,7 +39,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.fundamental_series import (                          # noqa: E402
-    METRIC_FCF, PERIOD_FY, PERIOD_TTM_Q, SeriesPoint, WITHHELD_NO_CAPEX,
+    METRIC_FCF, PERIOD_FY, PERIOD_TTM_Q, SeriesPoint,
 )
 from tools import expand_fcf_series as X                       # noqa: E402
 
@@ -59,12 +59,18 @@ def _covered(ticker: str, n: int = 4) -> X.Build:
     return b
 
 
+# L-4d deleted WITHHELD_NO_CAPEX (a constant that asserted "no tag" regardless
+# of cause). This test only ever needed SOME typed reason, so it now carries the
+# real post-L-4d shape for a genuine data limit rather than importing a constant.
+_UNCOVERED_REASON = "capex:no_tag"
+
+
 def _uncovered(ticker: str) -> X.Build:
     """A build the FILINGS could not support — the builder withheld the whole family."""
     b = X.Build(ticker)
     b.basis = "not_applicable"
-    b.withheld = {METRIC_FCF: WITHHELD_NO_CAPEX}
-    b.reason = f"withheld:{METRIC_FCF}={WITHHELD_NO_CAPEX}"
+    b.withheld = {METRIC_FCF: _UNCOVERED_REASON}
+    b.reason = f"withheld:{METRIC_FCF}={_UNCOVERED_REASON}"
     return b
 
 
@@ -103,7 +109,7 @@ def test_an_uncovered_ticker_writes_nothing_and_carries_a_typed_reason(
     out = _run(monkeypatch, capsys, [_uncovered("JPM")],
                ["JPM", "--db-path", str(db), "--commit"])
 
-    assert "UNCOVERED" in out and WITHHELD_NO_CAPEX in out, (
+    assert "UNCOVERED" in out and _UNCOVERED_REASON in out, (
         "the reason must be TYPED and visible, not a silent skip")
     assert "SKIPPED (fail-closed)" in out
     assert _counts(db).get("fundamental_series", 0) == 0, "an uncovered name wrote rows"

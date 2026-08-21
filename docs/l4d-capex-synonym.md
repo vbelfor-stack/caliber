@@ -449,6 +449,145 @@ unaffected.
 
 ---
 
-*Typed-reason corrections (the remaining work) are a separate ruling. Note the amendment
-already improved two reasons for free — LLY `no_tag` → `stale_tag` and XE `no_tag` →
-`ttm_unavailable` — which that work builds on rather than duplicates.*
+## STEP 4 — typed-reason corrections, by structural fix
+
+Ruled: plumb the resolver's reason through instead of editing strings; the remaining wrong
+reasons should then self-correct; add the evidence-backed-reason invariant permanently;
+supersede-not-purge any production rows carrying superseded reasons.
+
+### 4.1 NO PRODUCTION WRITE WAS REQUIRED, AND THAT IS A MEASURED RESULT
+
+The supersede-not-purge constraint has nothing to act on. **Zero production rows have ever
+carried one of the wrong reasons** — a withheld ticker writes *no rows at all*, so the
+mislabel lived only in memory, logs and reports. Measured directly:
+
+```
+rows carrying 'no_operating_cashflow_tag': 0
+rows carrying 'no_capex_tag':              0
+distinct null_reason:      None (1894), no_da_spec (408)
+distinct exclusion_reason: None (2000), negative_fcf (205), non_positive_base (97)
+```
+
+All three persisted reason values are accurate and outside the wrong-reason class.
+`no_da_spec` is a claim about OUR SPEC TABLE, which this module can know and which is true.
+
+The change is also confined to the withholding branch — an early return that produces no
+points — so no covered name's rows can move. **caliber.db md5 is unchanged by step 3 at
+`c0bae79159d5d2a325c35fd87dceda88`.**
+
+### 4.2 The structural fix — the layer that discarded the reason is gone
+
+**`WITHHELD_NO_CAPEX` and `WITHHELD_NO_OCF` were DELETED, not renamed, and the deletion is
+the fix.** Each was a constant asserting a fact about the ISSUER'S FILINGS ("no tag"),
+stamped on a condition that only measured whether *our reader* returned points. A constant
+cannot know which of four causes occurred, so any code holding one is *forced* to guess.
+`withheld_reason()` asks the resolver instead, and there is no longer a way to record a
+tag-absence claim without evidence for it.
+
+Three further changes fell out of doing it structurally rather than per-name:
+
+- **Every blocked input is now reported, not the first.** The old code was two sequential
+  `if not X: return`, which is exactly how XE was misfiled for a whole order — recorded as
+  an OCF problem while *also* carrying a capex spec gap that nothing surfaced. A
+  short-circuit on the first withholding hides every later one, and the hidden ones then
+  look absent.
+- **Extraction now records what it discards** (`EdgarFinancials.form_excluded`). This was
+  necessary, not incidental: the resolver *structurally cannot* report the ARM cause,
+  because by the time it runs the facts are already gone, so it honestly says `no_tag`.
+  **Only extraction knows the difference between "not filed" and "filed on a form we do
+  not read".** The invariant in §4.4 is also unimplementable without it — there is no
+  observed-tag list to contradict a claim with. **The form filter itself is UNCHANGED;
+  this record feeds no resolution and no score, and that is pinned.**
+- **The evidence travels with the code**, in `withheld_detail`, kept beside `withheld`
+  rather than folded into it because consumers type `withheld` as `Dict[str, str]` and one
+  (`core/valuation_anchors.py:464`) renders the value straight into a refusal message.
+
+### 4.3 THE DARK DIFF — every reason, all 28 names
+
+| ticker | before | after |
+|---|---|---|
+| CBRS | `no_operating_cashflow_tag` | `operating_cashflow:ttm_unavailable; capex:ttm_unavailable` |
+| DPC | `no_operating_cashflow_tag` | `operating_cashflow:ttm_unavailable; capex:ttm_unavailable` |
+| SPCX | `no_operating_cashflow_tag` | `operating_cashflow:ttm_unavailable; capex:ttm_unavailable` |
+| XE | `no_operating_cashflow_tag` | `operating_cashflow:ttm_unavailable; capex:ttm_unavailable` |
+| **ARM** | `no_operating_cashflow_tag` | **`operating_cashflow:form_excluded; capex:form_excluded`** |
+| LLY | `no_capex_tag` | `capex:stale_tag` |
+| JPM / USB / INFQ | `no_capex_tag` | `capex:no_tag` |
+| SKHY | `no_operating_cashflow_tag` | `operating_cashflow:no_tag; capex:no_tag` |
+| the other 18 | *(covered — no withholding)* | **unchanged** |
+
+Classified strictly, because "moved" and "moved for a new reason" are different claims:
+
+- **CAUSE CHANGED — 6 names: CBRS, DPC, SPCX, XE, ARM, LLY.** Exactly the known-wrong set.
+- **CAUSE IDENTICAL, encoding/completeness only — 4 names: JPM, USB, INFQ, SKHY.** These
+  were already correct and remain correct; `no_capex_tag` → `capex:no_tag` names the field
+  rather than changing the diagnosis, and SKHY now reports both blocked legs instead of one.
+- **Names whose cause moved outside the known-wrong set: NONE.** No STOP condition.
+
+**ARM SELF-CORRECTED through the plumbing** — no hand-patch, and no STOP was needed. Its
+evidence string now reads:
+
+> `27 fact(s) filed on 20-F, 6-K for NetCashProvidedByUsedInOperatingActivities — excluded
+> by the 10-K/10-Q form filter, NOT absent from the filings`
+
+Verified end to end through `tools/expand_fcf_series.py` itself, not only the harness: all
+10 uncovered names report **+0 rows, fail-closed, with the corrected typed reason**.
+
+### 4.4 The permanent invariant
+
+`tests/test_l4d_typed_reasons.py`, 18 tests. **A field may record a tag-absence reason ONLY
+when we hold no facts for any concept in its chain — neither kept nor form-dropped.**
+Anything else is a reason refuted by our own evidence.
+
+Swept over all nine recorded EDGAR fixtures, and — because a sweep that can never fire
+proves nothing — carrying a **positive control** that builds the exact ARM shape and
+asserts the checker *would* flag it. Also pinned: the deleted constants cannot return
+(checked over the source with comments stripped, so the ★ comment naming them does not
+satisfy the check); `form_excluded` moves no resolution; and every spec concept is watched
+for form exclusion automatically, since the watch list is derived from the spec table.
+
+**Verified to FAIL 6 of 18 against the pre-plumbing code** before landing.
+
+### 4.5 ★ A FIXTURE/PRODUCTION DIVERGENCE THIS OPENED, FOUND AND PINNED
+
+Not in the order, and worth stating plainly rather than leaving in a passing test.
+
+EDGAR fixtures store the **post-extraction** concepts dict, and extraction pulls exactly
+the concepts in `XBRL_CONCEPTS` **at record time**. `tests/fixtures/edgar/V.json` holds 23
+concepts and not a single `Payments*` one, because it was recorded while `capex` was a
+single-tag spec. So:
+
+> **OFFLINE V withholds; LIVE V resolves $1.571B and carries 6 FY FCF points.**
+
+Generalised: **adding a synonym silently ages every existing fixture.** This is the
+recorded "a baseline that agrees with the bug shows nothing" hazard in a new form — the
+one the golden harness was kept independent to catch.
+
+I did **not** re-record the fixture: that moves the regression baseline for every valuation
+score and is a deliberate ruled step, never an incidental one. Instead the divergence is
+pinned by name (`test_the_V_fixture_predates_the_L4d_synonym_and_UNDERSTATES_production`),
+and the pin **fails if anyone re-records V**, forcing the divergence to be re-reasoned
+rather than forgotten. Two older tests that asserted "V files no capex concept" were
+corrected — that claim was false about V and is precisely the label that let the gap sit.
+
+### 4.6 Suite
+
+**884 → 922** across the whole order (+19 capex-synonym pins, +18 typed-reason pins, +1
+fixture-divergence pin). No pre-existing test broke; three were updated deliberately where
+they asserted the retired constant or the false V claim.
+
+---
+
+## 5. Punch list carried out of L-4d (own orders, untouched)
+
+1. **LLY capex basis** — FMP bundles acquired IPR&D in FY23/24 and drops it in FY25; the
+   EDGAR tag is consistent all years. A definitional arbitration, not a data fix.
+2. **`net_income` / `NetIncomeLoss` STALE on BE and CAT** — core field, bare tag.
+3. **9 of 19 specs are single-tag** → L-4e census scope.
+4. **V's truncated share basis** (2015-03-19 split uncorroborated under G-4) — `fcf_yield`
+   only.
+5. **TTM assembly for YTD-only filers** — fail-closed is correct today; capability question.
+6. **20-F form admission** — L-4f. ARM is the motivating case and its reason now says so
+   in words.
+7. **NEW — fixtures age against the spec table** (§4.5). Any future synonym addition
+   under-covers every recorded fixture until it is deliberately re-recorded.

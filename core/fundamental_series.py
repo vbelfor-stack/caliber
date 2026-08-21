@@ -77,9 +77,27 @@ EXCL_NEGATIVE_FCF = "negative_fcf"
 EXCL_NON_POSITIVE_BASE = "non_positive_base"
 
 # Withholding reasons (uncomputable — no row is emitted).
-WITHHELD_NO_CAPEX = "no_capex_tag"
-WITHHELD_NO_OCF = "no_operating_cashflow_tag"
+#
+# ★ L-4d, 2026-08-21 — WITHHELD_NO_CAPEX ("no_capex_tag") AND WITHHELD_NO_OCF
+# ("no_operating_cashflow_tag") WERE DELETED, NOT RENAMED, AND THE DELETION IS THE FIX.
+#
+# Both were constants asserting a fact about the ISSUER'S FILINGS ("no tag"), stamped on a
+# condition that only measured whether OUR reader returned points. They were wrong for 9 of
+# the 13 names they fired on: the tag was filed in every one of those cases and the real
+# causes were TTM assembly having no prior-year leg, a taxonomy migration past the
+# staleness gate, and the 20-F form filter. A constant cannot know which of those happened,
+# so any code holding one is forced to guess — which is why this is a deletion and not a
+# better string. `withheld_reason()` below asks the resolver instead, and there is no
+# longer a way to record a tag-absence claim without evidence for it.
+#
+# Kept: WITHHELD_NO_DA_SPEC is a claim about OUR SPEC TABLE ("we have no D&A spec"), which
+# is knowable here and is true. It is also the only one of the three ever persisted.
 WITHHELD_NO_DA_SPEC = "no_da_spec"
+
+# Reasons this module can state on its own authority, i.e. without asking the resolver.
+REASON_FIELD_UNKNOWN = "field_not_in_spec_table"
+REASON_SERIES_EMPTY = "series_empty_despite_live_value"
+REASON_FORM_EXCLUDED = "form_excluded"
 
 # A year-ago period-end must land this close for a growth rate to be well posed. Matches
 # the tolerance _assemble_ttm already uses for its prior-year YTD leg.
@@ -118,6 +136,10 @@ class SeriesResult:
     points: List[SeriesPoint] = field(default_factory=list)
     basis: str = BASIS_NOT_APPLICABLE          # the share basis available to fcf_yield
     withheld: Dict[str, str] = field(default_factory=dict)
+    # L-4d: the resolver's own `detail` for each withholding, kept BESIDE `withheld` and
+    # not folded into it — consumers type `withheld` as Dict[str, str] and one of them
+    # (core/valuation_anchors.py:464) renders the value straight into a refusal message.
+    withheld_detail: Dict[str, str] = field(default_factory=dict)
     diagnostics: Dict[str, Any] = field(default_factory=dict)
 
     def by_metric(self, metric: str) -> List[SeriesPoint]:
@@ -152,6 +174,68 @@ def _flow_points(financials: Any, field_name: str) -> Dict[str, Tuple[float, str
     return {r.period_end: (r.value, r.method)
             for r in ttm_series(financials, field_name)
             if r.period_end and r.value is not None}
+
+
+def withheld_reason(financials: Any, field_name: str) -> Tuple[str, Optional[str]]:
+    """(reason, detail) for a flow field that produced NO series points.
+
+    ★ L-4d. THE REASON IS THE RESOLVER'S OWN TYPED CODE, NEVER THIS MODULE'S RESTATEMENT
+    OF IT. `_flow_points` returns a bare dict, so an empty result says only "our reader
+    produced nothing" — it carries no information about WHY. The resolver already computed
+    that and put it in `ResolvedField.reason`/`.detail`; the old code discarded it and
+    substituted a hardcoded "no tag" claim. Every wrong reason L-4d found came from that
+    one substitution, so this asks rather than assumes.
+
+    Format is `field:code`, so the field is always named — the builder checks three inputs
+    and a bare code cannot say which one blocked.
+
+    The three codes this function may originate itself are the ones the resolver
+    structurally CANNOT report, each stated only on evidence held here:
+
+      form_excluded  the concept IS in companyfacts but every fact was dropped by the form
+                     filter, so the resolver saw an empty concept and honestly said
+                     `no_tag`. Only extraction knows the difference. ARM is the live case:
+                     4,366 facts, all 20-F/6-K, all 19 fields reported absent.
+      series_empty…  the field resolved a LIVE value yet no historical period assembled.
+                     No name in the universe does this today; it is recorded rather than
+                     folded into another code so that if it ever fires it is visibly new.
+      field_not_in…  the field is not in FIELD_SPECS at all — a caller/spec-table bug, not
+                     an issuer fact.
+    """
+    rf = getattr(financials, "fields", {}).get(field_name)
+    if rf is None:
+        return f"{field_name}:{REASON_FIELD_UNKNOWN}", None
+
+    if rf.reason == "no_tag":
+        # Ask extraction whether "absent" means absent, or merely unread. Checks every
+        # concept in the field's chain, because any one of them being form-excluded makes
+        # a bare "no tag filed" a false statement about the issuer.
+        excluded = getattr(financials, "form_excluded", {}) or {}
+        hits = {c: excluded[c] for c in _chain_concepts(field_name) if c in excluded}
+        if hits:
+            forms = sorted({f for counts in hits.values() for f in counts})
+            n = sum(v for counts in hits.values() for v in counts.values())
+            return (f"{field_name}:{REASON_FORM_EXCLUDED}",
+                    f"{n} fact(s) filed on {', '.join(forms)} for "
+                    f"{', '.join(sorted(hits))} — excluded by the 10-K/10-Q form filter, "
+                    f"NOT absent from the filings")
+
+    if rf.reason:
+        return f"{field_name}:{rf.reason}", rf.detail
+
+    # Resolved live, but no historical point assembled.
+    return (f"{field_name}:{REASON_SERIES_EMPTY}",
+            f"{rf.concept} resolved a live value ({rf.value}) but ttm_series assembled "
+            f"no period")
+
+
+def _chain_concepts(field_name: str) -> Tuple[str, ...]:
+    """Every concept the field's synonym chain may draw on, in priority order."""
+    from adapters.edgar_adapter import FIELD_SPECS
+    for spec in FIELD_SPECS:
+        if spec.name == field_name:
+            return tuple(c for c, _ns in spec.synonyms)
+    return ()
 
 
 def _instant_as_of(financials: Any, field_name: str) -> Any:
@@ -254,18 +338,31 @@ def build_fcf_series(
     capex = _flow_points(fin, "capex")
     revenue = _flow_points(fin, "revenue")
 
-    if not ocf:
-        result.withheld[METRIC_FCF] = WITHHELD_NO_OCF
-        return result
-    if not capex:
-        # CORRECTED L-4d, 2026-08-21. This comment used to read "V, JPM and USB file no
-        # PaymentsToAcquirePropertyPlantAndEquipment concept at all... an ACCEPTED DATA
-        # LIMIT". It was right about JPM and USB and WRONG ABOUT V: V files
-        # PaymentsToAcquireProductiveAssets, so V was a SPEC GAP wearing a data-limit
-        # label, and the label is why nobody looked for six months. V now resolves.
-        # JPM and USB remain a real data limit — they file no PP&E-purchase concept of
-        # any kind, checked across every us-gaap concept and not just our spec.
-        result.withheld[METRIC_FCF] = WITHHELD_NO_CAPEX
+    # ★ L-4d: REPORT EVERY BLOCKED INPUT, NOT THE FIRST ONE.
+    #
+    # This used to be two sequential `if not X: return`, so a name blocked on BOTH legs
+    # reported only the earlier one. That is how XE was mis-classified: it was recorded as
+    # an operating-cashflow problem for a whole order while ALSO having a capex spec gap
+    # that nothing surfaced, because the OCF branch returned first. A short-circuit on the
+    # first withholding hides every later one, and the hidden ones then look absent.
+    #
+    # On JPM/USB the capex reason is a REAL data limit — they file no PP&E-purchase
+    # concept of any kind, checked across every us-gaap concept, not just our spec. On V
+    # it used to be a SPEC GAP wearing a data-limit label (V files
+    # PaymentsToAcquireProductiveAssets), which is precisely why it went unexamined; V
+    # resolves since the L-4d synonym landed.
+    blocked = [name for name, points in (("operating_cashflow", ocf), ("capex", capex))
+               if not points]
+    if blocked:
+        reasons, details = [], []
+        for name in blocked:
+            reason, detail = withheld_reason(fin, name)
+            reasons.append(reason)
+            if detail:
+                details.append(detail)
+        result.withheld[METRIC_FCF] = "; ".join(reasons)
+        if details:
+            result.withheld_detail[METRIC_FCF] = " | ".join(details)
         return result
 
     fy = _fy_ends(fin, [c for c in (_concept_of(fin, "operating_cashflow"),
@@ -421,6 +518,11 @@ def render_series(result: SeriesResult) -> str:
     if result.withheld:
         for k, v in result.withheld.items():
             lines.append(f"  WITHHELD {k}: {v}")
+            detail = result.withheld_detail.get(k)
+            if detail:
+                # The evidence, not just the code. A reason a later reader cannot check
+                # is the thing L-4d existed to remove.
+                lines.append(f"    evidence: {detail}")
         return "\n".join(lines)
     for metric in ALL_METRICS:
         pts = result.by_metric(metric)

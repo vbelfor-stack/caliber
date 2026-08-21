@@ -5,51 +5,47 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then bring Vic the L-4c §6 RULING
-LIST — `docs/l4c-coverage-expansion.md` §4 and §6. DO NOT ARM STEP 4 UNTIL THAT IS RULED.**
-L-4c landed the coverage expansion (4 → 15 tickers, +1360 rows) **but its central finding is
-that "uncovered" is mostly OUR gap, not the filings'**: of the 13 names that got no series,
-only 4 are correctly fail-closed. See the ★ punch-list entry.
-**THE ONE-LINE RULING THAT UNBLOCKS THE MOST: add `PaymentsToAcquireProductiveAssets` to the
-`capex` FieldSpec.** It recovers NVDA/LLY/V/LRCX and takes step-4 coverage 15 → 19 of 28.
-NOT done in L-4c because `FIELD_SPECS` feeds the EDGAR cross-check and the ARMED SET, which
-is beyond a coverage order's scope.
-**Nothing in the tree is mid-flight — L-4c closed complete, tree clean, pushed.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then bring Vic the L-4d §5
+PUNCH LIST — `docs/l4d-capex-synonym.md` §5. DO NOT ARM STEP 4 UNTIL LLY IS RULED.**
+**L-4d CLOSED COMPLETE 2026-08-21 (all three steps): capex synonym armed, coverage
+15 → 18 of 28, and the typed-reason mislabel killed AS A CLASS rather than per name.**
+**Nothing in the tree is mid-flight — tree clean, pushed.**
+**THE RULING THAT UNBLOCKS THE MOST NOW: LLY's capex basis.** It is the only remaining
+name whose FCF history exists and is blocked on a DECISION rather than on data — see the
+★ entry below. It takes coverage 18 → 19. Everything else remaining is correctly
+fail-closed or is its own order.
+**★ THE ONE THING MOST LIKELY TO MISLEAD A LATER SESSION: `tests/fixtures/edgar/V.json`
+PREDATES THE L-4d SYNONYM, so OFFLINE V withholds while LIVE V resolves $1.571B.** Adding
+a synonym silently ages every recorded fixture, because fixtures store POST-EXTRACTION
+concepts pulled from `XBRL_CONCEPTS` at record time. Pinned by name; the pin FAILS if V is
+re-recorded, which is deliberate. Do not "fix" the offline result by re-recording without
+a ruling — that moves the regression baseline for every valuation score.
 **★ CARRY THIS FORWARD: the `B2-WIDENING-SUPPRESSED-TRIP` tripwire is LIVE and unfired.** If
 any batch run emits it, that is a REPORT-TO-VIC event before the E(R) is trusted — see ARMED
 STATE below. It is the one thing L-4b left deliberately observable rather than settled.
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### ⚠ MID-ORDER UPDATE 2026-08-21 (L-4d steps 1–2 landed; step 3 awaiting ruling)
-The table below is the L-4c close record. **These values MOVED in L-4d and the table has
-NOT been rewritten — trust these instead:** caliber.db md5
-**`c0bae79159d5d2a325c35fd87dceda88`** (was `7342f1a8`; backup
-`caliber.db.pre-l4d-7342f1a8.bak`) · `fundamental_series` **2302 rows / 18 tickers** (was
-1917 / 15; +385 = NVDA 99, V 133, LRCX 153) · **step-4 evaluable 18 of 28** (NVDA 5 FY
-points, V 6, LRCX 6) · suite **903** (was 884). Every other table is UNCHANGED from the
-table below — re-counted after the write, all +0. R2 all-negative-last-3 still
-IONQ/QBTS/RKLB/C. **V's series is on the `truncated` share basis** (2015-03-19 split
-uncorroborated, G-4 2-of-3) — affects `fcf_yield` only, not the FY FCF step 4 reads.
-
-### STATE AT CLOSE 2026-08-21 — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-21 (L-4d) — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **session-close commit carrying this correction** — verify with `git log -1`. **Last WORK commit: `a9165a1`** ("L-4c: fundamental_series coverage expansion — 4 -> 15 tickers, +1360 rows"). A block cannot contain its own hash. |
-| This session's commits | `a9165a1` the L-4c expansion (writer + tests + report + the first draft of this block) · + this close correction. Previous session's last commit was `c922d8b`. |
+| HEAD | the **session-close commit** — verify with `git log -1`. **Last WORK commits: `c7a3813`** (L-4d steps 1–2) then the step-3 commit. A block cannot contain its own hash. |
+| This session's commits | `c7a3813` capex synonym armed + coverage 15→18 · the step-3 typed-reason commit · this close. Previous session's last commit was `b3458ff`. |
 | Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean, no uncommitted state |
-| Suite | **884 passed** (was 876; +8 from `tests/test_l4c_coverage_expansion.py`). No pre-existing test broke. |
-| caliber.db md5 | **7342f1a87c812ab5c2f0248f97ddcf65** — **CHANGED THIS SESSION** (was `8557a157…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair my read connections created was removed, md5 re-verified after. |
-| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +1360 rows in `fundamental_series` across 11 new tickers. Expected delta stated before the write, reconciled exactly after: expected +1360, actual +1360, restatements 0, superseded 0 — MATCH.** No other table was written; all re-counted after and unchanged. |
-| md5 trail this session | `8557a157` (open) → `8557a157` (read-only survey + scratch validation) → **`7342f1a8`** (the single production write) → `7342f1a8` (after the suite, confirming the suite does not contaminate production). Backup before the write: **`caliber.db.pre-l4c-8557a157.bak`**, md5 verified equal to the pre-write db. |
+| Suite | **922 passed** (was 884; +19 `test_l4d_capex_synonym.py`, +18 `test_l4d_typed_reasons.py`, +1 fixture-divergence pin). No pre-existing test broke. Three were updated DELIBERATELY where they asserted the retired constant or the false "V files no capex concept" claim. |
+| caliber.db md5 | **c0bae79159d5d2a325c35fd87dceda88** — **CHANGED THIS SESSION** (was `7342f1a8…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
+| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT, in step 2: +385 rows in `fundamental_series` across 3 new tickers (NVDA 99, V 133, LRCX 153). Expected delta stated before the write, reconciled exactly: expected +385, actual +385, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. **STEP 3 WROTE NOTHING** — measured, not assumed: zero rows have ever carried a withholding reason, because a withheld ticker writes no rows at all. |
+| md5 trail this session | `7342f1a8` (open; unchanged across all of step 1, the step-2 dark diff and the suite) → **`c0bae791`** (the single production write) → `c0bae791` (after the suite and all of step 3, confirming neither contaminates production). Backup before the write: **`caliber.db.pre-l4d-7342f1a8.bak`**, md5 verified equal to the pre-write db. |
 | evaluations | **80** rows, max id **272** · unchanged this session |
 | **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
 | lifecycle_stage | **44** rows (unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
 | field_provenance | **1437** rows (unchanged) |
-| fundamental_series | **1917 rows, 15 tickers** (was 557 / 4). Added: BE BK C CAT FN GOOGL IONQ LITE QBTS RKLB STX — each 6 full FY points running to a 2026 period-end, 0 superseded. · grades 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
-| **step-4 evaluable** | **15 of 28**, read through the production reader `evaluate._fy_series_from_db`. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C**. Near the boundary: LITE (neg/neg/pos), BE (neg/pos/pos). |
+| fundamental_series | **2302 rows, 18 tickers** (was 1917 / 15). Added NVDA, V, LRCX. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
+| **step-4 evaluable** | **18 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). NVDA has 5 FY points, V and LRCX 6. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4d**, since NVDA/V/LRCX are all firmly FCF-positive. Near the boundary: LITE (n/n/p), BE (n/p/p). |
+| **the 10 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — no XBRL at all). Blocked by OUR limits, each now saying so precisely: **CBRS/DPC/SPCX/XE** `ttm_unavailable`, **ARM** `form_excluded`, **LLY** `capex:stale_tag`. |
+| **V's share basis** | `truncated`, NOT `split_restated` — its 2015-03-19 split is uncorroborated (G-4 2-of-3 witnesses). Affects **`fcf_yield` only**; FCF is share-independent so the FY FCF step 4 reads is unaffected. Stamped per point. |
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
@@ -160,8 +156,8 @@ Code's reading, stated separately and NOT part of the order:
   feed-coverage-as-business-reality failure the standing ruling forbids. The ruling is
   better evidenced, not discharged.
 
-- **L-4d — CAPEX SYNONYM + TYPED-REASON CORRECTIONS. STEPS 1–2 DONE 2026-08-21 —
-  docs/l4d-capex-synonym.md. STEP 3 (typed reasons) IS A SEPARATE RULING, NOT YET DONE.**
+- **L-4d — CAPEX SYNONYM + TYPED-REASON CORRECTIONS. ✅ ALL THREE STEPS DONE 2026-08-21 —
+  docs/l4d-capex-synonym.md.**
   Ordered by Vic as "a FIELD_SPECS change, not a coverage order", with the raw-facts sweep
   amended in after step 1 proved the builder's short-circuit hides downstream gaps.
   Step 1 diagnosed three distinct mechanisms behind the mis-typed reasons (none of them the
@@ -170,6 +166,8 @@ Code's reading, stated separately and NOT part of the order:
   only `no_edgar` → `basis_mismatch`, which is ADVISORY ONLY** — so no value, score, E(R),
   grade or confidence label moved anywhere. Coverage **15 → 18**, one write point, expected
   delta +385 reconciled exactly. LLY failed its conditional gate (branch B) and is open.
+  Step 3 then killed the typed-reason mislabel structurally — see the ✅ punch-list entry.
+  **Sequence from here: rule LLY (18 → 19) → then rule step 4.**
 
 **WHAT THE B-2 BAND RULING NEEDS TO DECIDE (carried forward from L-4a ruling 5, all numbers in
 docs/l4a-stx-diagnosis.md §9):** (a) whether to re-synthesise any of the 68 defect-tagged rows
@@ -206,13 +204,26 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     operating_income, net_income, capex, total_assets, current_assets, total_liabilities,
     current_liabilities, operating_lease_liability); `operating_lease_liability` is also
     stale on LLY. Feeds L-4e scope. Measured, not fixed.
-- **★ OPEN — THE TYPED REASONS ARE STILL WRONG ON THE REMAINING NAMES (L-4d step 3,
-  SEPARATE RULING). Mechanisms diagnosed with evidence, docs/l4d-capex-synonym.md §1.**
-  `core/fundamental_series.py:257` stamps `no_operating_cashflow_tag` — a claim about the
-  FILINGS — onto a condition that only measures whether **our reader** returned points.
-  **The accurate reason already exists one layer down in `ResolvedField.reason`/`.detail`
-  and is discarded by `_flow_points`.** Three distinct mechanisms, none of them the capex
-  gap:
+- **✅ CLOSED 2026-08-21 (L-4d step 3) — THE TYPED-REASON MISLABEL IS KILLED AS A CLASS,
+  NOT AS FIVE INSTANCES. docs/l4d-capex-synonym.md §4.** The reason is now taken from the
+  resolver's own `ResolvedField.reason`/`.detail` via `withheld_reason()`, and
+  **`WITHHELD_NO_CAPEX`/`WITHHELD_NO_OCF` WERE DELETED, NOT RENAMED — the deletion IS the
+  fix.** A constant asserting "no tag" cannot know which of four causes occurred, so any
+  code holding one is forced to guess. **ZERO PRODUCTION WRITES** (measured: no row has
+  ever carried a withholding reason — a withheld ticker writes no rows at all), md5
+  unchanged. Suite 903 → 922, pins fail 6 of 18 pre-fix.
+  Three things fell out of doing it structurally:
+  - **EVERY blocked input is now reported, not the first.** The old two-`return`
+    short-circuit is exactly how XE was misfiled for a whole order.
+  - **Extraction records what it discards** (`EdgarFinancials.form_excluded`). Necessary,
+    not incidental: the resolver STRUCTURALLY CANNOT report the ARM cause because the facts
+    are already gone by the time it runs. **The form filter is UNCHANGED and the record
+    feeds no resolution — pinned.**
+  - **The permanent invariant** (`tests/test_l4d_typed_reasons.py`): a tag-absence reason is
+    legal ONLY when we hold no facts for any concept in the chain, kept or form-dropped.
+    Swept over all 9 fixtures WITH a positive control, because a sweep that cannot fire
+    proves nothing.
+  Mechanisms, for the record — none of them was the capex gap:
   - **CBRS/DPC/SPCX/XE — `ttm_unavailable`, not a missing tag.** 10-Q-only filers whose
     cash-flow facts are YTD cumulative (89d/178d/180d), defeating all three `_assemble_ttm`
     paths: no 350–380d fact, no four contiguous QTD quarters, no prior-FY leg. Outcome
@@ -231,6 +242,16 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   - Only **JPM, USB, INFQ** (no PP&E-purchase concept anywhere in their facts) and **SKHY**
     (no XBRL facts at all) are correctly fail-closed with an accurate reason. **BK and C
     are banks and DO resolve capex** — "banks file no capex" is not a rule.
+- **★ NEW, FOUND BY L-4d AND PINNED — ADDING A SYNONYM SILENTLY AGES EVERY RECORDED
+  FIXTURE.** EDGAR fixtures store the POST-EXTRACTION concepts dict, and extraction pulls
+  exactly the concepts in `XBRL_CONCEPTS` **at record time**. `tests/fixtures/edgar/V.json`
+  holds 23 concepts and no `Payments*` one, so **OFFLINE V withholds while LIVE V resolves
+  $1.571B with 6 FY FCF points.** This is the recorded "a baseline that agrees with the bug
+  shows nothing" hazard in a new form. **NOT fixed by re-recording** — that moves the
+  regression baseline for every valuation score and is a deliberate ruled step. Pinned by
+  `test_the_V_fixture_predates_the_L4d_synonym_and_UNDERSTATES_production`, which **FAILS
+  if V is re-recorded**, forcing the divergence to be re-reasoned rather than forgotten.
+  Applies to any future synonym addition, not just this one.
 - **LATENT COUPLING, MEASURED NOT LOAD-BEARING (L-4d, recorded not fixed).** `_resolve_one`
   drops `concept` on its unresolved return, and `ttm_series` bails on `not rf.concept` — so
   the HISTORICAL series reader is gated on the LIVE TTM resolving. Forcing the concept back

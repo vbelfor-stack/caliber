@@ -95,8 +95,13 @@ def test_the_anchor_carries_its_split_basis():
 
 @pytest.mark.parametrize("ticker", ["V", "JPM", "USB"])
 def test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why(ticker):
-    """V, JPM and USB file no PaymentsToAcquirePropertyPlantAndEquipment concept, so the
-    whole FCF family is withheld and there is no own-history anchor to build.
+    """JPM and USB file no PP&E-purchase concept of any kind, so the whole FCF family is
+    withheld and there is no own-history anchor to build.
+
+    V IS HERE ON ITS FIXTURE, NOT ON ITS FILINGS (L-4d): V files
+    PaymentsToAcquireProductiveAssets and resolves in production, but the recorded
+    fixture predates that synonym — see
+    test_the_V_fixture_predates_the_L4d_synonym_and_UNDERSTATES_production.
 
     THE POINT OF THIS TEST IS THE REASON STRING. '0 historical points' is true both for a
     withheld family and for a series that existed and was entirely excluded, and those are
@@ -105,7 +110,7 @@ def test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why(ticker):
     """
     r = _own_history_fcf(_panel(ticker))
     assert not r.available
-    assert "no_capex_tag" in r.reason, r.reason
+    assert "capex:no_tag" in r.reason, r.reason
 
 
 def test_V_falls_back_to_the_market_referenced_pair_and_the_panel_notes_it():

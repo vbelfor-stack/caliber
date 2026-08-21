@@ -282,6 +282,12 @@ class EdgarFinancials:
     concepts: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
     latest_period_end: Optional[str] = None   # max period-end across concepts (E-3 staleness)
     fields: Dict[str, ResolvedField] = field(default_factory=dict)
+    # L-4d: {concept: {form: n_facts}} for facts SEEN in companyfacts and dropped by the
+    # form filter. Purely a record of what extraction discarded — it feeds no resolution
+    # and no score. It exists so a withholding reason can tell "this issuer files no such
+    # tag" apart from "this issuer files it on a form we do not read", which are opposite
+    # facts about the world that were previously indistinguishable downstream.
+    form_excluded: Dict[str, Dict[str, int]] = field(default_factory=dict)
 
 
 def _days_between(earlier: Optional[str], later: Optional[str]) -> Optional[int]:
@@ -317,6 +323,8 @@ def _extract_xbrl_facts(
     out: Dict[str, List[Dict[str, Any]]] = {}
     latest_end: Optional[str] = None
 
+    form_excluded: Dict[str, Dict[str, int]] = {}
+
     for concept, ns in XBRL_CONCEPTS:
         block = ns_blocks.get(ns, {}).get(concept)
         if not block:
@@ -325,6 +333,14 @@ def _extract_xbrl_facts(
         for unit, entries in block.get("units", {}).items():
             for e in entries:
                 if e.get("form") not in _XBRL_VALID_FORMS:
+                    # L-4d: RECORD WHAT WE DISCARD. Dropping these silently is what let
+                    # ARM — 4,366 facts, all on 20-F/6-K — report "no tag filed" for all
+                    # 19 fields when every tag IS filed. The form filter itself is
+                    # UNCHANGED (20-F admission is its own order); this only stops the
+                    # exclusion from being invisible to the reason we then record.
+                    seen = form_excluded.setdefault(concept, {})
+                    form = str(e.get("form") or "?")
+                    seen[form] = seen.get(form, 0) + 1
                     continue
                 try:
                     val = float(e["val"])
@@ -372,7 +388,9 @@ def _extract_xbrl_facts(
             if top and (latest_end is None or top > latest_end):
                 latest_end = top
 
-    return resolve_financials(out, latest_end)
+    fin = resolve_financials(out, latest_end)
+    fin.form_excluded = form_excluded
+    return fin
 
 
 def _pick_instant(recs: List[Dict[str, Any]], name: str, concept: str) -> ResolvedField:
