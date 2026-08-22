@@ -109,16 +109,25 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     # resolving issuer changes: measured over all 28 names, zero file both tags fresh, and
     # the stale copies (CAT 2019-12-31, WU 2020-12-31) sit behind a fresh primary and are
     # skipped by the staleness gate before the conflict check is ever reached.
-    # DELIBERATELY NOT ADDED — PaymentsToAcquireOtherPropertyPlantAndEquipment, which is
-    # LLY's current tag after a THREE-STEP migration. It is a genuine PP&E line but does
-    # not reconcile against FMP: FMP's capitalExpenditure for LLY bundles
+    # ★ THIRD ENTRY ARMED AT L-4d.1 (2026-08-22) — PaymentsToAcquireOtherPropertyPlantAnd-
+    # Equipment, LLY's current tag after a THREE-STEP migration. THIS COMMENT PREVIOUSLY
+    # READ "DELIBERATELY NOT ADDED"; the reversal is deliberate and is recorded, not
+    # quietly overwritten. L-4d excluded it because it failed the FMP reconciliation the
+    # other two passed — FMP's capitalExpenditure for LLY bundles
     # PaymentsToAcquireInProcessResearchAndDevelopment in FY2023/FY2024 (to the dollar)
-    # and drops it again in FY2025, so the two sides are not the same measure and FMP is
-    # not self-consistent across years. Ruled to the punch list rather than arbitrated
-    # here — see docs/l4d-capex-synonym.md §3.
+    # and drops it again in FY2025. L-4f's ARM ruling then settled the principle:
+    # intangible/IPR&D-class acquisitions are NOT capital intensity, so where FMP bundles
+    # them and the issuer's own tag is definitionally consistent, THE EDGAR TAG STANDS and
+    # the disagreement is an advisory basis note. FMP's year-to-year inconsistency is a
+    # finding against the feed, not against the tag. Order:
+    # docs/orders/2026-08-22-l4d1-lly-capex-basis.md; pins tests/test_l4d1_lly_capex_basis.py.
+    # ORDER MATTERS: the new tag is LAST, so it is reachable only when both armed tags are
+    # absent or stale. Only LLY and FN file it across the universe, and FN's copy ended
+    # 2012-06-29 (5110d, stale behind a fresh primary) — so the arm reaches LLY alone.
     FieldSpec("capex", "flow", (
         ("PaymentsToAcquirePropertyPlantAndEquipment", "us-gaap"),
         ("PaymentsToAcquireProductiveAssets", "us-gaap"),   # NVDA/V/LRCX current tag
+        ("PaymentsToAcquireOtherPropertyPlantAndEquipment", "us-gaap"),  # LLY, L-4d.1
     ), conflict_check=False),
     # Instants — most recent period-end
     FieldSpec("total_assets", "instant", (("Assets", "us-gaap"),)),

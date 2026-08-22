@@ -5,21 +5,28 @@
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then execute L-4d.1 — the LLY
-capex-basis rider. THE RULING ALREADY EXISTS AND THE WORK IS HALF-MEASURED; see the ★
-`.scratch_lly/` entry below before doing anything else.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then RULE STEP 4 — see the ★
+step-4 entry below. Every ruled coverage order is now discharged and the blocking
+condition is gone for the first time.**
+**L-4d.1 CLOSED COMPLETE 2026-08-22: the third capex tag armed, LLY recovered, coverage
+19 → 20 of 28, +114 rows, one write point, reconciled exactly. Suite 953 → 975.** Tree
+clean, pushed. Order `docs/orders/2026-08-22-l4d1-lly-capex-basis.md`, report
+`docs/l4d1-lly-capex-basis.md`.
 **L-4f CLOSED COMPLETE 2026-08-21: 20-F/6-K admitted, the `_fy_ends` FY gate fixed, ARM
 recovered 0 → 16 of 19 fields, coverage 18 → 19 of 28, +72 rows, one write point,
 reconciled exactly.** Tree clean, pushed.
-**★ THE ONE THING MOST LIKELY TO MISLEAD A LATER SESSION: `.scratch_lly/` IS UNTRACKED BUT
-GITIGNORED AND MUST NOT BE DELETED.** It holds the ONLY surviving record of the LLY ruling
-of 2026-08-21 — two read-only dark-diff scripts and 28 raw-facts dumps from a session that
-**died mid-order after the L-4d close commit**. Verified harmless (no write verbs, no
-production db reference, md5 was bit-identical across it). **A session was ruled, started,
-and vanished; the tree reads clean and hides that.** Its ruling: add
-`PaymentsToAcquireOtherPropertyPlantAndEquipment` as the THIRD capex chain entry. **The dark
-diff's RESULTS were never written down — only the scripts survive, so L-4d.1 must re-run
-them.** Cleaned in L-4d.1's close, not before.
+**★ `.scratch_lly/` IS GONE — RETIRED AT THE L-4d.1 CLOSE, NOT LOST.** Archived to
+**`.snapshots/l4d1-lly-2026-08-21/`** (gitignored: 28 raw-facts dumps / 93 MB + both
+scripts + a README). **Committed copies of the scripts are at `tools/l4d1_dark_diff.py`
+and `tools/l4d1_dark_series.py`**, so the method is in git even if the snapshot is lost.
+**DO NOT RE-FETCH `facts/` TO REPRODUCE** — it is a DATED 2026-08-21 snapshot, and that is
+the point; `dark_diff.py` reads the cache when present, so it reproduces the original
+measurement exactly. A live re-fetch measures today and will not.
+**★ CORRECTION THIS BLOCK USED TO CARRY: it called `.scratch_lly/` "the ONLY surviving
+record of the LLY ruling." THAT WAS LOOSE, and the loose version is what nearly got the
+snapshot deleted as redundant.** The ruling TEXT was always here in CLAUDE.md; `facts/`
+contains no ruling text at all, only raw payloads. What the residue uniquely held is
+**reproducibility of the measurement** — a different and much better reason to keep it.
 **SECOND MOST LIKELY TO MISLEAD: `tests/fixtures/edgar/V.json`
 PREDATES THE L-4d SYNONYM, so OFFLINE V withholds while LIVE V resolves $1.571B.** Adding
 a synonym silently ages every recorded fixture, because fixtures store POST-EXTRACTION
@@ -39,26 +46,26 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-21 (L-4f) — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-22 (L-4d.1) — every value below was MEASURED at close, not remembered
 
 | | |
 |---|---|
-| HEAD | the **L-4f close commit** — verify with `git log -1`. A block cannot contain its own hash. Previous session's last commit was **`c68d0ca`** (L-4d step 3). |
-| This session's commits | ONE: the L-4f arm + write + close. |
-| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean apart from gitignored `.scratch_lly/` and `.scratch_l4f/` |
-| Suite | **953 passed** (was 922; +31 `test_l4f_foreign_forms.py`). No pre-existing test broke. **Three `test_l4d_typed_reasons.py` tests were UPDATED DELIBERATELY** — they used 20-F as the exemplar of "a form we do not read", which L-4f made false; each swaps to S-1 and carries a `★ EXEMPLAR FORM CHANGED AT L-4f` note. |
-| caliber.db md5 | **e3fe5ff9868fcb05fc60106521779769** — **CHANGED THIS SESSION** (was `c0bae791…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
-| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +72 rows in `fundamental_series` for ONE new ticker, ARM. Expected delta stated before the write, reconciled exactly: expected +72, actual +72, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. |
-| md5 trail this session | `c0bae791` (open; unchanged across step 1, the step-2 dark diff, AND the full 953-test suite) → **`e3fe5ff9`** (the single production write). Backup before the write: **`caliber.db.pre-l4f-c0bae791.bak`**, md5 verified equal to the pre-write db. |
+| HEAD | the **L-4d.1 close commit** — verify with `git log -1`. A block cannot contain its own hash. Previous session's last commit was **`4fe6dbb`** (L-4f close addendum). |
+| This session's commits | TWO: the L-4d.1 **order document** (`c4e4308`, committed BEFORE any execution per the order), then the arm + write + close. |
+| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean apart from gitignored `.snapshots/` and `.scratch_l4f/`. **`.scratch_lly/` NO LONGER EXISTS** — archived, see the pickup block. |
+| Suite | **975 passed** (was 953; +22, mostly `test_l4d1_lly_capex_basis.py`). No pre-existing test broke. **TWO `test_l4d_capex_synonym.py` pins were SUPERSEDED DELIBERATELY** — `test_LLY_third_tag_is_deliberately_absent` asserted the OPPOSITE of this order and is renamed `test_LLY_third_tag_is_ARMED`; `test_both_concepts_are_in_the_chain` is widened to the three-tag chain. Both carry `★ SUPERSEDED AT L-4d.1`. **9 of 41 verified to FAIL pre-fix.** |
+| caliber.db md5 | **eec96270720d80d632aa3a6f9528ea49** — **CHANGED THIS SESSION** (was `e3fe5ff9…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
+| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +114 rows in `fundamental_series` for ONE new ticker, LLY. Expected delta stated in the order doc before the write, dry-run against the destination first, reconciled exactly: expected +114, actual +114, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. |
+| md5 trail this session | `e3fe5ff9` (open; unchanged across BOTH dark runs, the order-doc commit, the pins, the source edit, the 975-test suite AND the dry run) → **`eec96270`** (the single production write) → `eec96270` (post-write suite). Backup before the write: **`caliber.db.pre-l4d1-e3fe5ff9.bak`**, md5 verified equal to the pre-write db. |
 | evaluations | **80** rows, max id **272** · unchanged this session |
 | **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
 | lifecycle_stage | **44** rows (unchanged) |
 | lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
 | field_provenance | **1437** rows (unchanged) |
-| fundamental_series | **2374 rows, 19 tickers** (was 2302 / 18). Added ARM. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
-| **step-4 evaluable** | **19 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). ARM has 5 FY points, NVDA 5, the other 17 six. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4f** (re-measured through the production reader; ARM's last three are `[998M, 178M, 979M]`). Near the boundary: LITE (n/n/p), BE (n/p/p). |
+| fundamental_series | **2488 rows, 20 tickers** (was 2374 / 19). Added LLY. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
+| **step-4 evaluable** | **20 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). ARM has 5 FY points, NVDA 5, the other 18 six. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4d.1** (LLY's last three are `[0.792B, 3.760B, 8.972B]`, all POSITIVE, so it does not join). Near the boundary: LITE (n/n/p), BE (n/p/p). |
 | **ARM's rows** | fcf 14 (5 FY) · fcf_margin 14 (5) · reinvestment 14 (5) · fcf_growth 10 (4) · fcf_yield 10 (3) · revenue_growth 10 (4). **`sales_to_capital` 0 — ARM files no debt tag of any kind, so invested capital is uncomputable. NOT disqualifying: BE/BK/C/FN/IONQ already carry zero and count as evaluable; step-4 evaluability is the `fcf` FY series.** |
-| **the 9 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — **no us-gaap namespace at all**; see the ★ punch-list entry). Blocked by OUR limits, each saying so precisely: **CBRS/DPC/SPCX/XE** `ttm_unavailable`, **LLY** `capex:stale_tag` (ruled — L-4d.1). **ARM is no longer among them.** |
+| **the 8 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — **no us-gaap namespace at all**; see the ★ punch-list entry). Explicitly ruled OUT of scope: **CBRS/DPC/SPCX/XE** `ttm_unavailable` (YTD-only filers). **ARM and LLY are no longer among them.** ★ **No name is now uncovered by an unaddressed limit of ours** — the condition step 4 was blocking on. |
 | **V's share basis** | `truncated`, NOT `split_restated` — its 2015-03-19 split is uncorroborated (G-4 2-of-3 witnesses). Affects **`fcf_yield` only**; FCF is share-independent so the FY FCF step 4 reads is unaffected. Stamped per point. |
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
@@ -269,15 +276,32 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   Suite 884 → 903, pins verified to FAIL 8 of 19 against the pre-fix spec before landing.
   `core/fundamental_series.py:261`'s wrong comment is corrected (V was a SPEC GAP, not a
   data limit; JPM/USB remain a real limit).
-  - **★ LLY IS NOW ORDER L-4d.1 (LLY capex-basis rider) — RULED 2026-08-21, NOT YET LANDED.
-    THIS IS THE NEXT ORDER.** Named L-4d.1 by ruling because it is a follow-on from L-4d's
-    step-2 findings, not a new phase (L-4e stays reserved for the synonym census, L-4f was
-    form admission). **The ruling: add `PaymentsToAcquireOtherPropertyPlantAndEquipment` as
-    the THIRD capex chain entry, behind the two armed tags.** A session began executing it
-    and DIED mid-order; its read-only scratch survives in **`.scratch_lly/`** (gitignored,
-    do NOT delete — see the pickup block). **The dark-diff RESULTS were never recorded, so
-    L-4d.1 must re-run `.scratch_lly/dark_diff.py` and `dark_series.py`.** Takes coverage
-    19 → 20. **The L-4f ruling on ARM is the governing precedent and settles the principle:
+  - **✅ CLOSED 2026-08-22 (L-4d.1) — THE THIRD CAPEX TAG IS ARMED AND LLY IS RECOVERED.
+    Order `docs/orders/2026-08-22-l4d1-lly-capex-basis.md`, report
+    `docs/l4d1-lly-capex-basis.md`.** `PaymentsToAcquireOtherPropertyPlantAndEquipment`
+    added as the THIRD chain entry behind the two armed tags; LLY resolves $9.893B with 6
+    FY FCF points; `fundamental_series` 2374 → **2488 rows / 20 tickers**, coverage
+    **19 → 20 of 28**, +114 rows reconciled exactly (0 restatements, 0 superseded), every
+    other table +0. Suite 953 → **975**; 9 of 41 pins verified to FAIL pre-fix.
+    **LLY does NOT join the R2 YOUNG all-negative-last-3 set** — that stays IONQ/QBTS/RKLB/C.
+    - **★ THIS ORDER OVERTURNED A COMMITTED PIN, AND THE REVERSAL IS THE PART TO READ.**
+      `test_LLY_third_tag_is_deliberately_absent` (`c7a3813`) asserted the OPPOSITE and
+      opened "RULED OUT, NOT OVERLOOKED". Superseded on TWO grounds: **chronology** (the
+      pin is L-4d step-2 era; the governing ruling post-dates it and cites the L-4f ARM
+      precedent, which did not yet exist) and **retired predicate** (its rationale was a
+      failed FMP reconciliation; the ARM precedent makes that an advisory basis note
+      against the FEED, not a disqualification of the tag). **The pin was NOT wrong when
+      written** — it recorded a real ruling later re-ruled on new evidence. Renamed
+      `test_LLY_third_tag_is_ARMED`, carrying the original rationale verbatim; the matching
+      `# DELIBERATELY NOT ADDED` source comment was rewritten, not deleted.
+    - **THE FIXTURE-AGING HAZARD DID NOT RECUR, AND THAT IS MEASURED.** Unlike L-4d, **no
+      EDGAR fixture contains the new tag** (all 9 read zero), so nothing aged and the
+      `V.json` pin is unaffected. Pinned, so a future re-record forces the question again.
+    - **THE CONFLICT PATH IS UNREACHABLE.** Only LLY and FN file the tag, both
+      `freshtags=1`; FN's copy is **5110d stale** behind a fresh primary. The staleness
+      gate does the work, not `conflict_check=False`. Pinned as the FN shape.
+    - Original ruling text, retained: **The L-4f ruling on ARM is the governing precedent
+      and settles the principle:
     intangible/IPR&D-class acquisitions are NOT capital intensity, so where FMP bundles them
     and the issuer's own tag is definitionally consistent, the EDGAR tag stands and the
     disagreement is an advisory basis note.** LLY's FMP series bundles
@@ -296,10 +320,13 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     the "never fix a contradiction by teaching the model to ignore it" violation.
   - **★ THE SWEEP FOUND THE NEXT ONE: `net_income` IS A SINGLE-TAG SPEC AND
     `NetIncomeLoss` IS ALREADY STALE ON BE AND CAT.** A core field on a bare tag with the
-    same silent-expiry shape. **9 of 19 specs have no synonym chain** (gross_profit,
-    operating_income, net_income, capex, total_assets, current_assets, total_liabilities,
+    same silent-expiry shape. **8 of 19 specs have no synonym chain** (gross_profit,
+    operating_income, net_income, total_assets, current_assets, total_liabilities,
     current_liabilities, operating_lease_liability); `operating_lease_liability` is also
     stale on LLY. Feeds L-4e scope. Measured, not fixed.
+    **RE-MEASURED AT THE L-4d.1 CLOSE 2026-08-22: was 9, now 8 — `capex` left this list
+    when its chain went to three tags.** The count is taken from the spec table, not
+    remembered; re-measure it rather than trusting this line.
 - **✅ CLOSED 2026-08-21 (L-4d step 3) — THE TYPED-REASON MISLABEL IS KILLED AS A CLASS,
   NOT AS FIVE INSTANCES. docs/l4d-capex-synonym.md §4.** The reason is now taken from the
   resolver's own `ResolvedField.reason`/`.detail` via `withheld_reason()`, and
@@ -534,16 +561,21 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
 <!-- promoted ### -> ## by the 2026-08-19 archive trim: its parent section (the 2026-08-17
      incident record) moved to docs/phase-archive.md. Text below is unchanged. -->
 
-- **STEP 4 (YOUNG SUPPLY BLOCK) IS BLOCKED BEHIND FEED COVERAGE (ruled 2026-08-17; STILL
-  BLOCKED after L-4f, 2026-08-21).** `fundamental_series` now covers **19 of 28** (was 4,
-  then 15, then 18). Of the 9 remaining, **only 4 are correctly fail-closed**
-  (JPM/USB/INFQ/SKHY); the other 5 are OUR limits — CBRS/DPC/SPCX/XE (`ttm_unavailable`,
-  YTD-only filers, ruled OUT of scope) and LLY (ruled, pending L-4d.1). The
-  YOUNG/blocked boundary therefore still reflects **which names happen to have FCF data**,
-  not business reality, and a hard block driven by feed coverage would be arbitrary in
-  exactly the way this system exists to avoid.
-  **Sequence from here: land L-4d.1 (LLY → 20 of 28) → THEN rule step 4 on its evidence.**
-  ARM's admission is done; the two feed-repair tickets below join that work.
+- **★ STEP 4 (YOUNG SUPPLY BLOCK) — THE BLOCKING CONDITION IS DISCHARGED AS OF L-4d.1
+  (2026-08-22). IT IS NOW RULEABLE AND IS THE NEXT ORDER. IT IS NOT ARMED.**
+  `fundamental_series` covers **20 of 28** (was 4, then 15, 18, 19). Of the 8 remaining,
+  **4 are correctly fail-closed** (JPM/USB/INFQ/SKHY) and **4 are explicitly ruled OUT of
+  scope** (CBRS/DPC/SPCX/XE — `ttm_unavailable`, YTD-only filers). **For the first time
+  every uncovered name is either correctly fail-closed or ruled out of scope — no name is
+  now uncovered because of an unaddressed limit of ours.** That was the exact condition
+  the 2026-08-17 ruling blocked on: the YOUNG/blocked boundary no longer reflects "which
+  names happen to have FCF data".
+  **CAVEAT THE RULING SHOULD WEIGH, NOT A BLOCKER: "ruled out of scope" is not the same as
+  "correctly fail-closed."** The 4 YTD-only filers still lack FCF because of an assembly
+  capability we chose not to build. If step 4 hard-blocks them, it blocks on our limit —
+  bounded and named now, rather than unexamined.
+  ARM's admission and the LLY rider are both done; the two feed-repair tickets below join
+  that work.
   **NOTE FOR THE STEP-4 RULING: `fundamental_series` coverage and step-4 evaluability are
   no longer guaranteed to be the same number.** L-4f nearly separated them (ARM would have
   had 72 rows and 0 FY-labelled points) and only the `_fy_ends` fix kept them equal. Count

@@ -57,7 +57,13 @@ def _fields(ticker):
 class TestCapexChainShape:
 
     def test_both_concepts_are_in_the_chain(self):
-        assert [c for c, _ns in _capex_spec().synonyms] == [PPE, PRD]
+        """★ SUPERSEDED AT L-4d.1 (2026-08-22) — docs/orders/2026-08-22-l4d1-lly-capex-basis.md.
+
+        Was `== [PPE, PRD]`. L-4d.1 armed OTHER_PPE as the THIRD entry, so the two-tag
+        assertion became false. The pin is WIDENED, not weakened: it still asserts the
+        chain EXACTLY and in order, so a fourth tag cannot arrive unnoticed either.
+        """
+        assert [c for c, _ns in _capex_spec().synonyms] == [PPE, PRD, OTHER_PPE]
 
     def test_the_generic_tag_stays_first(self):
         """Priority order is the whole no-regression argument: an issuer already
@@ -76,16 +82,31 @@ class TestCapexChainShape:
         pattern, not the ambiguous-synonym pattern. Ruled 2026-08-21."""
         assert _capex_spec().conflict_check is False
 
-    def test_LLY_third_tag_is_deliberately_absent(self):
-        """RULED OUT, NOT OVERLOOKED (2026-08-21). LLY's current tag after a THREE-STEP
-        migration is PaymentsToAcquireOtherPropertyPlantAndEquipment. It failed the FMP
-        reconciliation the other three passed: FMP's capitalExpenditure for LLY bundles
-        PaymentsToAcquireInProcessResearchAndDevelopment in FY2023 (+$3.944B, to the
-        dollar) and FY2024 (+$3.346B), then drops it in FY2025 — so the two sides are not
-        the same measure and FMP is not self-consistent year to year. Adding this tag
-        without re-ruling would put one name's FCF on a basis nothing else shares.
+    def test_LLY_third_tag_is_ARMED(self):
+        """★ SUPERSEDED AT L-4d.1 (2026-08-22) — RENAMED FROM
+        `test_LLY_third_tag_is_deliberately_absent`, WHICH ASSERTED THE OPPOSITE.
+        Order: docs/orders/2026-08-22-l4d1-lly-capex-basis.md §3.
+
+        THE REVERSAL IS RECORDED HERE, NOT HIDDEN. The old pin read "RULED OUT, NOT
+        OVERLOOKED (2026-08-21)" and its rationale was that OTHER_PPE failed the FMP
+        reconciliation the other three tags passed — FMP's capitalExpenditure for LLY
+        bundles PaymentsToAcquireInProcessResearchAndDevelopment in FY2023 (+$3.944B, to
+        the dollar) and FY2024 (+$3.346B), then drops it in FY2025.
+
+        Superseded on two ruled grounds, neither of which is "the old pin was wrong":
+          1. CHRONOLOGY. The old pin is L-4d step-2 era (c7a3813). The governing ruling
+             post-dates it and cites the L-4f ARM precedent, which did not yet exist.
+          2. RETIRED PREDICATE. The ARM precedent settles the principle: intangible /
+             IPR&D-class acquisitions are NOT capital intensity, so where FMP bundles them
+             and the issuer's own tag is definitionally consistent, THE EDGAR TAG STANDS
+             and the disagreement is an advisory basis note. The old pin's own text
+             concedes FMP "is not self-consistent year to year" — under the precedent that
+             is a finding against the FEED, not a disqualification of the tag.
+
+        The measurement that decided it: FY2025 reconciles to the dollar (EDGAR-derived
+        8.972B vs FMP 8972000000). See tests/test_l4d1_lly_capex_basis.py for the rest.
         """
-        assert OTHER_PPE not in {c for c, _ns in _capex_spec().synonyms}
+        assert OTHER_PPE in {c for c, _ns in _capex_spec().synonyms}
 
 
 # ── the migration shape (the NVDA case), synthetic ───────────────────────────
