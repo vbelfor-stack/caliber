@@ -1,13 +1,70 @@
 # CLAUDE.md — CALIBER (operational context; auto-loads every session)
 # Detailed build spec lives in Claude.md (Jul 10). This file is the living operational memory.
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-21, after L-4f)
+## ▶▶ DOCTRINE (ratified 2026-08-21, applied 2026-08-22) — READ BEFORE THE PICKUP BLOCK
+# **FMP IS THE SOURCE. EDGAR IS THE ARBITER.**
+Order + full measurement: **`docs/orders/2026-08-22-doctrine-fmp-source-edgar-arbiter.md`**.
+Pin: `tests/test_doctrine_edgar_arbiter.py`. Rationale, in Vic's terms: paid/normalized beats
+free for pipeline reliability; EDGAR remains ground truth of record, invoked for arbitration,
+not pipeline. **This reverses the direction of travel of every order from E-1 through L-4d.1**,
+so read it before acting on any EDGAR-coverage language further down — much of that text now
+describes the AUDIT LAYER, not the pipeline.
+
+- **FMP feeds ALL pipeline runs** — series building, TTM, scoring.
+- **EDGAR is invoked in exactly three cases:** (a) **divergence arbitration** — FMP fails a
+  sanity gate or diverges **>25%** from an EDGAR-visible figure; (b) **filed-tag provenance**
+  on a challenged verdict; (c) **rulings**.
+- **EDGAR MACHINERY IS DEMOTED TO AN AUDIT LAYER — NOT UNWOUND, NOT DELETED.** The capex
+  chains (including the three-tag chain armed at L-4d.1), the typed withholding reasons and
+  `field_provenance` all stay exactly as they are. **DELETING EDGAR-PATH CODE REQUIRES A VIC
+  RULING.** Pinned — a demotion is precisely the ruling a later session misreads as licence
+  to tidy up, so the no-delete clause has an enforcement point rather than being a belief.
+- **COEXISTENCE IS BY DESIGN, NOT A DEFECT.** EDGAR-chain capex and FMP `capitalExpenditure`
+  both live in the db with distinct provenance and are PERMITTED TO DISAGREE. **The worked
+  example is LLY FY2024: EDGAR $5.058B vs FMP $8.4036B — $3.3456B apart (39.8%). MEASURED,
+  not remembered. DO NOT "FIX" IT.** Cause was already ruled at L-4d.1: FMP bundles
+  `PaymentsToAcquireInProcessResearchAndDevelopment`, the EDGAR tag does not; IPR&D is not
+  capital intensity. Both sides are internally coherent, so this is a BASIS difference.
+- **All other standing disciplines are UNCHANGED.**
+
+### ★ ONE CLAUSE IS RULED BUT **NOT OPERATIVE** — PRE-FLIGHT. AWAITING VIC.
+The doctrine rescopes the live-EDGAR pre-flight to **arbitration runs only**. **DO NOT ACT ON
+THAT YET — THE PRE-FLIGHT REMAINS MANDATORY ON EVERY LIVE RUN.** Reported at the doctrine
+close (order §5) rather than improvised past, because the code contradicts the doctrine's
+premise and the contradiction is itself already ruled:
+
+> **EDGAR IS SCORE-BEARING ON EVERY RUN TODAY**, via four paths the three-case list does not
+> name: `yf.sic = edgar.sic` (evaluate.py:300, batch/runner.py:254) → `select_lens(...)`
+> (:310 / :255) — **the lens moves scores**; `build_panel(yf, fred, edgar, …)` (:320 / :268);
+> and `score_growth(yf, edgar, lens)` (core/pillars.py:988). `fetch_edgar` is a **hard gate** —
+> evaluate.py exits 1, and batch/runner.py deliberately does not wrap it, so a mid-batch 403
+> persists a **`failed` row per ticker**. Already on record at docs/phase-archive.md:307-314.
+
+Rescoping the pre-flight while that is true would remove the one mechanism standing between an
+intermittent SEC 403 and **28 `failed` rows in production** — the exact incident the pre-flight
+was ruled into existence for. Two resolutions are on the table in order §5 — **(a)** sequence
+it (hold the arming until EDGAR is genuinely off the pipeline path), or **(b)** widen the
+doctrine to a fourth case ("classification + panel inputs") and withdraw the rescope. **Not
+chosen here. Vic rules.**
+**Also noted, not blocking: §1.2(a) invokes EDGAR when "FMP fails a sanity gate" — NO SANITY
+GATE EXISTS anywhere in the runtime, so that trigger is currently unreachable.**
+
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-22, after the doctrine order)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then RULE STEP 4 — see the ★
-step-4 entry below. Every ruled coverage order is now discharged and the blocking
-condition is gone for the first time.**
+**TOMORROW'S FIRST ACTION: run the session-open protocol, then RULE THE THREE OPEN QUESTIONS
+THE DOCTRINE ORDER RAISED —**
+**(1) the pre-flight / EDGAR-score-bearing contradiction above (order §5);**
+**(2) step 4 on FMP basis, given the feasibility measurement came back MUCH WEAKER than the
+ruling assumed — 5 of the 8 names FAIL on FMP basis (★ step-4 entry below);**
+**(3) the SKHY FX verification band, which FAILED by 1.0% — the plumbing was tested and is
+SOUND, the band's own input rate (~1,380) was the mid-year rate rather than the 2025 average
+of 1,418.97 (order §8.3). A band re-set is recommended and deliberately NOT self-applied.**
+**DOCTRINE ORDER CLOSED COMPLETE 2026-08-22: docs + CLAUDE.md + one pin, ZERO production
+writes, ZERO code-behaviour changes, caliber.db md5 unchanged. Suite 975 → 984. The SKHY
+currency ruling addendum was FOLDED IN (order §8), not held — the order had not closed and
+performs no writes, so there was nothing in flight to interrupt.**
 **L-4d.1 CLOSED COMPLETE 2026-08-22: the third capex tag armed, LLY recovered, coverage
 19 → 20 of 28, +114 rows, one write point, reconciled exactly. Suite 953 → 975.** Tree
 clean, pushed. Order `docs/orders/2026-08-22-l4d1-lly-capex-basis.md`, report
@@ -247,9 +304,68 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   registration statement, NOT a periodic report; an F-1 registrant becomes a 20-F filer only
   after its first fiscal year-end post-effectiveness. **No spec, synonym or form change can
   reach it — there is no financial XBRL to read.** Admitting F-1 would be admitting a fee
-  table as a financial statement; pinned excluded. The open question is whether a NON-EDGAR
-  fundamentals source is wired for issuers EDGAR structurally cannot serve. Its current
-  fail-closed reason is accurate and stays. **LYTE/FLTW are a DIFFERENT case and the L-4f
+  table as a financial statement; pinned excluded. Its current EDGAR-side fail-closed reason
+  is accurate and stays.
+  - **✅ THE OPEN QUESTION IS ANSWERED, MEASURED 2026-08-22 (doctrine order §3.3).** It asked
+    "whether a NON-EDGAR fundamentals source is wired for issuers EDGAR structurally cannot
+    serve." **FMP serves SK hynix IN FULL — 10 FY rows (2016–2025) and 12 quarters, every FCF
+    input populated.** The EDGAR finding above is unchanged and still correct; it was a
+    statement about EDGAR, never about the issuer. Under the new doctrine the source question
+    is settled — but the item does NOT close, because measuring it surfaced a new blocker:
+  - **★ TWO FMP ENDPOINTS DISAGREE ABOUT SKHY'S CURRENCY, AND IT IS THE ONLY NAME THAT DOES.**
+    `cash-flow-statement.reportedCurrency` = **KRW**; `profile.currency` = **USD**.
+    **ARBITRATED BY MAGNITUDE, and it is not close:** FY2025 OCF reads 53,373,126,000,000 —
+    tens of billions of USD, versus **$53 TRILLION** if read as USD, which exceeds world GDP.
+    **KRW is the true reporting currency; `profile.currency` is WRONG for this issuer.**
+    JPM/USB/INFQ/CBRS/DPC/SPCX/XE/LLY all report USD on both endpoints, so SKHY is the sole
+    tripper and there was no existing currency handling to lean on.
+  - **✅ RULED 2026-08-21 (Vic addendum, folded into the doctrine order §8) — SKHY IS
+    EVALUATED IN USD, VIA PERIOD-MATCHED CONVERSION. The fail-close option is SUPERSEDED.**
+    Vic's book is USD and the decision-relevant fundamentals are USD. Terms:
+    **(1)** convert per period at THAT period's rate — flows at **fiscal-period-average**,
+    balance-sheet items (if ever ingested) at **period-end**; **(2) NEVER convert history at
+    the ingest-date rate** — a today-rate conversion silently rewrites the past on every
+    refresh, and the prohibition is to be PINNED; **(3)** FX source is the FMP forex
+    endpoints (`historical-price-eod` on the KRW pair) — sole-source doctrine holds through
+    the conversion; **(4)** record per row the rate used, its date basis, and provenance tag
+    **`currency:krw_converted_usd`**; **(5) preserve the native figure** — conversion must be
+    **auditable and reversible, never destructive**; **(6)** the endpoint disagreement stays
+    on the record; **(7) STANDING CURRENCY GATE, ALL NAMES** — any row whose
+    `reportedCurrency` ≠ USD without a conversion record is **WITHHELD with typed reason
+    `currency:unconverted`**. SKHY is the only current tripper; the gate guards every future
+    non-USD name.
+  - **★★ VIC'S HARD-STOP VERIFICATION ANCHOR FIRED, AND IT IS UNRESOLVED — READ BEFORE ANY
+    SKHY WRITE.** The anchor: FY2025 OCF must land in **$38–40B** at 2025-average USDKRW, and
+    *"any other magnitude means the rate plumbing is inverted or mis-united — STOP and report,
+    no write."* **MEASURED 2026-08-22, LIVE, READ-ONLY: it lands at $37.61B — 1.0% BELOW the
+    band floor, and the miss is ROBUST** (six averaging conventions span only 0.5%:
+    $37.43B–$37.61B; none reaches $38B).
+    **BUT THE DIAGNOSIS THE ANCHOR NAMES IS FALSIFIED, and that was tested, not assumed:**
+    `USDKRW` closes span 1,351.65–1,482.72 (order 10³ — KRW per USD, so **not mis-united**);
+    dividing gives $37.6B while multiplying gives $7.6×10¹⁶, absurd on sight (**not
+    inverted**); and the independently-served `KRWUSD` symbol corroborates at $37.43B (0.5%).
+    **THE CAUSE IS BAND CALIBRATION.** The band came from the ruling's cited ~1,380, which
+    yields $38.68B and IS in band — but **1,380 is roughly the MID-YEAR rate**, not the annual
+    average (monthly: Q1 1,441–1,455, Jun–Sep 1,365–1,394, Q4 1,423–1,464). **Measured 2025
+    average = 1,418.97**, 2.8% weaker. **So the RULE is right and the BAND is off, not the
+    reverse** — §8.1(1)'s fiscal-period-average convention is exactly what produces 1,418.97.
+    **RECOMMENDED, NOT APPLIED — VIC'S CALL:** re-set the band to **$37.4–37.8B**, or restate
+    it as a rate assertion (`2025 avg USDKRW ∈ [1,410, 1,430]`) so it tests plumbing rather
+    than a remembered rate. **I did not move the band myself: a verification anchor the
+    verifying session may re-fit is not a verification anchor.**
+  - **★ FMP's `USDKRW` AND `KRWUSD` ARE NOT EXACT RECIPROCALS** (found while running the
+    anchor). Same-day products over 301 common days: mean **0.9944**, range 0.9882–1.0098 —
+    independently sourced or rounded, not derived from each other. So there is a **~0.6% noise
+    floor** on any FX-derived figure, and **the choice of pair symbol is itself a basis
+    decision**: the per-row record required by term (4) must capture **WHICH SYMBOL** was
+    used, or the conversion is not reproducible.
+  - **THE FIVE ORDERED PINS ARE SPECIFIED BUT NOT WRITTEN — they land with the expansion.**
+    ingest-date-rate prohibition · SKHY FY2025 magnitude anchor · gate behaviour on an
+    unconverted non-USD row · rate-recorded-per-row · KRW recoverability. **None is
+    expressible today** — there is no conversion path, no gate and no `currency:unconverted`
+    reason in the runtime, so each would be a vacuous test, and *a sweep that cannot fire
+    proves nothing*. **The magnitude anchor is unwritable for a SECOND, independent reason:
+    the band it would assert is the one that just failed.** **LYTE/FLTW are a DIFFERENT case and the L-4f
   ruling text mis-stated it: they are NOT domestic filers — they have NO SEC CIK AT ALL and
   file nothing under those tickers** (ETFs file under their trust's CIK). Already absent
   from `tickers.txt`; unaffected either way.
@@ -561,8 +677,66 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
 <!-- promoted ### -> ## by the 2026-08-19 archive trim: its parent section (the 2026-08-17
      incident record) moved to docs/phase-archive.md. Text below is unchanged. -->
 
-- **★ STEP 4 (YOUNG SUPPLY BLOCK) — THE BLOCKING CONDITION IS DISCHARGED AS OF L-4d.1
-  (2026-08-22). IT IS NOW RULEABLE AND IS THE NEXT ORDER. IT IS NOT ARMED.**
+- **★★ STEP 4 — RULED 2026-08-21 ONTO FMP BASIS, AND THE READ-ONLY FEASIBILITY MEASUREMENT
+  CAME BACK MUCH WEAKER THAN THE RULING ASSUMED. NOT ARMED. NOT EXECUTED.**
+  **VIC'S RULING (2026-08-21):** coverage expansion **proceeds on FMP basis**; **EDGAR
+  YTD-assembly is NOT to be built** — the limit that parked CBRS/DPC/SPCX/XE "dissolves
+  under the new source"; JPM/USB/INFQ/SKHY are re-examined on FMP basis too. Expansion was
+  **deliberately NOT executed** in the doctrine order; that order reports feasibility only.
+  **MEASURED 2026-08-22, LIVE, READ-ONLY — the premise holds for 1 of 8 outright, partly for
+  2 more, and FAILS for 5.** Full table + method in the order doc §3. The YTD-assembly limit
+  specifically DOES dissolve (FMP serves annual cash-flow where EDGAR could not assemble it),
+  but that is not the same statement as "the 8 become evaluable".
+
+  | Ticker | FMP FY rows | verdict on FMP basis |
+  |---|---|---|
+  | **JPM** | 10 | **NO — and actively WRONG.** `capitalExpenditure` is 0 on all 10 FY + all 12 qtrs, so FMP publishes `freeCashFlow` **== `operatingCashFlow`** ($100.867B for FY2025). A confident false number where EDGAR correctly refuses. |
+  | **USB** | 10 | **NO — identical trap** (capex 0/10 FY, 0/12 qtr). |
+  | **INFQ** | 3 | **NO** — capex nonzero only 1/3 FY, revenue only 1/3. |
+  | **SKHY** | 10 | **YES** (10 FY + 12 qtrs fully populated). Currency **RULED 2026-08-21** — store USD via period-matched conversion, terms in the punch-list entry. **One open item: Vic's verification band failed by 1.0% and needs re-setting — plumbing verified sound.** |
+  | **CBRS** | 4 | **FY yes; QUARTERLY NO — the quarterly rows are MANUFACTURED.** |
+  | **DPC** | **1** | **NO** — one FY point cannot feed a 3-FY signal. |
+  | **SPCX** | 3 | FY **marginal** (exactly 3); quarterly holed. |
+  | **XE** | 3 | **NO — the rows are 2025, 2022, 2021; FY2023 + FY2024 MISSING.** |
+
+  - **★ JPM/USB ARE THE PRESENCE≠POPULATED TRAP IN ITS WORST FORM, AND THE RULING SHOULD
+    WEIGH IT: migrating them to FMP basis converts a CORRECT fail-closed refusal into a
+    SILENT FALSE POSITIVE.** EDGAR's `capex:no_tag` is the more truthful of the two answers.
+    Any FMP-basis builder must read `capitalExpenditure == 0` across a whole series as
+    **ABSENCE, NEVER ZERO.**
+  - **★ CBRS's QUARTERLY ROWS ARE ALLOCATED, NOT REPORTED.** Within each year Q1 and Q2 are
+    **identical to the cent** (2024: both 155,906,500 / −5,894,000; 2023: both −35,092,500 /
+    −227,000), the `.5` remainder is the signature of a division by two, and **Q3/Q4 do not
+    exist for any year**. They do NOT reconcile to the annual row either (2024 annual OCF
+    451,978,000; the pair sums to 311,813,000) — so the "halved annual" reading is WRONG and
+    was checked before being written down. **FMP has not dissolved the YTD problem here, it
+    has papered over it with values that look complete — a worse failure mode than EDGAR's
+    honest `ttm_unavailable`.** CBRS FY data is usable; CBRS quarterly must not feed TTM.
+  - **★ XE's FEED-REPAIR TICKET IS CONFIRMED AND WIDENED: the FY2023/FY2024 hole is in the
+    CASH-FLOW endpoint too, not just `income_annual`.** It is an issuer-level FMP gap. A
+    3-FY window that skips two years is not three consecutive years, and the R2 last-3-FY
+    signal would read straight across the hole.
+  - **TWO CONVERSION TRAPS ANY FMP-BASIS BUILDER MUST CLEAR, recorded BEFORE the build.**
+    **(1) SIGN:** FMP files capex **negative**; EDGAR files it as a **positive outflow
+    magnitude**, and `build_fcf_series` computes `fcf = ocf - capex`
+    (core/fundamental_series.py:410) — reusing that expression on FMP input **ADDS** capex.
+    This is the debt/equity ratio-vs-percent unit defect in a new costume, and that one ran
+    eight days behind 654 green tests. **(2) THE STEP-4 SIGNAL MOVES:** LLY's last three FY
+    FCF are `[+0.792B, +3.760B, +8.972B]` on EDGAR basis but `[−3.152B, +0.414B, +8.972B]`
+    on FMP basis — **two of three flip sign.** LLY still does not join the R2
+    all-negative-last-3 set (FY2025 is positive either way, so that set **remains
+    IONQ/QBTS/RKLB/C**), but the doctrine switch is **NOT signal-neutral** and the R2
+    boundary population must be **re-measured on FMP basis before step 4 arms**, never
+    assumed to carry over.
+  - **THE PRODUCTION PAYLOAD DOES NOT FETCH ANY OF THIS TODAY.** `fetch_payload`
+    (adapters/fmp_adapter.py:556) requests `cash-flow-statement?period=annual&limit=1` — one
+    annual row, **no quarterly cash-flow at all.** FMP-basis expansion is an **endpoint-scope
+    change**, not a re-pointing of an existing fetch.
+
+- **★ SUPERSEDED CONTEXT BELOW — kept because its reasoning is still the record of WHY the
+  EDGAR path stopped, but the conclusion "the next order is step 4 on EDGAR coverage" is
+  overtaken by the doctrine above. STEP 4 (YOUNG SUPPLY BLOCK) — THE EDGAR-BASIS BLOCKING
+  CONDITION WAS DISCHARGED AS OF L-4d.1 (2026-08-22). IT IS NOT ARMED.**
   `fundamental_series` covers **20 of 28** (was 4, then 15, 18, 19). Of the 8 remaining,
   **4 are correctly fail-closed** (JPM/USB/INFQ/SKHY) and **4 are explicitly ruled OUT of
   scope** (CBRS/DPC/SPCX/XE — `ttm_unavailable`, YTD-only filers). **For the first time
@@ -811,12 +985,28 @@ real data ~Oct 2026 when the 8 Visa evals mature.
 - Teardown (yfinance) — DONE 2026-08-07 (Phases 1–3, commits 7e154cf/369ad8d/64f57e5). FMP is
   the sole live feed; TickerData rehomed to core/datatypes; yfinance package + adapter removed.
   See feed-reality section above (incl. the tracked provenance-relabel follow-up).
-- EDGAR — IN PROGRESS (unblocked by teardown). SEC filings integration; unlocks "high"
-  confidence (the wired secondary source that makes the anti-launder NOTE reachable again).
+- EDGAR — **NO LONGER "IN PROGRESS". DEMOTED TO THE AUDIT LAYER 2026-08-22 by the
+  FMP-SOURCE / EDGAR-ARBITER doctrine** (see the ▶▶ DOCTRINE section at the top of this
+  file). SEC filings integration; unlocks "high" confidence (the wired secondary source that
+  makes the anti-launder NOTE reachable again).
   E-1 DONE (XBRL extraction, 6977a72). E-2 DONE (field resolution, 25b40c5).
   E-3 ARMED 2026-08-09 (031506f) — live at both boundaries. E-4 DONE (verdict-high
   reachability): the note is NOT revived, see the E-4 finding + EDGAR section, both now in
   docs/phase-archive.md.
+  **NOTHING HERE IS UNWOUND OR DELETED — the machinery stays, and DELETING EDGAR-PATH CODE
+  REQUIRES A VIC RULING** (pinned, `tests/test_doctrine_edgar_arbiter.py`). Further EDGAR
+  COVERAGE expansion is off the roadmap; EDGAR arbitration capability is not.
+  **NOTE the unresolved contradiction: EDGAR is still SCORE-BEARING on every run
+  (SIC → lens, panel, growth pillar) and `fetch_edgar` is still a HARD GATE. See the ★
+  pre-flight entry in the DOCTRINE section — awaiting ruling.**
+- **H-4 (EBITDA leg / EDGAR D&A tag spec) — PARKED INDEFINITELY 2026-08-22. DEMOTED FROM
+  BLOCKER TO OPTIONAL AUDIT TOOLING** by the doctrine above. It was "DEFERRED behind EDGAR
+  expansion" (docs/h-fcf-scoping.md:235) — i.e. a live blocker on the EBITDA leg and on the
+  NULL `reinvestment` column (core/fundamental_series.py:435, whose `blocked_on` string still
+  reads "no depreciation/amortization spec (H-4)"). **Under FMP-as-source the D&A input comes
+  from FMP if it comes from anywhere, so an EDGAR D&A spec is no longer on the critical path
+  for anything.** Not deleted, not scheduled. If the EBITDA leg is ever wanted, it is an
+  FMP-basis order, not this one.
 - Phase D — VALUATION PANEL: **CLOSED 2026-08-09. ALL FIVE LENSES ARMED.** Ethos rule 10
   is fully built — every lens is rate-aware, on THREE DIFFERENT MECHANISMS:
     panel-anchored (MIN across anchors) : compounder, cyclical, standard

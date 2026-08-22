@@ -155,8 +155,7 @@ SPCX, XE, LLY — reports USD on both endpoints, so SKHY is the sole discrepancy
 no existing currency handling to lean on.
 
 Per the standing rule **"never fix a contradiction by teaching the model to ignore it"**,
-this is reported, not arbitrated. It is a precondition on any SKHY expansion, not a detail
-of one.
+this was reported rather than arbitrated. **Vic ruled on it the same session — see §8.**
 
 ### 3.4 CBRS — the quarterly rows are allocated, not reported
 
@@ -335,3 +334,125 @@ of heeding.
 - Measurement scratch: `.scratch_doctrine/` (gitignored) — `fmp_stepd_feasibility.py`,
   `supplement.py`, `feasibility.json`. Read-only: HTTP GETs and one `mode=ro` sqlite read.
 - **Zero production writes. Zero code-behaviour changes.**
+
+---
+
+## 8. RULING ADDENDUM — SKHY CURRENCY: STORE USD, PERIOD-MATCHED CONVERSION
+
+**Issued:** Vic, 2026-08-21 · **Folded into this order 2026-08-22 while it was in flight.**
+**Path taken: FOLDED IN, not held.** This order had not closed and — by design — performs
+**zero production writes**, so there was no in-flight write to interrupt. The addendum also
+directly amends §3.3, which this same order had just written.
+
+**Supersedes the fail-close option for SKHY.** SKHY is evaluated **in USD**: Vic's book is
+USD and the decision-relevant fundamentals are USD.
+
+### 8.1 The terms as ruled
+
+1. **Convert per period at that period's rate.** Flow items (cash-flow statement) convert at
+   the **fiscal-period-average** USDKRW rate; balance-sheet items, if ever ingested, at
+   **period-end** rate.
+2. **NEVER convert history at the ingest-date rate.** A today-rate conversion silently
+   rewrites the past on every refresh. **Prohibition to be pinned.**
+3. **FX source: FMP forex endpoints** (`historical-price-eod` on the KRW pair) — the
+   sole-source doctrine holds through the conversion.
+4. **Record per row:** the rate used, its date basis (period-average vs period-end), and
+   provenance tag **`currency:krw_converted_usd`**.
+5. **Preserve the native figure** — a native-value column, or the rate stored alongside so
+   KRW is recoverable by arithmetic. **Conversion must be auditable and reversible, never
+   destructive.**
+6. **The endpoint disagreement stays on the record**, per never-fix-by-ignoring.
+7. **Standing currency gate, ALL names:** any row whose `reportedCurrency` ≠ USD without a
+   conversion record → **withhold, typed reason `currency:unconverted`**. SKHY is the only
+   current tripper; the gate guards every future non-USD name.
+
+### 8.2 The arbitration, written into the record as ordered
+
+| endpoint | field | value |
+|---|---|---|
+| `cash-flow-statement` | `reportedCurrency` | **KRW** |
+| `profile` | `currency` | USD |
+
+**Arbitrated by magnitude, and the arbitration is not close:** FY2025 OCF reads
+53,373,126,000,000. At ~1,380 KRW/USD that is ~$39B — a plausible operating cash flow for SK
+hynix. Read as USD it would be **$53 trillion**, which exceeds world GDP. **KRW is the true
+reporting currency; `profile.currency` is wrong for this issuer.** This conclusion is robust
+to the rate question raised in §8.3 — at the measured rate it is $37.6B, still tens of
+billions, still refuting the USD reading by four orders of magnitude.
+
+### 8.3 ★ THE HARD STOP FIRED. REPORTING, NO WRITE.
+
+Vic's verification anchor: *"in the dark run, SKHY FY2025 OCF must land in the $38–40B range
+at 2025-average USDKRW. Any other magnitude means the rate plumbing is inverted or mis-united
+— STOP and report, no write."*
+
+**Measured read-only 2026-08-22, live FMP forex. IT DOES NOT LAND IN THE BAND.**
+
+| convention (2025-01-01 → 2025-12-31, `USDKRW`) | rate | FY2025 OCF |
+|---|---|---|
+| simple mean, all 301 obs | 1,418.97 | **$37,613,923,141** |
+| simple mean, weekdays only | 1,420.06 | $37,585,224,797 |
+| mean of monthly means | 1,420.26 | $37,579,810,055 |
+| median | 1,423.00 | $37,507,440,965 |
+| reciprocal of mean `KRWUSD` | 1,425.99 | $37,428,735,218 |
+
+**No convention reaches $38B.** The miss is **1.0% below the band floor**, and it is robust:
+the spread across all six conventions is only 0.5%, so no averaging choice rescues it.
+
+**BUT THE DIAGNOSIS THE ANCHOR NAMES IS FALSIFIED — the plumbing is neither inverted nor
+mis-united, and that was tested directly rather than assumed:**
+
+- **Not mis-united.** `USDKRW` closes span 1,351.65 → 1,482.72 — order 10³, i.e. KRW per USD.
+- **Not inverted.** Dividing gives $37.6B; multiplying gives **$7.6 × 10¹⁶**, absurd on sight.
+  The direction is unambiguous and cannot be silently wrong.
+- **Corroborated across two independently served symbols.** `USDKRW` and `KRWUSD` are both
+  served, and reduce to $37.61B and $37.43B — agreement to 0.5%.
+
+**The actual cause is band calibration, and it is fully explained.** The band was derived
+from the ~1,380 KRW/USD cited in the ruling text, which yields **$38.68B — in band**. But
+1,380 is approximately the **mid-year** rate, not the 2025 average: monthly averages ran
+1,441–1,455 in Q1 and 1,423–1,464 in Q4, against 1,365–1,394 in Jun–Sep. The full-year
+average is **1,418.97**, 2.8% weaker than 1,380.
+
+**So the RULE is right and the BAND is off, not the reverse.** §8.1's "flow items convert at
+the fiscal-period-average rate" is precisely the correct convention, and it is the convention
+that produces 1,418.97. Had the ingest-date or a spot rate been used — the thing §8.1(2)
+prohibits — the number would have moved again.
+
+**RECOMMENDED, NOT APPLIED (Vic's call):** re-set the anchor band to **$37.4–37.8B** at the
+measured 2025 average, or restate it as a rate assertion (`2025 average USDKRW ∈
+[1,410, 1,430]`) so it tests the plumbing rather than a remembered rate. **I have not moved
+the band myself** — a verification anchor that the verifying session may re-fit is not a
+verification anchor.
+
+### 8.4 A finding the anchor surfaced incidentally, and it bears on §8.1(3)
+
+**FMP's `USDKRW` and `KRWUSD` are NOT exact reciprocals.** Same-day products over all 301
+common days: mean **0.9944**, range 0.9882 → 1.0098. They are independently sourced or
+independently rounded, not derived from one another.
+
+Consequences for the expansion order: there is a **~0.6% noise floor** on any FX-derived
+figure here, and **the choice of pair symbol is itself a basis decision** — so the per-row
+record required by §8.1(4) must capture **which symbol** was used alongside the rate and its
+date basis, or the conversion is not reproducible. Recorded now because it is exactly the
+kind of half-percent that becomes invisible once a number is in a column.
+
+### 8.5 The pin set — SPECIFIED HERE, BUILT WITH THE EXPANSION. None written this order.
+
+Vic named five pins. **None is expressible against today's code, and writing them now would
+produce vacuous tests** — there is no conversion path, no currency gate, and no
+`currency:unconverted` reason in the runtime. A test asserting the behaviour of unbuilt code
+either fails and breaks the suite, or skips and proves nothing; this project's standing rule
+is that *a sweep that cannot fire proves nothing*. They are therefore recorded as a **binding
+requirement on the expansion order**, to land in the same commit as the machinery they guard:
+
+| # | pin | why it cannot be written yet |
+|---|---|---|
+| 1 | the **ingest-date-rate prohibition** | no conversion path exists to prohibit anything of |
+| 2 | **SKHY FY2025 OCF magnitude anchor** | **and the band it would assert is the one that just failed — see §8.3.** Must not be pinned until Vic re-sets it |
+| 3 | **gate behaviour on an unconverted non-USD row** | no gate, no `currency:unconverted` reason |
+| 4 | **rate-recorded-per-row invariant** | no rate column |
+| 5 | **KRW recoverability invariant** | no native-value column or stored rate |
+
+Pin 2 is the one to note: **it is currently unwritable for two independent reasons**, and the
+second is a live question for Vic rather than a missing feature.
