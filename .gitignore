@@ -47,3 +47,6 @@ Thumbs.db
 
 # L-4f step-1 scope scratch (read-only measurement). Cleaned at the L-4f close.
 .scratch_l4f/
+
+# Doctrine order (2026-08-22) read-only feasibility scratch.
+.scratch_doctrine/
