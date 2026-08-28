@@ -431,7 +431,7 @@ def own_history_series(
 
 def own_history_fcf_yields(
     ticker: str, edgar: Optional[EdgarData], price_history: List[Dict],
-    split_report: Any = None,
+    split_report: Any = None, applicability: Any = None,
 ) -> tuple:
     """(series, basis) — the FCF-yield own-history series. ARMED H-3.
 
@@ -445,16 +445,32 @@ def own_history_fcf_yields(
     a yield computed on a truncated share series is a DIFFERENT MEASUREMENT from one on a
     restated series, and the panel must be able to say which it scored.
 
-    Returns ([], reason) rather than raising when the family is withheld — V, JPM and USB
+    Returns ([], reason) rather than raising when the family is withheld — JPM and USB
     file no capex concept at all, so they have no FCF series and the anchor is simply
-    absent. The panel narrows and says so; it does not substitute anything.
+    absent. (V used to be in that list; it resolves since the L-4d synonym landed.) The
+    panel narrows and says so; it does not substitute anything.
+
+    `applicability` (ruled 2026-08-28) is threaded straight through to `build_fcf_series`,
+    which refuses first for a financials-class name. THIS IS THE ENFORCEMENT POINT for
+    "NO numeric scores from the FCF engine" on the SCORING path — a rule recorded without
+    naming its enforcement point is a belief, not a guard.
+
+    ★ ITS MEASURED EFFECT TODAY IS ZERO, AND STRUCTURALLY SO, NOT BY LUCK. Every name the
+    class catches (BK, C, JPM, USB — measured over all 28 on 2026-08-28) scores on the BANK
+    lens, and `bank` is not in `ARMED_PANEL_LENSES` — `_valuation_bank(yf, fred)` does not
+    take `panel` as a parameter at all. So a bank's panel is computed and logged but never
+    scored, and refusing its FCF anchor changes one NOTE line in a log. The guard is real
+    and binds the day a financials-class name lands on a panel-scored lens; it moves nothing
+    now. Same shape as L-4b's monotone-widening argument: the safety property is stated and
+    pinned, not assumed.
     """
     if edgar is None:
         return [], "none"
     from core.fundamental_series import (METRIC_FCF as _FCF,
                                          METRIC_FCF_YIELD as _FCF_Y, build_fcf_series)
 
-    result = build_fcf_series(ticker, edgar, price_history, split_report)
+    result = build_fcf_series(ticker, edgar, price_history, split_report,
+                              applicability=applicability)
     points = result.anchor_usable(_FCF_Y)
     if not points:
         # NAME THE CAUSE. "0 historical points" is true for both a withheld family (V,
@@ -505,12 +521,29 @@ def compute_panel(
     # H-3: the FCF leg has its own series and its own basis. Kept in a per-metric map
     # rather than threaded as a second positional argument so a third leg (EBITDA, H-4)
     # is an entry here and nothing else.
+    #
+    # ARMED 2026-08-28: the FCF-model class gate. Derived HERE, from the FMP sector and
+    # industry already on `ticker_data`, because this is the boundary that holds them —
+    # `own_history_fcf_yields` takes a bare ticker string and could not ask. Nothing is
+    # fetched for it.
+    from core.model_applicability import applicability_for
+    applicability = applicability_for(ticker_data)
     fcf_history, fcf_basis = own_history_fcf_yields(
-        panel.ticker, edgar, ticker_data.price_history, split_report)
+        panel.ticker, edgar, ticker_data.price_history, split_report,
+        applicability=applicability)
     if edgar is not None and not fcf_history:
-        panel.notes.append(
-            "own-history FCF anchor unavailable: no usable FCF-yield quarters "
-            "(no capex concept filed, or every quarter excluded)")
+        # NAME THE CAUSE, and the class is a DIFFERENT cause from a coverage gap. "No capex
+        # concept filed" is a statement about the issuer's filings; for a bank it is also
+        # true and also beside the point, and a note that says it would send a later reader
+        # looking for a tag to add.
+        if not applicability.applicable:
+            panel.notes.append(
+                f"own-history FCF anchor WITHHELD BY CLASS "
+                f"({applicability.class_name}): {applicability.detail}")
+        else:
+            panel.notes.append(
+                "own-history FCF anchor unavailable: no usable FCF-yield quarters "
+                "(no capex concept filed, or every quarter excluded)")
     own_history = {
         METRIC_EARNINGS_YIELD: (history, basis),
         METRIC_FCF_YIELD: (fcf_history, fcf_basis),

@@ -61,9 +61,19 @@ def _own_history_fcf(panel):
 
 # ── The anchor exists at all ─────────────────────────────────────────────────
 
-@pytest.mark.parametrize("ticker", ["GOOG", "NOW", "WU", "MU", "BK"])
+@pytest.mark.parametrize("ticker", ["GOOG", "NOW", "WU", "MU"])
 def test_the_compounder_metric_now_has_an_own_history_anchor(ticker):
-    """Before H-3 this reading was always unavailable with 'trailing-earnings only'."""
+    """Before H-3 this reading was always unavailable with 'trailing-earnings only'.
+
+    ★ BK WAS REMOVED FROM THIS LIST 2026-08-28 — SUPERSEDED, NOT BROKEN. It was here from
+    the H-3 arming because BK does file a capex concept and did build a usable FCF-yield
+    series; the assertion was TRUE ON MEASUREMENT when written. Vic's 2026-08-28 financials
+    ruling makes that series inadmissible for a bank on class grounds, not data grounds, so
+    BK's anchor is now withheld by design. Its successor is
+    `test_the_financials_class_WITHHOLDS_the_own_history_FCF_anchor`, which asserts the
+    opposite outcome for the stated reason. The remaining four names are unaffected and
+    still measure exactly what they did.
+    """
     r = _own_history_fcf(_panel(ticker))
     assert r.available, r.reason
     assert r.anchor_yield is not None
@@ -93,10 +103,10 @@ def test_the_anchor_carries_its_split_basis():
 
 # ── V: the degraded path, ASSERTED not silent ────────────────────────────────
 
-@pytest.mark.parametrize("ticker", ["V", "JPM", "USB"])
+@pytest.mark.parametrize("ticker", ["V"])
 def test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why(ticker):
-    """JPM and USB file no PP&E-purchase concept of any kind, so the whole FCF family is
-    withheld and there is no own-history anchor to build.
+    """An issuer filing no PP&E-purchase concept has the whole FCF family withheld, and
+    there is no own-history anchor to build.
 
     V IS HERE ON ITS FIXTURE, NOT ON ITS FILINGS (L-4d): V files
     PaymentsToAcquireProductiveAssets and resolves in production, but the recorded
@@ -107,10 +117,70 @@ def test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why(ticker):
     withheld family and for a series that existed and was entirely excluded, and those are
     different facts about the issuer. The reading must name the cause, so a later reader
     does not conclude V has a short history when it has none at all.
+
+    ★ JPM AND USB WERE REMOVED FROM THIS LIST 2026-08-28 — SUPERSEDED, NOT BROKEN, AND THE
+    SUPERSESSION IS THE PART TO READ. The original rationale is retained verbatim: "JPM and
+    USB file no PP&E-purchase concept of any kind, so the whole FCF family is withheld and
+    there is no own-history anchor to build." That is still TRUE — it was measured across
+    every us-gaap concept at L-4d, not just our spec table. What changed is which cause
+    gets REPORTED. Under Vic's 2026-08-28 financials ruling the class gate runs AHEAD of
+    every data check in `build_fcf_series`, so JPM and USB now report
+    `fcf:model_inapplicable:financials` instead of `capex:no_tag`.
+
+    THE ORDERING IS DELIBERATE AND THIS TEST IS WHERE IT IS RECORDED. `capex:no_tag` is
+    accurate and leads nowhere: it describes a coverage gap, and a coverage gap invites the
+    next session to go and find the missing tag. JPM and USB sat under exactly that label
+    across four orders. The class fact is prior — better inputs would not help, because
+    `ocf - capex` measures nothing for an issuer whose operating cash flow IS balance-sheet
+    financing. Their successor is
+    `test_the_financials_class_WITHHOLDS_the_own_history_FCF_anchor`.
     """
     r = _own_history_fcf(_panel(ticker))
     assert not r.available
     assert "capex:no_tag" in r.reason, r.reason
+
+
+@pytest.mark.parametrize("ticker", ["BK", "JPM", "USB"])
+def test_the_financials_class_WITHHOLDS_the_own_history_FCF_anchor(ticker):
+    """SUCCESSOR PIN to the two supersessions above (Vic's ruling, 2026-08-28).
+
+    Every financials-class name in the fixture set must be refused the own-history FCF
+    anchor ON CLASS GROUNDS, and the reading must SAY SO rather than reporting whichever
+    data gap it would have hit next. BK is the load-bearing case: unlike JPM and USB it
+    DOES file capex and DID build a usable series, so if the class gate ever stopped
+    running, BK would silently regain an anchor while JPM and USB merely swapped one
+    refusal reason for another. BK is the name that makes this pin able to fire.
+    """
+    panel = _panel(ticker)
+    r = _own_history_fcf(panel)
+    assert not r.available, r.reason
+    assert r.anchor_yield is None, "a withheld anchor must never become a number"
+    assert "fcf:model_inapplicable:financials" in r.reason, r.reason
+    assert any("WITHHELD BY CLASS" in n for n in panel.notes), panel.notes
+
+
+def test_the_class_gate_is_OPT_IN_and_an_unasked_caller_is_unchanged():
+    """POSITIVE CONTROL on the default, and the reason the arming is a parameter.
+
+    `build_fcf_series` and `own_history_fcf_yields` default `applicability=None`, meaning
+    NOT ASKED, so every pre-existing caller keeps exactly its present behaviour and the
+    arming is visible at the call sites that opt in. BK proves the default is live rather
+    than vacuous: asked, it is refused; unasked, it still builds the same series it always
+    did. A gate that could not be shown to be OFF by default would be a gate nobody could
+    reason about.
+    """
+    from core.model_applicability import fcf_model_applicability
+    ed = fetch_edgar("BK", fixture_path=FX / "edgar" / "BK.json")
+    yf = fetch_fmp("BK", fixture_path=FX / "fmp" / "BK.json")
+
+    unasked, _ = own_history_fcf_yields("BK", ed, yf.price_history, None)
+    assert unasked, "unasked, BK must still build its series exactly as before"
+
+    asked, reason = own_history_fcf_yields(
+        "BK", ed, yf.price_history, None,
+        applicability=fcf_model_applicability(yf.sector, yf.industry))
+    assert asked == []
+    assert "model_inapplicable" in reason, reason
 
 
 def test_V_falls_back_to_the_market_referenced_pair_and_the_panel_notes_it():

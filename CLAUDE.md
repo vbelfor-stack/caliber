@@ -49,18 +49,49 @@ chosen here. Vic rules.**
 **Also noted, not blocking: §1.2(a) invokes EDGAR when "FMP fails a sanity gate" — NO SANITY
 GATE EXISTS anywhere in the runtime, so that trigger is currently unreachable.**
 
-## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-22, after the doctrine order)
+## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-28)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-**TOMORROW'S FIRST ACTION: run the session-open protocol, then RULE THE THREE OPEN QUESTIONS
-THE DOCTRINE ORDER RAISED —**
+### ▶▶ 2026-08-28 CLOSE — SKHY USD-ONLY + THE FINANCIALS CLASS. READ THE C FINDING FIRST.
+Order `docs/orders/2026-08-28-skhy-usd-only-and-financials-class.md`, report
+`docs/2026-08-28-skhy-usd-only-and-financials-class.md`. Suite **984 → 1011**. One write
+point, **+133 rows in `fundamental_series`**, reconciled exactly, every other table +0.
+caliber.db md5 **`eec96270…` → `70be9730…`**.
+
+**★★ TOMORROW'S FIRST ACTION — RULE THIS. CITIGROUP CLASSIFIES AS *YOUNG* ON A LIVE RUN
+TODAY, AND IT HAS BEEN ARMED FOR SEVEN DAYS.** Measured on production 2026-08-28:
+`C → YOUNG, rule2_young, fcf_negative_2of3=True ("3 of last 3 FY FCF negative")` on FY FCF
+of −$80.0B / −$26.2B / −$74.2B. **C's STORED stage rows are dated 2026-08-17 and read
+MATURE; its `fundamental_series` rows were first observed 2026-08-21 (L-4c). The stored
+stage PREDATES the series that flips it, and C has not been re-evaluated since.** This is
+not annotation-only: stage drives the B-2 band via `tolerance_for()`, and `rule2_young`
+fired on a MEASURED leg (not an absence), so C is NOT denied the wider band the way
+DPC/INFQ are. **The next eval persists YOUNG; the one after scores a ~$200B bank at a 30%
+divergence tolerance instead of 15%.** The financials class does NOT stop it — the class
+gate binds `build_fcf_series`, and the classifier reads the STORED series. **Fixing it is a
+scoring-path change and needs a ruling: see report §8 item 1.**
+**GENERALISE IT BEFORE RULING (report §8 item 5): C is not special. ANY name whose
+`fundamental_series` arrived after its last evaluation carries a stage row computed without
+it, and NOTHING re-computes stages when the series changes. C is just the one where it
+flips a rule. That was found, not designed for.**
+
+**WHAT LANDED.** (a) SKHY serves **129 statement periods across six FMP endpoints and 0 are
+USD** — the USD set is EMPTY, so (b) wrote **zero numeric rows** and 129 typed block rows
+(`currency:non_usd_native`). (c) The financials class catches **exactly BK, C, JPM, USB**;
+**V and WU are Financial Services sector but are correctly NOT caught** (Credit Services
+industry → compounder lens, and both are currently covered — a sector-level rule would have
+destroyed working coverage on two names). (d) Anchor re-measured read-only, **no anchor
+write**. (e) Dark before/after: **NOTHING MOVED**; SKHY stays HIGROWTH/rule3.
+
+**CARRIED OPEN FROM THE DOCTRINE ORDER (2026-08-22), STILL UNRULED —**
 **(1) the pre-flight / EDGAR-score-bearing contradiction above (order §5);**
 **(2) step 4 on FMP basis, given the feasibility measurement came back MUCH WEAKER than the
 ruling assumed — 5 of the 8 names FAIL on FMP basis (★ step-4 entry below);**
-**(3) the SKHY FX verification band, which FAILED by 1.0% — the plumbing was tested and is
-SOUND, the band's own input rate (~1,380) was the mid-year rate rather than the 2025 average
-of 1,418.97 (order §8.3). A band re-set is recommended and deliberately NOT self-applied.**
+**(3) ~~the SKHY FX verification band~~ — ✅ CLOSED 2026-08-28. THE BAND HAS NO SUBJECT ANY
+MORE. Vic's USD-ONLY ruling removed the conversion the band existed to verify, so it is
+MOOT rather than "still failing by 1.0%". Its five ordered pins are moot for the same
+reason and are recorded superseded, not written. See the 2026-08-28 report §5.**
 **DOCTRINE ORDER CLOSED COMPLETE 2026-08-22: docs + CLAUDE.md + one pin, ZERO production
 writes, ZERO code-behaviour changes, caliber.db md5 unchanged. Suite 975 → 984. The SKHY
 currency ruling addendum was FOLDED IN (order §8), not held — the order had not closed and
@@ -103,7 +134,20 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-22 (L-4d.1) — every value below was MEASURED at close, not remembered
+### STATE AT CLOSE 2026-08-28 — MEASURED at close. This SUPERSEDES the 2026-08-22 table below for every row it names.
+
+| | |
+|---|---|
+| HEAD | the **2026-08-28 close commit** — verify with `git log -1`. This session made TWO commits: the order document (`9cd0e74`, before any execution), then the arm + write + close. Previous session's last commit was **`390d20a`**. |
+| Suite | **1011 passed** (was 984; +27). No pre-existing test broke. **3 pins SUPERSEDED DELIBERATELY** — `test_the_compounder_metric_now_has_an_own_history_anchor` loses BK, and `test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why` narrows from `[V,JPM,USB]` to `[V]`. Both carry their original rationale verbatim; successor is `test_the_financials_class_WITHHOLDS_the_own_history_FCF_anchor`. **9 of 43 verified to FAIL pre-fix**, against a deliberately disarmed gate. |
+| caliber.db md5 | **`70be97300a3d53618532e9b7eb0c4cac`** — **CHANGED** (was `eec96270…`). WAL checkpointed `(0,0,0)` before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. Backup: **`caliber.db.pre-20260828-eec96270.bak`**, md5 verified equal to the pre-write db. |
+| **PRODUCTION WRITES** | **ONE WRITE POINT: +133 rows in `fundamental_series`** — 129 SKHY currency-block rows + 4 financials-class FLAG rows. Expected delta stated in the order doc before the write, dry-run against the destination first, reconciled exactly: **expected +133, actual +133, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, **all +0**. |
+| fundamental_series | **2621 rows, 23 distinct tickers** (was 2488 / 20). |
+| **★ step-4 evaluable** | **20 of 28 — UNCHANGED.** **`SELECT DISTINCT ticker` AND STEP-4 EVALUABILITY HAVE NOW DEFINITIVELY DIVERGED: 23 vs 20.** SKHY, JPM and USB hold ONLY block/flag rows and no numeric point. CLAUDE.md warned these could part; this is where they did. **Count through `evaluate._fy_series_from_db`, NEVER by `SELECT DISTINCT ticker`.** |
+| R2 all-negative-last-3 | **C, IONQ, QBTS, RKLB — unchanged by this order.** But see the C finding in the pickup block: C's membership is now the live open question. |
+| evaluations / lifecycle_stage / field_provenance / transitions / grades / overrides / synthesis_cache | **80 / 44 / 1437 / 1 / 0 / 0 / 16 — ALL UNCHANGED**, re-counted at close. |
+
+### STATE AT CLOSE 2026-08-22 (L-4d.1) — superseded above where they overlap; every value below was MEASURED at that close
 
 | | |
 |---|---|
@@ -127,6 +171,53 @@ re-derivation. L-4b is DONE.**
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
+
+- **★ THE FCF-MODEL FINANCIALS CLASS IS ARMED (2026-08-28, `core/model_applicability.py`).**
+  Banks, insurers and diversified financials are **model-inapplicable** to the FCF engine —
+  a CLASS, not a per-ticker call. **Caught, measured over all 28: BK, C, JPM, USB.**
+  - **IT OWNS NO TAXONOMY.** It delegates to `select_lens(sector, industry, None, None) ==
+    "bank"`. **`sic` and `ticker` are pinned OFF**: SIC would make the class EDGAR-score-
+    bearing (a fifth unruled path), and a ticker would admit the hand-curated override list,
+    which is the per-issuer judgement the ruling removes. `fcf_model_applicability` takes
+    exactly two arguments, so there is no third to smuggle.
+  - **★ V AND WU ARE FINANCIAL SERVICES SECTOR AND ARE DELIBERATELY *NOT* CAUGHT.** Their
+    industry is "Financial - Credit Services" → compounder lens, and both are CURRENTLY
+    COVERED in `fundamental_series`. **A sector-level rule would have destroyed working
+    coverage on two names.** Vic's wording is "banks/insurers/diversified financials", not
+    "the Financial Services sector". Pinned.
+  - **ENFORCEMENT POINTS, NAMED:** `build_fcf_series` refuses **FIRST, ahead of every data
+    check** (the ordering is the ruling — `capex:no_tag` is accurate and leads nowhere, and
+    JPM/USB sat under it for four orders); `own_history_fcf_yields` threads it to the panel.
+    **It is OPT-IN — `applicability=None` means NOT ASKED**, so every pre-existing caller is
+    unchanged and the arm is visible at the sites that opted in.
+  - **MEASURED SCORE MOVEMENT TODAY: ZERO, AND STRUCTURALLY SO.** Every caught name is on the
+    BANK lens; `bank` ∉ `ARMED_PANEL_LENSES` and `_valuation_bank` does not take `panel` at
+    all. **Pinned by a test that FAILS LOUDLY if the bank lens is ever panel-armed**, which
+    is exactly when that claim stops being true.
+  - **BK IS THE NAME THAT MAKES THE PINS ABLE TO FIRE** — unlike JPM/USB it DOES file capex
+    and DID build a usable series, so a dead gate would show up on BK and nowhere else.
+  - **★ IT DOES *NOT* REACH THE LIFECYCLE CLASSIFIER, AND THAT IS THE OPEN RULING** — the
+    gate binds the BUILDER; the classifier reads the STORED series. See the C finding.
+- **★ THE USD-ONLY REPORTING-CURRENCY GATE IS ARMED (2026-08-28,
+  `core/reporting_currency.py`).** Partitions FMP statement rows on `reportedCurrency` and
+  **nothing else** — never on magnitude, exchange, country or `profile.currency`. Two typed
+  reasons, deliberately NOT collapsed: **`currency:non_usd_native`** (a fact about the
+  ISSUER) and **`currency:currency_unstated`** (a fact about the FEED, and the more alarming
+  one). **NOTHING IS EVER CONVERTED** — pinned behaviourally (the gate hands back the SAME
+  row objects) and over the AST (no forex symbol, endpoint or converter call in either
+  module).
+- **★ BLOCK/FLAG ROWS USE A `metric` AND `period_type` NO CONSUMER QUERIES —
+  `ingest_block:{income|balance_sheet|cash_flow}` on `BLOCK_FY`/`BLOCK_Q`, and
+  `model_applicability` on `FLAG`.** This is FORCED BY MEASUREMENT, not taste:
+  `evaluate._fy_series_from_db` **does not filter `excluded`** (verified empirically), so a
+  block written as `fcf`/`FY` would flip `fcf_fy` from None (UNKNOWN) to a list and relabel
+  the leg `only_0_fy_fcf_points` — a claim about the ISSUER for something WE blocked.
+  **★★ AND DO NOT "FIX" THAT BY FILTERING THE READER ON `excluded=0`: 30 FY `fcf` rows
+  across 8 tickers (BE, BK, C, IONQ, LITE, MU, QBTS, RKLB) are `excluded=1` BECAUSE THEY ARE
+  NEGATIVE, AND THOSE NEGATIVE POINTS *ARE* THE R2 ALL-NEGATIVE-LAST-3 SIGNAL.** A warning
+  pin fails if a future session adds the filter thinking it is tidying up.
+  The class FLAG row is keyed on the **RULING date** (`2026-08-28`), not the run date, so a
+  re-run is idempotent and a re-ruling appends beside it rather than overwriting.
 
 - **★ 20-F/6-K ARE ADMITTED, AND THE ANNUAL/INTERIM SPLIT IS NOW LOAD-BEARING (L-4f,
   2026-08-21).** `_XBRL_VALID_FORMS = _XBRL_ANNUAL_FORMS | _XBRL_INTERIM_FORMS`, with
@@ -295,6 +386,34 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
 
 ### PUNCH LIST — current at close
 
+- **★★ TOP PRIORITY, RULE BEFORE ANYTHING ELSE — CITIGROUP READS *YOUNG* ON A LIVE RUN, AND
+  THE STALE-STAGE PROBLEM BEHIND IT IS GENERAL (found 2026-08-28).** Full statement in the
+  pickup block. Two decisions, and the second is bigger than the first:
+  - **(1) Should the financials class reach the LIFECYCLE CLASSIFIER?** If it does, C leaves
+    the R2 all-negative-last-3 set and stops reading pre-earnings. If it does not, C persists
+    YOUNG on its next eval and gets a **30% B-2 band instead of 15%**. Scoring-path change;
+    needs a ruling.
+  - **(2) NOTHING RE-COMPUTES A LIFECYCLE STAGE WHEN ITS SERIES CHANGES.** Any name whose
+    `fundamental_series` arrived AFTER its last evaluation carries a stage row computed
+    without it. **C is merely the one where the gap flips a RULE.** Measured, not designed
+    for, and not fixed here. A stage-staleness sweep across all 28 is the obvious next
+    measurement and was NOT run this session.
+- **★ THE FMP-BASIS *NUMERIC* SERIES BUILDER IS DELIBERATELY NOT BUILT (2026-08-28).** With
+  **0 USD periods universe-wide** it would be a production write path nothing exercises, and
+  it must clear two recorded traps blind: **(1) SIGN** — FMP files capex NEGATIVE while
+  `build_fcf_series` computes `ocf - capex` on EDGAR's positive-outflow convention, so
+  reusing it **ADDS** capex (the debt/equity ratio-vs-percent unit defect in a new costume,
+  and that one ran eight days behind 654 green tests); **(2)** the R2 boundary population
+  must be **re-measured on FMP basis**, never assumed to carry over.
+  **`tools/ingest_fmp_usd_series.py` REFUSES LOUDLY and writes nothing if a USD period ever
+  appears**, so the day the case becomes real it stops and reports. A separate order.
+- **★ THE SKHY ANCHOR BASIS IS UNDECIDED, AND THE THREE CANDIDATES DIFFER BY UP TO 34%
+  (2026-08-28, NO ANCHOR WRITTEN).** Free-float **$909.30B** (Vic's reference, matched to
+  +0.16%) · full ADR cap **$1,141.66B** (`market-capitalization?symbol=SKHY`, the only
+  cap endpoint carrying its own `date`) · Korean ordinary **$851.37B**. Any stored anchor
+  must name **which basis and which listing**, and carry its price and timestamp — the ADR
+  cap moves intraday.
+
 - **★★ TOP PRIORITY, DO NOT FOLD INTO A SPEC ORDER — SKHY IS EDGAR-UNEVALUABLE, AND IT IS A
   DATA-SOURCE ARCHITECTURE DECISION, NOT A SPEC FIX (ruled 2026-08-21, L-4f).** SKHY was
   named as L-4f's primary payload and gains nothing from any form admission. **Its ENTIRE
@@ -312,15 +431,47 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     input populated.** The EDGAR finding above is unchanged and still correct; it was a
     statement about EDGAR, never about the issuer. Under the new doctrine the source question
     is settled — but the item does NOT close, because measuring it surfaced a new blocker:
-  - **★ TWO FMP ENDPOINTS DISAGREE ABOUT SKHY'S CURRENCY, AND IT IS THE ONLY NAME THAT DOES.**
-    `cash-flow-statement.reportedCurrency` = **KRW**; `profile.currency` = **USD**.
-    **ARBITRATED BY MAGNITUDE, and it is not close:** FY2025 OCF reads 53,373,126,000,000 —
-    tens of billions of USD, versus **$53 TRILLION** if read as USD, which exceeds world GDP.
-    **KRW is the true reporting currency; `profile.currency` is WRONG for this issuer.**
+  - **★ CORRECTED 2026-08-28 — THERE ARE *THREE* CURRENCY SURFACES, NOT TWO, AND
+    `profile.currency` WAS NOT "WRONG".** This entry used to read: *"KRW is the true
+    reporting currency; `profile.currency` is WRONG for this issuer."* **That was too harsh
+    and is now falsified by a control.** `profile.currency = USD` is the **QUOTE** currency
+    of a NASDAQ-listed ADR and is CORRECT; `reportedCurrency = KRW` is the **REPORTING**
+    currency and is also correct. They answer different questions. **Control: the same
+    issuer's Korean ordinary line `000660.KS` reads `profile.currency = KRW` on exchange
+    KSC.** The magnitude arbitration below still stands and was never the disputed part —
+    FY2025 OCF reads 53,373,126,000,000, which is KRW.
+    - **★★ THE SURPRISING THIRD SURFACE, AND IT IS A LATENT ~1,028x TRAP ON A SCORE-BEARING
+      FIELD. MEASURED 2026-08-28, NOT FIXED.** **`key-metrics-ttm.marketCap` for SKHY is
+      served in KRW** — `1,173,390,134,823,000`, **byte-identical to `000660.KS`'s profile
+      marketCap, delta exactly 0**, i.e. the HOME LISTING'S cap. That field is what
+      `adapters/fmp_adapter.py:457` puts in `TickerData.market_cap` (via `key_metrics_ttm`
+      at `:587`), and `core/pillars.py:237-238` divides FCF by it for the FCF-yield bonus.
+      **Controls: NVDA and ARM both read `key-metrics ÷ profile = 1.0000`, so SKHY is the
+      sole anomaly in the universe.** Today it is ACCIDENTALLY self-consistent (FCF is also
+      KRW, so the ratio is KRW/KRW) — **a latent trap, not a live defect.** Fixing it is a
+      change to a score-bearing adapter field and needs a ruling.
+    - **★ AND THE ADR TRADES AT A +34.1% PREMIUM TO THE KOREAN ORDINARY** (the two caps imply
+      USDKRW 1,027.79 against a measured 1,378.24). So **an SKHY market cap is
+      basis-dependent by a third**, and any anchor must say WHICH LISTING it measures.
     JPM/USB/INFQ/CBRS/DPC/SPCX/XE/LLY all report USD on both endpoints, so SKHY is the sole
     tripper and there was no existing currency handling to lean on.
-  - **✅ RULED 2026-08-21 (Vic addendum, folded into the doctrine order §8) — SKHY IS
-    EVALUATED IN USD, VIA PERIOD-MATCHED CONVERSION. The fail-close option is SUPERSEDED.**
+  - **★★ THE WHOLE CONVERSION BLOCK BELOW IS SUPERSEDED. RULED 2026-08-28 BY VIC: *USD
+    ONLY.*** "Ingest only what FMP supplies natively in USD. KRW-only periods excluded with
+    typed block rows — never converted. Short history accepted; YOUNG/coverage rules apply
+    to whatever USD depth survives." **MEASURED THE SAME DAY: SKHY serves 129 statement
+    periods across six FMP endpoints and 0 ARE USD, so the USD set is EMPTY and SKHY gets
+    ZERO numeric rows plus 129 typed block rows.** What survives from the 2026-08-21
+    addendum is ONLY term (7), the standing currency gate, now built as
+    `core/reporting_currency.py`. **Terms (1)–(6) and the $38–40B verification anchor are
+    MOOT — they governed a conversion that no longer exists.** The five ordered pins are
+    moot for the same reason and are recorded superseded rather than written.
+    **★ AND THE TYPED REASON IS `currency:non_usd_native`, NOT term (7)'s
+    `currency:unconverted`** — "unconverted" asserts that conversion is the pending remedy,
+    which the ruling removed, so the constant would make a claim the ruling has already
+    falsified. Exactly the `WITHHELD_NO_CAPEX`/`WITHHELD_NO_OCF` defect L-4d DELETED rather
+    than renamed. Kept below for the record, not for execution:
+  - **~~RULED 2026-08-21 (Vic addendum, folded into the doctrine order §8) — SKHY IS
+    EVALUATED IN USD, VIA PERIOD-MATCHED CONVERSION.~~ SUPERSEDED 2026-08-28.**
     Vic's book is USD and the decision-relevant fundamentals are USD. Terms:
     **(1)** convert per period at THAT period's rate — flows at **fiscal-period-average**,
     balance-sheet items (if ever ingested) at **period-end**; **(2) NEVER convert history at
@@ -334,8 +485,15 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
     `reportedCurrency` ≠ USD without a conversion record is **WITHHELD with typed reason
     `currency:unconverted`**. SKHY is the only current tripper; the gate guards every future
     non-USD name.
-  - **★★ VIC'S HARD-STOP VERIFICATION ANCHOR FIRED, AND IT IS UNRESOLVED — READ BEFORE ANY
-    SKHY WRITE.** The anchor: FY2025 OCF must land in **$38–40B** at 2025-average USDKRW, and
+  - **★★ ~~VIC'S HARD-STOP VERIFICATION ANCHOR FIRED, AND IT IS UNRESOLVED~~ — ✅ CLOSED
+    2026-08-28: THE ANCHOR HAS NO SUBJECT. IT IS MOOT, NOT FAILING.** USD-only removed the
+    conversion it was verifying. **Separately, the 2026-08-28 order answered what the band
+    ACTUALLY MEASURED, which is the part worth carrying: it measured FY2025 OPERATING CASH
+    FLOW in USD — a one-year FLOW — and was never a market cap. So the "~24x gap" against
+    SKHY's ~$909.30B market cap is not a discrepancy at all: $909.30B ÷ $37.61B = 24.18x,
+    a PRICE-TO-OPERATING-CASH-FLOW MULTIPLE.** Nothing was ever inverted or mis-united.
+    Original text kept for the record:
+    The anchor: FY2025 OCF must land in **$38–40B** at 2025-average USDKRW, and
     *"any other magnitude means the rate plumbing is inverted or mis-united — STOP and report,
     no write."* **MEASURED 2026-08-22, LIVE, READ-ONLY: it lands at $37.61B — 1.0% BELOW the
     band floor, and the miss is ROBUST** (six averaging conventions span only 0.5%:

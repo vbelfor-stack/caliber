@@ -343,9 +343,32 @@ def build_fcf_series(
     edgar: Optional[EdgarData],
     price_history: Optional[List[Dict]] = None,
     split_report: Any = None,
+    applicability: Any = None,
 ) -> SeriesResult:
-    """Assemble the FCF component series. PURE — mutates nothing, persists nothing."""
+    """Assemble the FCF component series. PURE — mutates nothing, persists nothing.
+
+    `applicability` is the FCF-model class decision (core.model_applicability). It is
+    OPTIONAL and defaults to None — "not asked" — so every existing caller keeps exactly
+    its present behaviour and the arming is visible at the call sites that opt in, rather
+    than switched on globally by a module import.
+    """
     result = SeriesResult(ticker=ticker)
+
+    # ── THE CLASS GATE RUNS FIRST, AHEAD OF EVERY DATA CHECK (ruled 2026-08-28) ──
+    #
+    # Ordering is the point. For a bank, "no EDGAR data" and "no capex tag" are both TRUE
+    # and both MISLEADING: they describe a coverage problem, and a coverage problem invites
+    # the next session to go and fix the coverage. The model being inapplicable is a
+    # different and prior fact — better inputs would not help, because `ocf - capex`
+    # measures nothing for an issuer whose operating cash flow IS balance-sheet financing.
+    # Reporting the data reason first is how JPM and USB spent four orders filed under
+    # `capex:no_tag`, which was accurate and led nowhere.
+    if applicability is not None and not applicability.applicable:
+        result.withheld[METRIC_FCF] = applicability.typed_reason
+        if applicability.detail:
+            result.withheld_detail[METRIC_FCF] = applicability.detail
+        return result
+
     if edgar is None:
         result.withheld["all"] = "no EDGAR data"
         return result
