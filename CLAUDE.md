@@ -57,11 +57,13 @@ section is the cold-start record; everything below it is the durable detail.
 Order `docs/orders/2026-08-28-closer.md`, report `docs/2026-08-28-closer.md`.
 Suite **1011 → 1051**. caliber.db **`70be9730` → `19d615fe`**.
 
-**★★ TOMORROW'S FIRST ACTION — ONE PER-NAME RULING IS PENDING AND NOTHING WILL PROCEED PAST
-IT: `QBTS  HIGROWTH → YOUNG`, band `20% → 30%` (the WIDER direction), `rule2_young`.**
-Detected by the new stage-freshness sweep, **read-only, NOTHING PERSISTED**. Approve or
-reject per name:
-`python -m tools.stage_freshness_sweep --approve QBTS --rationale "..."`
+**✅ RULED AND PERSISTED 2026-08-28 (micro session) — `QBTS HIGROWTH → YOUNG` IS APPROVED**,
+band `20% → 30%` (the WIDER direction), `rule2_young`. `stage_flip_approvals` id 1.
+**★ AN APPROVAL IS CONSENT, NOT PERSISTENCE — QBTS's `lifecycle_stage` row (id 28) STILL
+READS `HIGROWTH` AND WAS NOT TOUCHED.** The flip lands when the next evaluation of QBTS
+recomputes and writes; until then the stored stage, and therefore the live band, is
+unchanged at 20%. Verified live: `QBTS → YOUNG` PERMITTED, `QBTS → DECLINE` still HALTS,
+`IONQ → MATURE` still HALTS — the approval is per-transition, exactly as built.
 **Vic expected the sweep to find zero after the financials gate; it found one, and the
 reason is structural: EVERY stage row in the table predates its own inputs** (all 44 written
 2026-08-17; L-4c/L-4d/L-4f/L-4d.1 wrote series 21–22 August). **C was never the only case —
@@ -179,55 +181,23 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-28 (SECOND close, the "closer" order) — MEASURED. Supersedes every table below it.
+### ▶ STATE POINTER — FULL STATE LIVES IN `docs/closes/`, NOT HERE (Vic ruling 2, 2026-08-28)
 
 | | |
 |---|---|
-| HEAD | the **closer close commit** — verify with `git log -1`. THREE commits this session: the order doc (`7563b83`, before execution), then the arm+write+close. Previous session's last commit was **`ebd95d9`**. |
-| Suite | **1051 passed** (was 1011; +40). No pre-existing test broke. **11 of 40 verified to FAIL against disarmed guards.** |
-| caliber.db md5 | **`19d615fed542e1804fbb4bf0405878b1`**. Trail: `70be9730` (open) → `85417a2e` (**SCHEMA MIGRATION ONLY — 0 rows in any table**) → `08cb3eb3` (8 stage rows retired) → `19d615fe` (+1 anchor row). Backup `caliber.db.pre-closer-70be9730.bak`. |
-| **PRODUCTION WRITES** | **THREE, and one has no rows.** (0) additive schema: `lifecycle_stage.retired_reason/retired_at` + new table `stage_flip_approvals` — **md5 moved with ZERO row delta, say so out loud**. (1) **8 `lifecycle_stage` rows STAMPED retired** (0 inserted, 0 deleted, 0 edited) — expected 8, actual 8. (2) **+1 `fundamental_series` row** (the SKHY anchor) — expected +1, actual +1, restatements 0. Every other table re-counted: **all +0**. |
-| fundamental_series | **2622 rows** (was 2621). |
-| lifecycle_stage | **44 rows, unchanged — 8 RETIRED, 36 live.** |
-| stage_flip_approvals | **0 rows** — NEW TABLE, empty. QBTS is unapproved on purpose. |
-| step-4 evaluable | **20 of 28 — unchanged.** `SELECT DISTINCT ticker` reads 23; still do not use it. |
-| evaluations / field_provenance / transitions / grades / overrides / synthesis_cache | 80 / 1437 / 1 / 0 / 0 / 16 — **all unchanged**. |
+| HEAD | the **2026-08-28 micro-session close commit** — verify with `git log -1`. A block cannot contain its own hash. |
+| Suite | **1051 passed** |
+| caliber.db md5 | **`8752e75e05a8a7ff225258ec99d36fc3`** (was `19d615fe…`; +1 `stage_flip_approvals` row, the QBTS approval) |
+| Backup | `caliber.db.pre-qbts-approval-19d615fe.bak` |
+| Full state this close | `docs/closes/2026-08-28-micro.md` |
+| Prior closes | `docs/closes/` — index at `docs/closes/README.md` |
+| Open items | the 32-item census in `docs/2026-08-28-closer.md` §8 is the authoritative "what's left" list |
 
-### STATE AT CLOSE 2026-08-28 (FIRST close) — superseded above where they overlap.
-
-| | |
-|---|---|
-| HEAD | the **2026-08-28 close commit** — verify with `git log -1`. This session made TWO commits: the order document (`9cd0e74`, before any execution), then the arm + write + close. Previous session's last commit was **`390d20a`**. |
-| Suite | **1011 passed** (was 984; +27). No pre-existing test broke. **3 pins SUPERSEDED DELIBERATELY** — `test_the_compounder_metric_now_has_an_own_history_anchor` loses BK, and `test_an_issuer_with_no_capex_concept_gets_NO_anchor_and_says_why` narrows from `[V,JPM,USB]` to `[V]`. Both carry their original rationale verbatim; successor is `test_the_financials_class_WITHHOLDS_the_own_history_FCF_anchor`. **9 of 43 verified to FAIL pre-fix**, against a deliberately disarmed gate. |
-| caliber.db md5 | **`70be97300a3d53618532e9b7eb0c4cac`** — **CHANGED** (was `eec96270…`). WAL checkpointed `(0,0,0)` before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. Backup: **`caliber.db.pre-20260828-eec96270.bak`**, md5 verified equal to the pre-write db. |
-| **PRODUCTION WRITES** | **ONE WRITE POINT: +133 rows in `fundamental_series`** — 129 SKHY currency-block rows + 4 financials-class FLAG rows. Expected delta stated in the order doc before the write, dry-run against the destination first, reconciled exactly: **expected +133, actual +133, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, **all +0**. |
-| fundamental_series | **2621 rows, 23 distinct tickers** (was 2488 / 20). |
-| **★ step-4 evaluable** | **20 of 28 — UNCHANGED.** **`SELECT DISTINCT ticker` AND STEP-4 EVALUABILITY HAVE NOW DEFINITIVELY DIVERGED: 23 vs 20.** SKHY, JPM and USB hold ONLY block/flag rows and no numeric point. CLAUDE.md warned these could part; this is where they did. **Count through `evaluate._fy_series_from_db`, NEVER by `SELECT DISTINCT ticker`.** |
-| R2 all-negative-last-3 | **C, IONQ, QBTS, RKLB — unchanged by this order.** But see the C finding in the pickup block: C's membership is now the live open question. |
-| evaluations / lifecycle_stage / field_provenance / transitions / grades / overrides / synthesis_cache | **80 / 44 / 1437 / 1 / 0 / 0 / 16 — ALL UNCHANGED**, re-counted at close. |
-
-### STATE AT CLOSE 2026-08-22 (L-4d.1) — superseded above where they overlap; every value below was MEASURED at that close
-
-| | |
-|---|---|
-| HEAD | the **L-4d.1 close commit** — verify with `git log -1`. A block cannot contain its own hash. Previous session's last commit was **`4fe6dbb`** (L-4f close addendum). |
-| This session's commits | TWO: the L-4d.1 **order document** (`c4e4308`, committed BEFORE any execution per the order), then the arm + write + close. |
-| Pushed | **YES — `git rev-list --count origin/master..master` reads 0**, tree clean apart from gitignored `.snapshots/` and `.scratch_l4f/`. **`.scratch_lly/` NO LONGER EXISTS** — archived, see the pickup block. |
-| Suite | **975 passed** (was 953; +22, mostly `test_l4d1_lly_capex_basis.py`). No pre-existing test broke. **TWO `test_l4d_capex_synonym.py` pins were SUPERSEDED DELIBERATELY** — `test_LLY_third_tag_is_deliberately_absent` asserted the OPPOSITE of this order and is renamed `test_LLY_third_tag_is_ARMED`; `test_both_concepts_are_in_the_chain` is widened to the three-tag chain. Both carry `★ SUPERSEDED AT L-4d.1`. **9 of 41 verified to FAIL pre-fix.** |
-| caliber.db md5 | **eec96270720d80d632aa3a6f9528ea49** — **CHANGED THIS SESSION** (was `e3fe5ff9…`). WAL checkpointed (returned `(0,0,0)`) before each reading; the empty wal/shm pair read connections create was removed and the md5 re-verified after. |
-| **PRODUCTION WRITES THIS SESSION** | **ONE WRITE POINT: +114 rows in `fundamental_series` for ONE new ticker, LLY. Expected delta stated in the order doc before the write, dry-run against the destination first, reconciled exactly: expected +114, actual +114, restatements 0, superseded 0 — MATCH.** EVERY other table re-counted after, all +0. |
-| md5 trail this session | `e3fe5ff9` (open; unchanged across BOTH dark runs, the order-doc commit, the pins, the source edit, the 975-test suite AND the dry run) → **`eec96270`** (the single production write) → `eec96270` (post-write suite). Backup before the write: **`caliber.db.pre-l4d1-e3fe5ff9.bak`**, md5 verified equal to the pre-write db. |
-| evaluations | **80** rows, max id **272** · unchanged this session |
-| **defect-tagged** | **68 rows carry `defect_tags='TECHNICALS-REVERSED-AT-SYNTHESIS'`** — every row that ever carried a synthesis EXCEPT the post-fix STX id 272. The 11 untagged others are `failed` no-synthesis rows from 2026-07-10. |
-| lifecycle_stage | **44** rows (unchanged) |
-| lifecycle_transitions | **1** row (IONQ HIGROWTH → YOUNG) |
-| field_provenance | **1437** rows (unchanged) |
-| fundamental_series | **2488 rows, 20 tickers** (was 2374 / 19). Added LLY. · grades 0 · overrides 0 · lifecycle_overrides 0 · synthesis_cache 16 (evaluate.py never writes the cache) |
-| **step-4 evaluable** | **20 of 28**, read through the production reader `evaluate._fy_series_from_db` (documented and confirmed **oldest-first**, `ORDER BY period_end`, so the R2 signal reads `s[-3:]`, NOT `s[:3]`). ARM has 5 FY points, NVDA 5, the other 18 six. All-negative last-3 FY FCF (the R2 YOUNG signal): **IONQ, QBTS, RKLB, C — UNCHANGED by L-4d.1** (LLY's last three are `[0.792B, 3.760B, 8.972B]`, all POSITIVE, so it does not join). Near the boundary: LITE (n/n/p), BE (n/p/p). |
-| **ARM's rows** | fcf 14 (5 FY) · fcf_margin 14 (5) · reinvestment 14 (5) · fcf_growth 10 (4) · fcf_yield 10 (3) · revenue_growth 10 (4). **`sales_to_capital` 0 — ARM files no debt tag of any kind, so invested capital is uncomputable. NOT disqualifying: BE/BK/C/FN/IONQ already carry zero and count as evaluable; step-4 evaluability is the `fcf` FY series.** |
-| **the 8 still uncovered, and WHY** | Correctly fail-closed with an accurate reason: **JPM, USB, INFQ** (`capex:no_tag`) and **SKHY** (`operating_cashflow:no_tag; capex:no_tag` — **no us-gaap namespace at all**; see the ★ punch-list entry). Explicitly ruled OUT of scope: **CBRS/DPC/SPCX/XE** `ttm_unavailable` (YTD-only filers). **ARM and LLY are no longer among them.** ★ **No name is now uncovered by an unaddressed limit of ours** — the condition step 4 was blocking on. |
-| **V's share basis** | `truncated`, NOT `split_restated` — its 2015-03-19 split is uncorroborated (G-4 2-of-3 witnesses). Affects **`fcf_yield` only**; FCF is share-independent so the FY FCF step 4 reads is unaffected. Stamped per point. |
-| **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
+**★ THE RULE: a close writes FULL state to a dated file in `docs/closes/`; CLAUDE.md carries
+ONLY this ~10-line pointer block and NEVER a full state table.** The three tables that used to
+sit here (2026-08-28 closer, 2026-08-28 first, 2026-08-22 L-4d.1) were relocated VERBATIM —
+relocation only, nothing edited, nothing dropped; all 44 lines verified present in the
+destination files before removal.
 
 ### ARMED STATE — what reads what, precisely
 
@@ -273,7 +243,9 @@ re-derivation. L-4b is DONE.**
     that handler degrades an annotation failure to a one-line WARN, which is right for a feed
     flake and **IS the silent stage flip** here. Pinned over the AST on handler order.
   - **RUN THE SWEEP BEFORE ANY EVALUATION RUN** — `python -m tools.stage_freshness_sweep`,
-    read-only. **QBTS `HIGROWTH → YOUNG` is OUTSTANDING AND UNAPPROVED.**
+    read-only. **QBTS `HIGROWTH → YOUNG` was APPROVED 2026-08-28** (`stage_flip_approvals`
+    id 1), so the sweep no longer exits 6 on it. **No other flip is approved**, and any NEW
+    flip the sweep finds still HALTS.
 - **★ THE USD-ONLY CURRENCY GUARD IS ARMED ON SCORE-BEARING FIELDS (Vic ruling 4,
   2026-08-28).** `adapters.fmp_adapter.apply_currency_guard`, applied at the payload boundary
   so ONE enforcement point covers the live AND fixture paths.
@@ -545,11 +517,11 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
   a dedicated financials leg exists.** `BANK-RUNG-UNCALIBRATED` is now unreachable for the
   same reason. Do NOT "restore" bank scoring to fix a calibration gap — that is the ruling
   working.
-- **★★ QBTS `HIGROWTH → YOUNG` IS OUTSTANDING AND UNAPPROVED (2026-08-28).** Band
-  `20% → 30%`, the WIDER direction, `rule2_young`. Detected read-only; **nothing persisted**.
-  `python -m tools.stage_freshness_sweep --approve QBTS --rationale "..."`
-  **The general condition behind it is the bigger item: EVERY stage row predates its own
-  inputs** (44 rows written 2026-08-17; series written 21–22 August). 13 names recomputed to
+- **✅ QBTS `HIGROWTH → YOUNG` APPROVED 2026-08-28** (band `20% → 30%`, `rule2_young`,
+  `stage_flip_approvals` id 1). The stage row itself is UNCHANGED — the flip persists on
+  QBTS's next evaluation, not on the approval.
+  **THE GENERAL CONDITION BEHIND IT IS STILL FULLY OPEN, and approving one name did not
+  touch it: EVERY stage row predates its own inputs** (44 rows written 2026-08-17; series written 21–22 August). 13 names recomputed to
   the SAME stage, so the exposure is bounded and measured — but nothing re-computes a stage
   when its series changes, and the sweep is the only thing that looks.
 - **★ TWO DEFECTS FOUND IN THIS SESSION'S OWN WORK — the shapes recur, so read them.**
@@ -970,6 +942,17 @@ fail-closed 15%), which is the live held name that makes the band decision non-t
 
 - **PUSH ON LANDING.** Any commit that closes a ruled work order pushes immediately — no
   per-commit approval. Unpushed-at-close is the exception, not the norm.
+- **★ CLOSE STATE GOES TO `docs/closes/`, NOT INTO THIS FILE (Vic ruling 2, 2026-08-28).**
+  Every close writes its FULL measured state — md5 trail, write points, expected-vs-actual
+  reconciliation, per-table counts — to a DATED file `docs/closes/YYYY-MM-DD-<slug>.md`.
+  **CLAUDE.md carries ONLY the ~10-line STATE POINTER block** (HEAD · suite · md5 · backup
+  name · full-state file · open-items pointer) and **NEVER a full state table.** The pointer
+  block is REPLACED at each close, not appended to — one pointer, always current.
+  **WHY: state tables accreted three deep here, each labelled "supersedes every table below
+  it", and a cold-start session had to read all three to learn one md5.** A pointer that is
+  always current is cheaper to trust than a stack that has to be date-ordered by hand.
+  **The narrative, the rulings and the ARMED STATE section STAY** — they are not state
+  tables, they are what a session must know before it touches anything.
 - **EXPECTED-DELTA ON EVERY WRITE.** State the full expected delta set INCLUDING dependents
   before writing; report anything outside it rather than absorbing it. Standing companions of
   any evaluation write: `field_provenance` +N per eval, `synthesis_cache` +1 per ticker
@@ -1178,6 +1161,10 @@ LEFT THE WRITER RUNNING. A PPID read settled it in one command. Two sessions on 
 checkout is a data-loss hazard; an unverified kill target is a worse one.
 
 ## SESSION-CLOSE PROTOCOL (standing rule, 2026-08-09)
+- **★ WRITE `docs/closes/YYYY-MM-DD-<slug>.md` FIRST, THEN UPDATE THE POINTER BLOCK IN
+  CLAUDE.md.** Full state to the dated file; the pointer block gets HEAD, suite, md5, backup
+  name, the close-file path and the open-items pointer — and nothing else. Ruling 2,
+  2026-08-28. Index the new file in `docs/closes/README.md`.
 - **ENUMERATE CHILD PROCESSES BY PPID AND STOP THEM. A PATTERN GREP IS NOT A PROCESS CHECK.**
   `ps -eo pid,ppid,etime,cmd --no-headers | awk '$2==<own pid>'` — the parent/child link is
   STRUCTURAL; a grep pattern is a guess about what you happened to name things. Stop harness

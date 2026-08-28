@@ -471,9 +471,19 @@ def _build(
     #                        `000660.KS`, byte-identical, while this endpoint serves the
     #                        ADR's USD cap. A ~1,028x error on a score-bearing field.
     #   GOOG  ratio 0.9921 — key-metrics serves GOOG the cap of GOOGL (byte-identical),
-    #                        i.e. the issuer; this endpoint serves the class-C listing.
+    #                        i.e. the issuer; this endpoint prices the QUERIED LISTING.
     #                        −0.79%. NOT anticipated by the ruling; found by measurement
     #                        and reported rather than absorbed.
+    #                        ★ SAY WHAT THIS IS AND IS NOT (measured 2026-08-28, micro
+    #                        session). It is a class-specific PRICE on an ISSUER-WIDE share
+    #                        base — NOT a class-specific share count. Both caps divide by
+    #                        the SAME 12,102,111,286 shares (`shares-float` returns that
+    #                        figure identically for GOOG and GOOGL), so the entire gap is
+    #                        $343.84 vs $346.59 — the Class C / Class A quote spread.
+    #                        A genuinely class-C cap would be roughly HALF (~5.8B of 12.1B
+    #                        shares). Do NOT "correct" GOOG by halving it: neither endpoint
+    #                        is wrong, they answer different questions, and this is the same
+    #                        BASIS-difference class as the LLY EDGAR/FMP capex coexistence.
     #
     # FALLBACK IS DELIBERATE AND IS NOT A SILENT ONE. Recorded fixtures predate this
     # endpoint and carry no `market_capitalization` key, so offline runs keep the old
