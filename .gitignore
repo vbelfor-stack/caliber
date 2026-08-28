@@ -50,3 +50,6 @@ Thumbs.db
 
 # Doctrine order (2026-08-22) read-only feasibility scratch.
 .scratch_doctrine/
+
+# SKHY/financials-class order (2026-08-28) read-only probe scratch.
+.scratch_skhy/
