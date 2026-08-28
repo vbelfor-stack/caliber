@@ -13,6 +13,7 @@ Newest first.
 
 | close | file | md5 at close | suite |
 |---|---|---|---|
+| **2026-08-28 ACCEPTANCE — full-universe live run; ACCEPTANCE PASSED** | `2026-08-28-acceptance.md` | `69dc2328` | 1089 |
 | 2026-08-28 cleanup (rulings 1-6; zero writes) | `2026-08-28-cleanup.md` | `8752e75e` (unchanged) | 1089 |
 | 2026-08-28 micro (QBTS approval, GOOG diagnosis, close-state migration) | `2026-08-28-micro.md` | `8752e75e` | 1051 |
 | 2026-08-28 second, the "closer" order | `2026-08-28-closer.md` | `19d615fe` | 1051 |

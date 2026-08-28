@@ -1,0 +1,193 @@
+========================================================================
+  CALIBER v3  --  GOOGL
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Alphabet Inc.  sector=Communication Services  industry=Internet Content & Information
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001652044  SIC=7370  (Services-Computer Programming, Data Processing, Etc.)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] GOOGL  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=8 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   2.724            2.724      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                   17.6            15.64     11.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP debtToEquityRatioTTM is NET debt/equity; EDGAR is gross]
+  free_cashflow               7.327e+10        5.327e+10     27.3   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                    0.609            0.609      0.0   2026-06-30   59d  medium→high      agree
+  operating_cashflow          1.647e+11        1.857e+11     12.7   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin               0.3311           0.3311      0.0   2026-06-30   59d  medium→high      agree
+ *profit_margin                  0.5477           0.5477      0.0   2026-06-30   59d  medium→high      agree
+ *roa                            0.2649           0.2649      0.0   2026-06-30   59d  medium→high      agree
+ *roe                            0.5084           0.4868      4.3   2026-06-30   59d  medium→high      agree
+ *shares_outstanding           1.21e+10        1.223e+10      1.1   2026-06-30   59d  medium→high      agree
+  total_cash                  1.268e+11        2.425e+11     91.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+ *total_cash@FY               1.268e+11        1.268e+11      0.0   2025-12-31  240d  medium→high      agree  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  total_debt                  5.929e+10        1.002e+11     68.9   2026-06-30   59d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)        5.929e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(stale_tag)]
+ dtotal_debt@FY               5.929e+10         6.45e+10      8.8   2025-12-31  240d  medium→low       conflict  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  totals: agree=8, basis_mismatch=5, conflict=1, no_edgar=1 | would-change 8/15 applied 8: gross_margin→high, operating_margin→high, profit_margin→high, roe→high, roa→high, current_ratio→high, shares_outstanding→high, total_cash→high
+
+  Valuation lens: QUALITY COMPOUNDER (compounder)
+[SPLITS] GOOGL: 1 corroborated, 0 uncorroborated, 1 out-of-scope (horizon 2017-02-03)
+  OK 2022-07-18  20:1  witnesses=3/3 [fmp_splits,edgar_restatement,edgar_tagged_ratio]
+      fmp 20 ex 2022-07-18; CommonStockSharesOutstanding@2021-12-31: 662,121,000 vs 13,242,000,000; StockholdersEquityNoteStockSplitConversionRatio1@2022-07-15: 20
+  OUT-OF-SCOPE 2014-04-03 1.998:1 — predates the oldest share filing (2017-02-03), cannot apply to any fact
+[VAL-PANEL D-0] GOOGL  lens=compounder  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        5.81     4.67    +1.14  
+  earnings_yield_trailing    sector           5.81     4.90    +0.91  
+  earnings_yield_trailing    own_history      5.81     4.37    +1.44  median of 20 quarters, 2021-09-30→2026-06-30; basis=split_restated
+  earnings_yield_forward     risk_free        7.08     4.67    +2.41  
+  earnings_yield_forward     sector           7.08     4.90    +2.18  
+  earnings_yield_forward     own_history      7.08        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        1.27     4.67    -3.40  
+  fcf_yield                  sector           1.27     4.90    -3.63  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      1.27     3.70    -2.43  median of 20 quarters, 2021-09-30→2026-06-30; basis=split_restated
+  ebitda_yield               risk_free        7.69     4.67    +3.02  
+  ebitda_yield               sector           7.69     4.90    +2.79  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      7.69        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=sector (+0.91pp), anchors 0.53pp apart  all anchors agree
+  earnings_yield_forward     least-flattering=sector (+2.18pp), anchors 0.23pp apart  all anchors agree
+  fcf_yield                  least-flattering=sector (-3.63pp), anchors 1.20pp apart  all anchors agree
+  ebitda_yield               least-flattering=sector (+2.79pp), anchors 0.23pp apart  all anchors agree
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] GOOGL — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  compounder  fcf_yield                   1     1    1  +0  sector        -3.63pp  VERY-RICH-VS-SECTOR
+
+  Business Quality
+  Score: 5/5  [=][=][=][=][=]  [HI]
+  Lens: compounder
+  Rationale: Gross margin 60.9%, operating margin 33.1%, ROE 50.8%.
+  Key inputs:
+    0.6090  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.3311  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.5084  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.2649  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: compounder
+  Rationale: Current ratio 2.72, debt/equity 18%, FCF $73.3B.
+  Flags: NET-CASH-POSITIVE
+  Key inputs:
+    2.72  [HI] src=fmp+EDGAR as_of=2026-08-28
+    17.60  [MED] src=fmp as_of=2026-08-28
+    73266000000  [MED] src=fmp as_of=2025-12-31
+    59291000000  [MED] src=fmp as_of=2025-12-31
+    126843000000  [HI] src=fmp+EDGAR as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: EPS beat rate 100%, avg surprise +56.2%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    12102111286  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Revenue growth 15.1% YoY. Forward PE 14.1x. EPS trend: improving.
+  Key inputs:
+    0.1509  [MED] src=fmp as_of=2026-08-28
+    17.21  [MED] src=fmp as_of=2026-08-28
+    14.12  [MED] src=fmp as_of=2026-08-28
+    0  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 1/5  [ ][ ][ ][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Quality compounder (asset-light network) lens. FCF yield vs sector (-3.6pp). 10Y rate 4.67%.
+  Flags: VERY-RICH-VS-SECTOR
+  Key inputs:
+    0.0127  [MED] src=fmp as_of=2026-08-28
+    13.01  [MED] src=fmp as_of=2026-08-28
+    0.1509  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.8/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: NET-CASH-POSITIVE, BEAT-TREND-IMPROVING, VERY-RICH-VS-SECTOR
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    False
+  Above MA200:   True
+  RSI-14:        37.8
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -0.9113  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 3.59  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $346.59. MA50=349.78 MA200=334.57 RSI=37.8. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$346.21 live=$346.59 divergence=0.1%  (armed @ 15%, no trip)
+
+  Current price: $346.59 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%        $450    +29.8%
+  Base        45%        $375     +8.2%
+  Bear        30%        $265    -23.5%
+  ----------------------------------------
+  E(R) probability-weighted: +4.1%
+
+  Verdict confidence: medium
+  Reason: Exceptional business quality and balance sheet, but valuation pillar scores 1/5 (VERY-RICH-VS-SECTOR, FCF yield -3.6pp vs sector at 4.67% risk-free). Agentic-AI disruption to Search monetization is material and unresolved.
+
+  Red flags:
+    - VERY-RICH-VS-SECTOR: FCF yield trails sector by 3.6pp against a 4.67% risk-free rate — premium is hard to justify on yield alone
+    - Price below MA50 ($349.78) with no volume confirmation — near-term momentum is weak
+    - RSI 37.8 approaching oversold but without volume support, suggesting distribution not accumulation
+    - Agentic-AI and LLM-native search (Perplexity, ChatGPT Search) pose structural threat to core Search CPCs — unresolved and unquantified
+    - Regulatory overhang: DOJ antitrust remedies (Search distribution, ad-tech) could impair revenue structurally — training-knowledge flag, not in provided data
+
+  Bear thesis: Agentic AI commoditizes Search queries; DOJ remedies impair distribution economics; multiple compresses as growth decelerates and rates stay elevated.
+
+  Data gaps (7):
+    - Insider ownership and recent insider transaction data not provided — limits management alignment assessment
+    - Segment-level FCF breakdown (Search vs Cloud vs YouTube) not provided — obscures where value is being created
+    - Analyst consensus price targets not provided in input — sell-side view added from training knowledge only, treat as unverified
+    - DOJ antitrust remedy specifics and timeline not quantified in provided data
+    - Google Cloud revenue growth rate not separately provided — limits Cloud re-acceleration thesis verification
+    - Share count and buyback pace not provided — limits EPS compounding model
+    - Agentic-AI query diversion rate and CPC impact data not available — core bear risk is unquantified
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: compounder)
+  Flags: REINVESTMENT-THRESHOLD-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +557bp 2022-12-31->2025-12-31 (26.46% -> 32.03%)
+    OK  rule1_decline    capital_returns        pays_dividend=True; net_buyback=False
+    no  rule2_young      margin_sign            latest FY operating margin 32.03% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2023, 2024, 2025)
+    no  rule3_higrowth   revenue_cagr           12.51%/y 2022-12-31->2025-12-31 (282,836,000,000 -> 402,836,000,000)
+    OK  rule3_higrowth   reinvestment_heavy     sales/capital 1.195 @ 2025-12-31 vs bar 1.50 — HEAVY reinvestment
+    no  rule3_higrowth   capital_returns        pays_dividend=True; net_buyback=False
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=52, GOOGL); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=280)
+========================================================================
+  Readout complete.
+========================================================================

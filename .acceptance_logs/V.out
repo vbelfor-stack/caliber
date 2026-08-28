@@ -1,0 +1,200 @@
+========================================================================
+  CALIBER v3  --  V
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Visa Inc.  sector=Financial Services  industry=Financial - Credit Services
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001403161  SIC=7389  (Services-Business Services, NEC)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] V  as_of=2026-08-28  latest_period_end=2026-03-31  APPLIED=0 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+  current_ratio                  0.9852            1.088     10.4   2026-03-31  150d  medium→medium    stale_capped  [conflict suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  debt_to_equity                  67.82            67.23      0.9   2026-03-31  150d  medium→medium    basis_mismatch  [FMP debtToEquityRatioTTM is NET debt/equity; EDGAR is gross]
+  free_cashflow               2.158e+10        2.118e+10      1.8   2026-03-31  150d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  gross_margin                   0.8018                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete)]
+  operating_cashflow          2.306e+10        2.276e+10      1.3   2026-03-31  150d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  operating_margin               0.6068           0.6112      0.7   2026-03-31  150d  medium→medium    stale_capped  [agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  profit_margin                  0.5078           0.5168      1.8   2026-03-31  150d  medium→medium    stale_capped  [agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  roa                            0.2388           0.2339      2.1   2026-03-31  150d  medium→medium    stale_capped  [agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  roe                            0.6126           0.6035      1.5   2026-03-31  150d  medium→medium    stale_capped  [agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  shares_outstanding          1.867e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: shares_outstanding(stale_tag)]
+  total_cash                  2.199e+10         1.24e+10     43.6   2026-03-31  150d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_cash@FY               2.199e+10        1.716e+10     21.9   2025-09-30  332d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_debt                  2.517e+10        2.398e+10      4.7   2026-03-31  150d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)        2.517e+10        2.489e+10      1.1   2025-09-30  332d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt@FY               2.517e+10        2.608e+10      3.6   2025-09-30  332d  medium→medium    stale_capped  [alignment revoked — FMP value no longer tracks the matched period (FMP 2.517e+10 vs matched 2.608e+10 vs MRQ 2.489e+10); aged absolutely; agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  FLAG XBRL-LAG: submissions index has period 2026-06-30 but companyfacts tops out at 2026-03-31 — EDGAR values are one filing behind FMP
+  [FRESHNESS-WATCH] V: EDGAR data 150d old; June-Q filed 2026-07-29, extraction pending (XBRL-LAG); fresher data expected imminently
+  totals: basis_mismatch=7, no_edgar=2, stale_capped=6 | would-change 0/15 (nothing to apply)
+
+  [FRESHNESS-WATCH] V: EDGAR data 150d old; June-Q filed 2026-07-29, extraction pending (XBRL-LAG); fresher data expected imminently
+
+  Valuation lens: QUALITY COMPOUNDER (compounder)
+[SPLITS] V: 0 corroborated, 1 uncorroborated, 0 out-of-scope (horizon 2009-11-20)
+  !! 2015-03-19  4:1  witnesses=1/3 [fmp_splits]
+      fmp 4 ex 2015-03-19
+  NOTE UNCORROBORATED SPLIT V 2015-03-19 4:1 — FMP is the only witness (single-source). EDGAR offers no restatement or tagged ratio for it.
+[VAL-PANEL D-0] V  lens=compounder  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        3.08     4.67    -1.59  
+  earnings_yield_trailing    sector           3.08     5.58    -2.49  
+  earnings_yield_trailing    own_history      3.08        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated (1 in-scope split(s) uncorroborated (2015-03-19) — 2-of-3 witnesses required)
+  earnings_yield_forward     risk_free        5.02     4.67    +0.35  
+  earnings_yield_forward     sector           5.02     5.58    -0.56  
+  earnings_yield_forward     own_history      5.02        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        2.95     4.67    -1.72  
+  fcf_yield                  sector           2.95     5.58    -2.63  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      2.95        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (no usable fcf_yield quarters)
+  ebitda_yield               risk_free        4.02     4.67    -0.65  
+  ebitda_yield               sector           4.02     5.58    -1.56  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      4.02        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=sector (-2.49pp), anchors 0.91pp apart  all anchors agree
+  earnings_yield_forward     least-flattering=sector (-0.56pp), anchors 0.91pp apart  SPLIT — cheap vs risk_free, rich vs sector
+  fcf_yield                  least-flattering=sector (-2.63pp), anchors 0.91pp apart  all anchors agree
+  ebitda_yield               least-flattering=sector (-1.56pp), anchors 0.91pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history on the TRUNCATED basis — truncated (1 in-scope split(s) uncorroborated (2015-03-19) — 2-of-3 witnesses required)
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] V — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  compounder  fcf_yield                   2     2    1  +0  sector        -2.63pp  RICH-VS-SECTOR,PANEL-NARROWED-MARKET-ONLY
+
+  Business Quality
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: compounder
+  Rationale: Gross margin 80.2%, operating margin 60.7%, ROE 61.3%.
+  Key inputs:
+    0.8018  [MED] src=fmp as_of=2026-08-28
+    0.6068  [MED] src=fmp as_of=2026-08-28
+    0.6126  [MED] src=fmp as_of=2026-08-28
+    0.2388  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Current ratio 0.99, debt/equity 68%, FCF $21.6B.
+  Flags: CURRENT-RATIO-BELOW-1
+  Key inputs:
+    0.9852  [MED] src=fmp as_of=2026-08-28
+    67.82  [MED] src=fmp as_of=2026-08-28
+    21577000000  [MED] src=fmp as_of=2025-09-30
+    25171000000  [MED] src=fmp as_of=2025-09-30
+    21987000000  [MED] src=fmp as_of=2025-09-30
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: EPS beat rate 100%, avg surprise +3.1%, trend stable. Insider signal: no_data.
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    1867047211  [MED] src=fmp as_of=2026-08-28
+
+  Growth / Forward
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Revenue growth 11.3% YoY. Forward PE 19.9x. EPS trend: stable.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.1134  [MED] src=fmp as_of=2026-08-28
+    32.42  [MED] src=fmp as_of=2026-08-28
+    19.92  [MED] src=fmp as_of=2026-08-28
+    14  [MED] src=fmp as_of=2026-08-28
+    stable  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Quality compounder (asset-light network) lens. FCF yield vs sector (-2.6pp). 10Y rate 4.67%.
+  Flags: RICH-VS-SECTOR, PANEL-NARROWED-MARKET-ONLY
+  Key inputs:
+    0.0295  [MED] src=fmp as_of=2026-08-28
+    24.88  [MED] src=fmp as_of=2026-08-28
+    0.1134  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.8/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: CURRENT-RATIO-BELOW-1, EARNINGS-GROWTH-EXPECTED, RICH-VS-SECTOR, PANEL-NARROWED-MARKET-ONLY
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BULLISH
+  Above MA50:    True
+  Above MA200:   True
+  RSI-14:        70.6
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: 6.47  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 14.60  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $381.60. MA50=358.41 MA200=333.00 RSI=70.6. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$368.00 live=$381.60 divergence=3.6%  (armed @ 15%, no trip)
+
+  Current price: $381.60 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%        $457    +19.8%
+  Base        50%        $408     +6.9%
+  Bear        25%        $305    -20.1%
+  ----------------------------------------
+  E(R) probability-weighted: +3.4%
+
+  Verdict confidence: medium
+  Reason: Exceptional compounder quality (60%+ op margin, 61% ROE) but valuation pillar scores 2/5 with FCF yield lagging sector by 2.6pp at 4.67% risk-free rate. RSI overbought, no volume confirmation. Medium confidence reflects rich entry.
+
+  Red flags:
+    - Valuation rich vs sector: FCF yield deficit of 2.6pp against a 4.67% 10Y rate compresses margin of safety
+    - RSI 70.6 — technically overbought with no volume confirmation of breakout
+    - Current ratio 0.99 — sub-1 liquidity, though FCF of $21.6B renders this largely structural not distress
+    - PANEL-NARROWED-MARKET-ONLY: valuation comparison set may understate richness vs broader opportunity set
+    - No insider transaction data available — removes a key capital-allocation signal
+
+  Bear thesis: Rate-driven multiple compression, regulatory disruption, or macro payment volume slowdown re-prices Visa toward fair value; overbought technicals accelerate drawdown.
+
+  Data gaps (7):
+    - Insider transaction data unavailable — cannot assess management conviction signal
+    - Exact FCF yield figure not provided — inferred from sector comparison delta only
+    - No independent analyst price targets anchored to current live price
+    - Regulatory exposure quantification (DOJ antitrust) not in provided pillars — material unresolved risk
+    - Segment-level revenue breakdown (domestic vs cross-border vs data services) not provided
+    - Share count and buyback pace not specified — limits precision on per-share compounding math
+    - Competitive response from real-time payment networks (FedNow, RTP) not quantified in growth pillar
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: compounder)
+  Flags: REINVESTMENT-THRESHOLD-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-09-30
+    OK  rule1_decline    margin_trend_bp        -420bp 2022-09-30->2025-09-30 (64.19% -> 59.98%)
+    OK  rule1_decline    capital_returns        pays_dividend=True
+    no  rule2_young      margin_sign            latest FY operating margin 59.98% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2023, 2024, 2025)
+    no  rule3_higrowth   revenue_cagr           10.92%/y 2022-09-30->2025-09-30 (29,310,000,000 -> 40,000,000,000)
+    OK  rule3_higrowth   reinvestment_heavy     sales/capital 0.871 @ 2025-09-30 vs bar 1.50 — HEAVY reinvestment
+    no  rule3_higrowth   capital_returns        pays_dividend=True
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=66, V); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=294)
+========================================================================
+  Readout complete.
+========================================================================

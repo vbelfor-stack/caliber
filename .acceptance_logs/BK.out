@@ -1,0 +1,32 @@
+========================================================================
+  CALIBER v3  --  BK
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=The Bank of New York Mellon Corporation  sector=Financial Services  industry=Investment - Banking & Investment Services
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001390777  SIC=6022  (State Commercial Banks)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] BK  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=2 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+  current_ratio                   40.62                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_assets(no_tag), current_liabilities(no_tag)]
+  debt_to_equity                  78.77                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: equity(synonym_conflict)]
+  free_cashflow               5.177e+09        1.592e+09     69.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  gross_margin                   0.5906                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete)]
+  operating_cashflow           6.73e+09         3.57e+09     47.0   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  operating_margin               0.2217                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(no_tag)]
+  profit_margin                   0.175           0.3137     79.2   2025-12-31  240d  medium→medium    stale_capped  [conflict suppressed — age 240d > 150d threshold]
+ *roa                             0.012            0.012      0.0   2026-06-30   59d  medium→high      agree
+  roe                            0.1418                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: equity(synonym_conflict)]
+ *shares_outstanding          6.864e+08        6.785e+08      1.1   2026-06-30   59d  medium→high      agree
+  total_cash                  1.907e+11        7.483e+09     96.1   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_cash@FY               1.907e+11        5.111e+09     97.3   2025-12-31  240d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_debt                  3.388e+10        3.518e+10      3.9   2026-06-30   59d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)        3.388e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY               3.388e+10        3.532e+10      4.3   2025-12-31  240d  medium→high      agree  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  totals: agree=3, basis_mismatch=5, no_edgar=6, stale_capped=1 | would-change 2/15 applied 2: roa→high, shares_outstanding→high
+
+  Valuation lens: BANK / INSURER / REIT (bank)

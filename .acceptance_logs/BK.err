@@ -1,0 +1,15 @@
+
+========================================================================
+  REFUSED TO SCORE — FCF MODEL INAPPLICABLE (financials)
+========================================================================
+
+FMP sector='Financial Services' industry='Investment - Banking & Investment Services' classifies as bank — banks, insurers and diversified financials have no meaningful free-cash-flow reading: operating cash flow is dominated by balance-sheet financing and capex is immaterial, so `ocf - capex` computes cleanly and measures nothing. RULED A CLASS by Vic 2026-08-28; not a coverage gap and not fixable with better inputs.
+
+Typed reason: fcf:model_inapplicable:financials
+
+Nothing numeric was computed and NOTHING was written: no pillars, no E(R),
+no lifecycle stage, no evaluation row. The stored flag row in `fundamental_series`
+is the record.
+
+Financials are UNSCOREABLE pending a dedicated leg — the router and the gate are
+shipped, the engine is not built. Ruled by Vic 2026-08-28.

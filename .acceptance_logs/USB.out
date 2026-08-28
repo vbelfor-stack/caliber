@@ -1,0 +1,32 @@
+========================================================================
+  CALIBER v3  --  USB
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=U.S. Bancorp  sector=Financial Services  industry=Banks - Diversified
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0000036104  SIC=6021  (National Commercial Banks)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] USB  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=3 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+  current_ratio                   1.781                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_assets(no_tag), current_liabilities(no_tag)]
+  debt_to_equity                  142.4                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(stale_tag), equity(synonym_conflict)]
+  free_cashflow                7.97e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: capex(no_tag)]
+  gross_margin                   0.6378                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete)]
+  operating_cashflow           7.97e+09        1.252e+10     57.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  operating_margin               0.2395                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(no_tag)]
+ *profit_margin                  0.1869           0.2751     47.2   2026-06-30   59d  medium→low       conflict
+ *roa                           0.01126          0.01125      0.1   2026-06-30   59d  medium→high      agree
+  roe                            0.1249                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: equity(synonym_conflict)]
+ *shares_outstanding          1.558e+09        1.558e+09      0.0   2026-07-31   28d  medium→high      agree
+  total_cash                  1.377e+11        6.649e+10     51.7   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(no_tag)]]
+  total_cash@FY               1.377e+11        4.689e+10     66.0   2025-12-31  240d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(no_tag)]]
+  total_debt                  7.793e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(stale_tag)]
+ dtotal_debt(reported)        7.793e+10        6.009e+10     22.9   2025-12-31  240d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt@FY               7.793e+10        6.218e+10     20.2   2025-12-31  240d  medium→low       conflict  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  totals: agree=2, basis_mismatch=4, conflict=2, no_edgar=7 | would-change 3/15 applied 3: profit_margin→low, roa→high, shares_outstanding→high
+
+  Valuation lens: BANK / INSURER / REIT (bank)

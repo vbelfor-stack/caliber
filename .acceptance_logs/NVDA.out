@@ -1,0 +1,202 @@
+========================================================================
+  CALIBER v3  --  NVDA
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=NVIDIA Corporation  sector=Technology  industry=Semiconductors
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001045810  SIC=3674  (Semiconductors & Related Devices)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] NVDA  as_of=2026-08-28  latest_period_end=2026-07-26  APPLIED=7 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   4.589            4.589      0.0   2026-07-26   33d  medium→high      agree
+  debt_to_equity                  16.97                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  free_cashflow               9.668e+10         1.27e+11     31.4   2026-07-26   33d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.7467           0.7467      0.0   2026-07-26   33d  medium→high      agree
+  operating_cashflow          1.027e+11        1.344e+11     30.8   2026-07-26   33d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin               0.6521           0.6521      0.0   2026-07-26   33d  medium→high      agree
+ *profit_margin                  0.6366           0.6366      0.0   2026-07-26   33d  medium→high      agree
+ *roa                            0.6022           0.6022      0.0   2026-07-26   33d  medium→high      agree
+ *roe                             1.101            1.172      6.4   2026-07-26   33d  medium→low       conflict
+ *shares_outstanding          2.422e+10         2.41e+10      0.5   2026-08-21    7d  medium→high      agree
+  total_cash                  6.256e+10        7.156e+10     14.4   2025-10-26  306d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+  total_cash@FY               6.256e+10         1.06e+10     83.0   2026-01-25  215d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(not filed @2026-01-25)]]
+  total_debt                  1.141e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+ dtotal_debt(reported)        1.141e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY               1.141e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  totals: agree=6, basis_mismatch=4, conflict=1, no_edgar=4 | would-change 7/15 applied 7: gross_margin→high, operating_margin→high, profit_margin→high, roe→low, roa→high, current_ratio→high, shares_outstanding→high
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] NVDA: 2 corroborated, 0 uncorroborated, 4 out-of-scope (horizon 2010-03-18)
+  OK 2024-06-10  10:1  witnesses=3/3 [fmp_splits,edgar_restatement,edgar_tagged_ratio]
+      fmp 10 ex 2024-06-10; CommonStockSharesOutstanding@2024-01-28: 2,464,000,000 vs 24,643,000,000; StockholdersEquityNoteStockSplitConversionRatio1@2024-06-30: 10
+  OK 2021-07-20  4:1  witnesses=3/3 [fmp_splits,edgar_restatement,edgar_tagged_ratio]
+      fmp 4 ex 2021-07-20; CommonStockSharesOutstanding@2021-01-31: 620,000,000 vs 2,479,000,000; StockholdersEquityNoteStockSplitConversionRatio1@2021-07-19: 4
+  OUT-OF-SCOPE 2007-09-11 1.5:1 — predates the oldest share filing (2010-03-18), cannot apply to any fact
+  OUT-OF-SCOPE 2006-04-07 2:1 — predates the oldest share filing (2010-03-18), cannot apply to any fact
+  OUT-OF-SCOPE 2001-09-12 2:1 — predates the oldest share filing (2010-03-18), cannot apply to any fact
+  OUT-OF-SCOPE 2000-06-27 2:1 — predates the oldest share filing (2010-03-18), cannot apply to any fact
+[VAL-PANEL D-0] NVDA  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        3.65     4.67    -1.02  
+  earnings_yield_trailing    sector           3.65     2.26    +1.39  
+  earnings_yield_trailing    own_history      3.65     1.92    +1.73  median of 20 quarters, 2021-10-31→2026-07-26; basis=split_restated
+  earnings_yield_forward     risk_free        9.19     4.67    +4.52  
+  earnings_yield_forward     sector           9.19     2.26    +6.93  
+  earnings_yield_forward     own_history      9.19        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        2.41     4.67    -2.26  
+  fcf_yield                  sector           2.41     2.26    +0.15  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      2.41     1.74    +0.67  median of 15 quarters, 2022-01-30→2026-07-26; basis=split_restated
+  ebitda_yield               risk_free        4.42     4.67    -0.25  
+  ebitda_yield               sector           4.42     2.26    +2.16  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      4.42        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (-1.02pp), anchors 2.75pp apart  SPLIT — cheap vs sector+own_history, rich vs risk_free
+  earnings_yield_forward     least-flattering=risk_free (+4.52pp), anchors 2.41pp apart  all anchors agree
+  fcf_yield                  least-flattering=risk_free (-2.26pp), anchors 2.93pp apart  SPLIT — cheap vs sector+own_history, rich vs risk_free
+  ebitda_yield               least-flattering=risk_free (-0.25pp), anchors 2.41pp apart  SPLIT — cheap vs sector, rich vs risk_free
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] NVDA — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    earnings_yield_trailing     2     2    2  +0  risk_free     -1.02pp  RICH-VS-RISK-FREE
+
+  Business Quality
+  Score: 5/5  [=][=][=][=][=]  [LOW]
+  Lens: cyclical
+  Rationale: Gross margin 74.7%, operating margin 65.2%, ROE 110.1%. Peak-cycle margins inflate quality score.
+  Flags: CYCLE-PEAK-MARGINS
+  Key inputs:
+    0.7467  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.6521  [HI] src=fmp+EDGAR as_of=2026-08-28
+    1.10  [LOW] src=fmp[1.101@2026-08-28] vs EDGAR[1.172@2026-07-26] CONFLICT as_of=2026-08-28
+    0.6022  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 4.59, debt/equity 17%, FCF $96.7B.
+  Flags: NET-CASH-POSITIVE
+  Key inputs:
+    4.59  [HI] src=fmp+EDGAR as_of=2026-08-28
+    16.97  [MED] src=fmp as_of=2026-08-28
+    96676000000  [MED] src=fmp as_of=2026-01-25
+    11412000000  [MED] src=fmp as_of=2026-01-25
+    62556000000  [MED] src=fmp as_of=2026-01-25
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 100%, avg surprise +5.7%, trend stable. Insider signal: no_data.
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    24221000000  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth 65.5% YoY. Forward PE 10.9x. EPS trend: stable.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.6547  [MED] src=fmp as_of=2026-08-28
+    27.36  [MED] src=fmp as_of=2026-08-28
+    10.88  [MED] src=fmp as_of=2026-08-28
+    21  [MED] src=fmp as_of=2026-08-28
+    stable  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: near-peak (TTM). Trailing earnings yield vs risk_free (-1.0pp). Peak-cycle earnings: low multiple is a sell signal, not cheap. 10Y rate 4.67%.
+  Flags: CYCLE-PEAK-MARGINS, RICH-VS-RISK-FREE, LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP
+  Key inputs:
+    27.36  [MED] src=fmp as_of=2026-08-28
+    10.88  [MED] src=fmp as_of=2026-08-28
+    0.7467  [HI] src=fmp+EDGAR as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 4.2/5.0
+  Overall confidence:  low  (min of pillar confidences)
+  All flags: CYCLE-PEAK-MARGINS, NET-CASH-POSITIVE, EARNINGS-GROWTH-EXPECTED, CYCLE-PEAK-MARGINS, RICH-VS-RISK-FREE, LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BULLISH
+  Above MA50:    True
+  Above MA200:   True
+  RSI-14:        50.0
+  Vol confirm:   True  (>=1.5x 30d avg = conviction)
+    vs MA50 %: 4.38  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 11.09  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $217.55. MA50=208.42 MA200=195.83 RSI=50.0. Volume confirmation: True.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$215.55 live=$217.55 divergence=0.9%  (armed @ 15%, no trip)
+
+  Current price: $217.55 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%        $310    +42.5%
+  Base        45%        $200     -8.1%
+  Bear        30%        $130    -40.2%
+  ----------------------------------------
+  E(R) probability-weighted: -5.1%
+
+  Verdict confidence: low
+  Reason: Cyclical lens flags peak-cycle margins; low PE is a sell signal, not cheap. Earnings yield trails risk-free by ~1pp. Business quality score confidence is low. Structural AI demand vs. cycle-peak valuation unresolved.
+
+  Red flags:
+    - CYCLE-PEAK-MARGINS: 74.7% gross / 65.2% operating margins likely unsustainable at mid-cycle; mean reversion risk is material
+    - LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP: Forward PE 10.9x on peak earnings is a sell signal under cyclical lens, not a value opportunity
+    - RICH-VS-RISK-FREE: Earnings yield trails 10Y Treasury (4.67%) by ~1pp, offering no risk premium at current price
+    - Insider signal: no_data — capital allocation confidence capped at medium; buyback pace vs. dilution unverifiable from provided data
+    - Agentic-AI commoditization risk unresolved: if inference workloads shift to cheaper ASICs or custom silicon, datacenter GPU TAM and pricing power compress
+
+  Bear thesis: Cycle turns: hyperscaler capex digestion, custom-silicon displacement, and agentic-AI reducing GPU-intensive training demand trigger margin and multiple compression simultaneously.
+
+  Data gaps (7):
+    - Insider buying/selling data not provided — capital allocation conviction capped
+    - Segment-level revenue split (datacenter vs. gaming vs. auto) not provided — cycle exposure unquantifiable
+    - Normalized mid-cycle EPS estimate absent — prevents rigorous cyclically-adjusted PE calculation
+    - China/export-control revenue exposure quantum not in provided data
+    - Competitor market share trajectory (AMD, custom silicon) not in provided data
+    - Blackwell ramp yield and supply-chain constraints not in provided data
+    - Short interest and institutional positioning not provided
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: cyclical)
+  Flags: REINVESTMENT-THRESHOLD-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2026-01-25
+    no  rule1_decline    margin_trend_bp        +4472bp 2023-01-29->2026-01-25 (15.66% -> 60.38%)
+    OK  rule1_decline    capital_returns        pays_dividend=True; net_buyback=False
+    no  rule1_decline    cyclical_peak_to_peak  does not fire — no decline streak to gate (streak 0)
+    no  rule1_decline    cyclical_peaks         1 local peak(s): 2019 11,716,000,000
+    no  rule2_young      margin_sign            latest FY operating margin 60.38% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2024, 2025, 2026)
+    OK  rule2_young      cyclical_has_earned    earned in 2023, 2024, 2025, 2026 (positive operating margin AND positive FCF) — not pre-earnings
+    OK  rule3_higrowth   revenue_cagr           100.05%/y 2023-01-29->2026-01-25 (26,974,000,000 -> 215,938,000,000)
+    no  rule3_higrowth   reinvestment_heavy     sales/capital 2.191 @ 2026-01-25 vs bar 1.50 — light reinvestment
+    no  rule3_higrowth   capital_returns        pays_dividend=True; net_buyback=False
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=60, NVDA); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=288)
+========================================================================
+  Readout complete.
+========================================================================

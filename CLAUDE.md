@@ -201,11 +201,12 @@ re-derivation. L-4b is DONE.**
 
 | | |
 |---|---|
-| HEAD | the **2026-08-28 cleanup close commit** — verify with `git log -1`. A block cannot contain its own hash. |
+| HEAD | the **2026-08-28 ACCEPTANCE close commit** — verify with `git log -1`. A block cannot contain its own hash. |
 | Suite | **1089 passed** |
-| caliber.db md5 | **`8752e75e05a8a7ff225258ec99d36fc3`** — **UNCHANGED; the cleanup session made ZERO production writes** |
-| Backup | `caliber.db.pre-qbts-approval-19d615fe.bak` (prior session; nothing written since) |
-| Full state this close | `docs/closes/2026-08-28-cleanup.md` |
+| caliber.db md5 | **`69dc2328ee3af8a43d506b64665da39b`** (was `8752e75e…`; the full-universe acceptance run) |
+| Backup | `caliber.db.pre-acceptance-8752e75e.bak` |
+| Full state this close | `docs/closes/2026-08-28-acceptance.md` |
+| **★★ ACCEPTANCE** | **PASSED 2026-08-28.** 28/28 accounted for: 24 SCORED, 4 REFUSED (financials), 0 silent. Zero unexplained anomalies. **CALIBER IS IN GRADING LIFE — next sessions are grading reads, NOT construction.** First gradeable cohort ~**2026-11-26** (90d). |
 | Prior closes | `docs/closes/` — index at `docs/closes/README.md` |
 | Open items | the 32-item census in `docs/2026-08-28-closer.md` §8 is the authoritative "what's left" list |
 

@@ -1,0 +1,194 @@
+========================================================================
+  CALIBER v3  --  QBTS
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=D-Wave Quantum Inc.  sector=Technology  industry=Computer Hardware
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001907982  SIC=7374  (Services-Computer Processing & Data Preparation)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] QBTS  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=8 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   20.55            20.55      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                  1.207                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_debt(stale_tag)]
+  free_cashflow              -7.584e+07       -1.191e+08     57.0   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.6419           0.6419      0.0   2026-06-30   59d  medium→high      agree
+  operating_cashflow         -7.198e+07       -1.109e+08     54.0   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin               -13.73           -13.73      0.0   2026-06-30   59d  medium→high      agree
+ *profit_margin                  -20.02           -20.02      0.0   2026-06-30   59d  medium→high      agree
+ *roa                           -0.2147          -0.2147      0.0   2026-06-30   59d  medium→high      agree
+ *roe                           -0.2667          -0.2798      4.9   2026-06-30   59d  medium→high      agree
+ *shares_outstanding          3.673e+08        3.693e+08      0.5   2026-08-05   23d  medium→high      agree
+  total_cash                  8.845e+08        5.462e+08     38.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+ *total_cash@FY               8.845e+08        8.845e+08      0.0   2025-12-31  240d  medium→high      agree  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  total_debt                  4.346e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_debt(stale_tag)]
+ dtotal_debt(reported)        4.346e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY               4.346e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_debt(stale_tag)]
+  totals: agree=8, basis_mismatch=3, no_edgar=4 | would-change 8/15 applied 8: gross_margin→high, operating_margin→high, profit_margin→high, roe→high, roa→high, current_ratio→high, shares_outstanding→high, total_cash→high
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] QBTS: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon 2022-08-26)
+  NOTE UNPLACEABLE SPLIT QBTS — edgar_restatement implies ~1.124:1 (CommonStockSharesOutstanding@2021-12-31: 2,817,498 vs 3,166,949) but FMP reports no matching split, so there is no ex-date to apply it at.
+[VAL-PANEL D-0] QBTS  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free           —     4.67        —  UNAVAILABLE: earnings_yield_trailing unavailable or non-positive
+  earnings_yield_trailing    sector              —     2.26        —  UNAVAILABLE: metric or sector yield unavailable
+  earnings_yield_trailing    own_history         —        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free           —     4.67        —  UNAVAILABLE: earnings_yield_forward unavailable or non-positive
+  earnings_yield_forward     sector              —     2.26        —  UNAVAILABLE: metric or sector yield unavailable
+  earnings_yield_forward     own_history         —        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free       -1.91     4.67    -6.58  
+  fcf_yield                  sector          -1.91     2.26    -4.17  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history     -1.91        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (no usable fcf_yield quarters)
+  ebitda_yield               risk_free           —     4.67        —  UNAVAILABLE: ebitda_yield unavailable or non-positive
+  ebitda_yield               sector              —     2.26        —  UNAVAILABLE: metric or sector yield unavailable
+  ebitda_yield               own_history         —        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  least-flattering=risk_free (-6.58pp), anchors 2.41pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] QBTS — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    —                           —     —    —   —  —                   —  no available anchor for earnings_yield_trailing
+
+  Business Quality
+  Score: 2/5  [=][ ][ ][ ][ ]  [HI]
+  Lens: cyclical
+  Rationale: Gross margin 64.2%, operating margin -1372.9%, ROE -26.7%. Peak-cycle margins inflate quality score.
+  Flags: CYCLE-PEAK-MARGINS, NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE
+  Key inputs:
+    0.6419  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -13.73  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -0.2667  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -0.2147  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 20.55, debt/equity 1%, FCF $-0.1B.
+  Flags: NEGATIVE-FCF, NET-CASH-POSITIVE
+  Key inputs:
+    20.55  [HI] src=fmp+EDGAR as_of=2026-08-28
+    1.21  [MED] src=fmp as_of=2026-08-28
+    -75844000  [MED] src=fmp as_of=2025-12-31
+    43457000  [MED] src=fmp as_of=2025-12-31
+    884481000  [HI] src=fmp+EDGAR as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 29%, avg surprise -245.2%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING, AVERAGE-EARNINGS-MISS
+  Key inputs:
+    0.2857  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    367269074  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth 178.5% YoY. Forward PE n/a. EPS trend: improving. Cyclical recovery from trough inflates growth rate.
+  Flags: CYCLICAL-RECOVERY-GROWTH
+  Key inputs:
+    1.79  [MED] src=fmp as_of=2026-08-28
+    -23.95  [MED] src=fmp as_of=2026-08-28
+    4  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: contracting/late-cycle. Trailing earnings yield unavailable. 10Y rate 4.67%.
+  Flags: CYCLE-PEAK-MARGINS, MARGINS-CONTRACTING-EARNINGS-DECLINING
+  Key inputs:
+    -23.95  [MED] src=fmp as_of=2026-08-28
+    0.6419  [HI] src=fmp+EDGAR as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.0/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: CYCLE-PEAK-MARGINS, NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE, NEGATIVE-FCF, NET-CASH-POSITIVE, BEAT-TREND-IMPROVING, AVERAGE-EARNINGS-MISS, CYCLICAL-RECOVERY-GROWTH, CYCLE-PEAK-MARGINS, MARGINS-CONTRACTING-EARNINGS-DECLINING
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BEARISH
+  Above MA50:    False
+  Above MA200:   False
+  RSI-14:        34.7
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -15.16  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: -21.80  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $16.99. MA50=20.02 MA200=21.72 RSI=34.7. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 20% — stage HIGROWTH band 20%
+  [anchor] implied=$15.89 live=$17.00 divergence=6.6%  (armed @ 20%, no trip)
+
+  Current price: $17.00 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        15%         $38   +123.5%
+  Base        55%         $11    -35.3%
+  Bear        30%          $4    -76.5%
+  ----------------------------------------
+  E(R) probability-weighted: -23.8%
+
+  Verdict confidence: low
+  Reason: Pre-revenue-scale quantum hardware co with -1373% op margin, negative FCF, bearish technicals, and deep uncertainty around commercial quantum viability. Cyclical lens misfit; speculative at any confidence level.
+
+  Red flags:
+    - Operating margin -1372.9%: company is burning cash at extreme rate relative to revenue
+    - Negative FCF (-$0.1B) with no path to profitability visible in provided data
+    - EPS beat rate only 29% with average surprise of -245.2%: management guidance credibility very low
+    - Price below both MA50 ($20.02) and MA200 ($21.72) with RSI 34.7 and no volume confirmation: technical structure is weak
+    - Valuation lens flags CYCLE-PEAK-MARGINS and MARGINS-CONTRACTING simultaneously: deteriorating unit economics
+    - 178.5% YoY revenue growth flagged as cyclical-recovery-inflated, not structural demand proof
+    - Negative ROE (-26.7%) signals equity destruction
+    - No insider transaction data available to assess alignment
+
+  Bear thesis: Quantum annealing loses relevance to gate-based competitors and classical AI/ML alternatives; cash burn accelerates, forcing dilutive equity raises; stock collapses toward cash value.
+
+  Data gaps (8):
+    - No insider buying/selling data provided; critical for assessing management conviction at current price
+    - No absolute revenue dollar figure provided; FCF of -$0.1B context requires revenue scale to assess burn severity
+    - No cash/cash-equivalents balance provided; runway duration cannot be precisely calculated
+    - No forward revenue or EPS estimates provided; growth trajectory beyond current YoY figure unknown
+    - No peer valuation comparables provided (IonQ, Rigetti, IBM quantum segment) to benchmark relative value
+    - Valuation lens designated 'cyclical' is a poor fit for a pre-profit quantum hardware company; intrinsic value methodology (DCF with probability-weighted commercialization scenarios) would be more appropriate but data is insufficient
+    - No customer concentration data; single large contract loss could materially impair revenue growth rate
+    - Quantum advantage demonstration status and competitive positioning vs gate-based systems not quantified in provided data
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: YOUNG   (rule: rule2_young, lens: cyclical)
+  Flags: CYCLICAL-GUARD-BLIND-WINDOW-TOO-SHORT, YOUNG-UNCALIBRATED
+  Absent legs: cyclical_peak_to_peak(under_8_fy_cannot_see_a_cycle)
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +42070bp 2022-12-31->2025-12-31 (-828.91% -> -408.22%)
+    no  rule1_decline    capital_returns        pays_dividend=False; net_buyback=False
+    ABS rule1_decline    cyclical_peak_to_peak  asserted-absent (under_8_fy_cannot_see_a_cycle)
+    no  rule1_decline    cyclical_peaks         no local peak in window
+    OK  rule2_young      margin_sign            latest FY operating margin -408.22% (negative)
+    OK  rule2_young      fcf_negative_2of3      3 of last 3 FY FCF negative (2023, 2024, 2025)
+    no  rule2_young      cyclical_has_earned    no FY in the last 4 measured has both a positive operating margin and positive FCF
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=61, QBTS); lifecycle_transitions +1 row (id=2)  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=289)
+========================================================================
+  Readout complete.
+========================================================================

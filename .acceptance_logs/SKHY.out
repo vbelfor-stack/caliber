@@ -1,0 +1,193 @@
+========================================================================
+  CALIBER v3  --  SKHY
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=SK hynix Inc.  sector=Technology  industry=Semiconductors
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0002120882  SIC=3674  (Semiconductors & Related Devices)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] SKHY  as_of=2026-08-28  latest_period_end=None  APPLIED=0 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+  current_ratio                   2.591                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_assets(no_tag), current_liabilities(no_tag)]
+  debt_to_equity                  8.047                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(no_tag), current_debt(no_tag), equity(no_tag)]
+  free_cashflow                       —                —        —            —     —  low→low          no_edgar  [EDGAR unresolved: operating_cashflow(no_tag), capex(no_tag)]
+  gross_margin                   0.7617                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete), revenue(no_tag)]
+  operating_cashflow                  —                —        —            —     —  low→low          no_edgar  [EDGAR unresolved: operating_cashflow(no_tag)]
+  operating_margin               0.6804                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(no_tag), revenue(no_tag)]
+  profit_margin                  0.8567                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(no_tag), revenue(no_tag)]
+  roa                            0.4646                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(no_tag), total_assets(no_tag)]
+  roe                             1.002                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(no_tag), equity(no_tag)]
+  shares_outstanding          7.099e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: shares_outstanding(no_tag)]
+  total_cash                          —                —        —            —     —  low→low          no_edgar  [EDGAR unresolved: cash(no_tag)]
+  total_cash@FY                       —                —        —            —     —  low→low          no_edgar  [no fiscal year-end period identifiable for this issuer]
+  total_debt                          —                —        —            —     —  low→low          no_edgar  [EDGAR unresolved: long_term_debt(no_tag), current_debt(no_tag)]
+ dtotal_debt(reported)                —                —        —            —     —  low→low          no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY                       —                —        —            —     —  low→low          no_edgar  [no fiscal year-end period identifiable for this issuer]
+  totals: no_edgar=15 | would-change 0/15 (nothing to apply)
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] SKHY: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon —)
+[VAL-PANEL D-0] SKHY  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free       13.85     4.67    +9.18  
+  earnings_yield_trailing    sector          13.85     2.26   +11.59  
+  earnings_yield_trailing    own_history     13.85        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free    76895.58     4.67 +76890.91  
+  earnings_yield_forward     sector       76895.58     2.26 +76893.31  
+  earnings_yield_forward     own_history  76895.58        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        7.77     4.67    +3.10  
+  fcf_yield                  sector           7.77     2.26    +5.51  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      7.77        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (operating_cashflow:no_tag; capex:no_tag)
+  ebitda_yield               risk_free       13.71     4.67    +9.04  
+  ebitda_yield               sector          13.71     2.26   +11.45  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history     13.71        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (+9.18pp), anchors 2.41pp apart  all anchors agree
+  earnings_yield_forward     least-flattering=risk_free (+76890.91pp), anchors 2.41pp apart  all anchors agree
+  fcf_yield                  least-flattering=risk_free (+3.10pp), anchors 2.41pp apart  all anchors agree
+  ebitda_yield               least-flattering=risk_free (+9.04pp), anchors 2.41pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] SKHY — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    earnings_yield_trailing     2     2    2  +0  risk_free     +9.18pp  PANEL-NARROWED-MARKET-ONLY,CYCLE-GATE-CAP-PEAK
+
+  Business Quality
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Gross margin 76.2%, operating margin 68.0%, ROE 100.2%. Peak-cycle margins inflate quality score.
+  Flags: CYCLE-PEAK-MARGINS
+  Key inputs:
+    0.7617  [MED] src=fmp as_of=2026-08-28
+    0.6804  [MED] src=fmp as_of=2026-08-28
+    1.00  [MED] src=fmp as_of=2026-08-28
+    0.4646  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 2.59, debt/equity 8%, FCF n/a.
+  Key inputs:
+    2.59  [MED] src=fmp as_of=2026-08-28
+    8.05  [MED] src=fmp as_of=2026-08-28
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 100%, avg surprise +41.5%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    7098548910  [MED] src=fmp as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth 46.8% YoY. Forward PE 0.0x. EPS trend: improving.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.4676  [MED] src=fmp as_of=2026-08-28
+    7.22  [MED] src=fmp as_of=2026-08-28
+    0.0013  [MED] src=fmp as_of=2026-08-28
+    7  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: accelerating-toward-peak. Trailing earnings yield vs risk_free (+9.2pp). Peak-cycle earnings: low multiple is a sell signal, not cheap. 10Y rate 4.67%.
+  Flags: CYCLE-PEAK-MARGINS, PANEL-NARROWED-MARKET-ONLY, LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP
+  Key inputs:
+    7.22  [MED] src=fmp as_of=2026-08-28
+    0.0013  [MED] src=fmp as_of=2026-08-28
+    0.7617  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 4.2/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: CYCLE-PEAK-MARGINS, BEAT-TREND-IMPROVING, EARNINGS-GROWTH-EXPECTED, CYCLE-PEAK-MARGINS, PANEL-NARROWED-MARKET-ONLY, LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    None
+  Above MA200:   None
+  RSI-14:        66.6
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+  Note: Price $161.04. MA50=n/a MA200=n/a RSI=66.6. Volume confirmation: False.
+  Data rows: 36
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 20% — stage HIGROWTH band 20%
+  [anchor] implied=$164.49 live=$161.04 divergence=2.1%  (armed @ 20%, no trip)
+
+  Current price: $161.04 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%        $217    +34.7%
+  Base        45%        $145    -10.0%
+  Bear        30%        $105    -34.8%
+  ----------------------------------------
+  E(R) probability-weighted: -6.2%
+
+  Verdict confidence: medium
+  Reason: Exceptional near-term metrics masked by cycle-peak distortion. Low PE is a sell signal, not a value opportunity. Cyclical turn risk is the dominant uncertainty; medium confidence reflects peak-margin ambiguity.
+
+  Red flags:
+    - CYCLE-PEAK-MARGINS: Gross margin 76.2% and ROE 100.2% are unsustainably elevated; mid-cycle normalization will compress earnings sharply.
+    - LOW-PE-AT-CYCLE-PEAK-NOT-CHEAP: Per cyclical lens, a low trailing multiple at peak earnings is a sell signal — trough earnings will reveal true valuation.
+    - PANEL-NARROWED-MARKET-ONLY: Analyst coverage used in valuation pillar is narrow; independent cross-check is limited.
+    - FCF data unavailable: Cannot confirm cash conversion quality at peak cycle.
+    - No insider transaction data: Insider signal absent, removing a key contrarian confirmation tool.
+    - RSI 66.6 without volume confirmation: Momentum elevated but unconfirmed by volume — risk of false breakout.
+
+  Bear thesis: Cycle turns sharply; DRAM/NAND oversupply re-emerges, margins collapse to trough levels, and elevated rates prevent multiple expansion on depressed earnings.
+
+  Data gaps (8):
+    - FCF data unavailable — cannot assess cash conversion quality or sustainability of capital returns at peak cycle.
+    - Insider transaction data absent — removes key contrarian signal for cycle-turn timing.
+    - MA50 and MA200 unavailable due to insufficient price history (36 rows) — trend confirmation incomplete.
+    - Forward PE reported as 0.0x — likely a data error; normalized forward earnings estimate needed for mid-cycle valuation.
+    - No independent analyst coverage provided — sell-side only, with known cycle-peak optimism bias.
+    - HBM market share data not provided — bull thesis depends on sustained HBM3E dominance which cannot be verified from supplied data.
+    - Capex and depreciation schedule unavailable — critical for assessing true mid-cycle FCF and trough earnings floor.
+    - Geographic revenue breakdown absent — Korea/China exposure and geopolitical risk unquantified.
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: HIGROWTH   (rule: rule3_higrowth, lens: cyclical)
+  Flags: GUARD-TOLERANCE-UNCALIBRATED, INPUTS-INCOMPLETE
+  Absent legs: fcf_negative_2of3(no_fcf_series), cyclical_has_earned(no_fcf_series_cannot_establish_earnings), reinvestment_heavy(no_series)
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +3333bp 2022-12-31->2025-12-31 (15.26% -> 48.59%)
+    no  rule1_decline    capital_returns        pays_dividend=False
+    no  rule1_decline    cyclical_peak_to_peak  does not fire — no decline streak to gate (streak 0)
+    no  rule1_decline    cyclical_peaks         2 local peak(s): 2018 40,445,066,000,000; 2022 44,621,568,000,000 — two most recent delta +10.33%
+    no  rule2_young      margin_sign            latest FY operating margin 48.59% (positive)
+    ABS rule2_young      fcf_negative_2of3      asserted-absent (no_fcf_series)
+    ABS rule2_young      cyclical_has_earned    asserted-absent (no_fcf_series_cannot_establish_earnings)
+    OK  rule3_higrowth   revenue_cagr           29.61%/y 2022-12-31->2025-12-31 (44,621,568,000,000 -> 97,146,675,000,000)
+    ABS rule3_higrowth   reinvestment_heavy     asserted-absent (no_series)
+    OK  rule3_higrowth   capital_returns        pays_dividend=False
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=63, SKHY); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=291)
+========================================================================
+  Readout complete.
+========================================================================

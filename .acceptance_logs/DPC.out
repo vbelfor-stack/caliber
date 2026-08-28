@@ -1,0 +1,185 @@
+========================================================================
+  CALIBER v3  --  DPC
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=DPC Holdings Ltd.  sector=Industrials  industry=Manufacturing - Metal Fabrication
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0002107018  SIC=3360  (Nonferrous Foundries (Castings))
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] DPC  as_of=2026-08-28  latest_period_end=2026-06-28  APPLIED=2 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   1.478            1.478      0.0   2026-06-28   61d  medium→high      agree
+  debt_to_equity                  76.32                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  free_cashflow                 1.1e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_cashflow(ttm_unavailable), capex(ttm_unavailable)]
+  gross_margin                   0.2436                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete), revenue(ttm_unavailable)]
+  operating_cashflow            4.2e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_cashflow(ttm_unavailable)]
+  operating_margin               -0.214                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(no_tag), revenue(ttm_unavailable)]
+  profit_margin                 -0.3522                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable), revenue(ttm_unavailable)]
+  roa                          -0.09438                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable)]
+  roe                           -0.6653                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable)]
+ *shares_outstanding          1.452e+08        1.494e+08      2.9   2026-07-28   31d  medium→high      agree
+  total_cash                    3.2e+07        8.448e+08   2540.0   2026-06-28   61d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(no_tag)]]
+  total_cash@FY                 3.2e+07                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: cash(not filed @2025-12-31)]
+  total_debt                   1.45e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+ dtotal_debt(reported)         1.45e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY                1.45e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  [FRESHNESS-WATCH] DPC: EDGAR data 61d old; next 10-Q expected ~2026-11-10
+  totals: agree=2, basis_mismatch=1, no_edgar=12 | would-change 2/15 applied 2: current_ratio→high, shares_outstanding→high
+
+  [FRESHNESS-WATCH] DPC: EDGAR data 61d old; next 10-Q expected ~2026-11-10
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] DPC: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon 2026-08-11)
+[VAL-PANEL D-0] DPC  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free           —     4.67        —  UNAVAILABLE: earnings_yield_trailing unavailable or non-positive
+  earnings_yield_trailing    sector              —     2.64        —  UNAVAILABLE: metric or sector yield unavailable
+  earnings_yield_trailing    own_history         —        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free        3.40     4.67    -1.27  
+  earnings_yield_forward     sector           3.40     2.64    +0.76  
+  earnings_yield_forward     own_history      3.40        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free       -0.84     4.67    -5.51  
+  fcf_yield                  sector          -0.84     2.64    -3.48  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history     -0.84        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (operating_cashflow:ttm_unavailable; capex:ttm_unavailable)
+  ebitda_yield               risk_free           —     4.67        —  UNAVAILABLE: ebitda_yield unavailable or non-positive
+  ebitda_yield               sector              —     2.64        —  UNAVAILABLE: metric or sector yield unavailable
+  ebitda_yield               own_history         —        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_forward     least-flattering=risk_free (-1.27pp), anchors 2.03pp apart  SPLIT — cheap vs sector, rich vs risk_free
+  fcf_yield                  least-flattering=risk_free (-5.51pp), anchors 2.03pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] DPC — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    —                           —     —    —   —  —                   —  no available anchor for earnings_yield_trailing
+
+  Business Quality
+  Score: 1/5  [ ][ ][ ][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Gross margin 24.4%, operating margin -21.4%, ROE -66.5%.
+  Flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE
+  Key inputs:
+    0.2436  [MED] src=fmp as_of=2026-08-28
+    -0.2140  [MED] src=fmp as_of=2026-08-28
+    -0.6653  [MED] src=fmp as_of=2026-08-28
+    -0.0944  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 1.48, debt/equity 76%, FCF $0.0B.
+  Key inputs:
+    1.48  [HI] src=fmp+EDGAR as_of=2026-08-28
+    76.32  [MED] src=fmp as_of=2026-08-28
+    11000000  [MED] src=fmp as_of=2025-12-31
+    1450000000  [MED] src=fmp as_of=2025-12-31
+    32000000  [MED] src=fmp as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 0%, avg surprise -28.6%, trend insufficient. Insider signal: no_data.
+  Flags: AVERAGE-EARNINGS-MISS
+  Key inputs:
+    0.0000  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    145151799  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth n/a YoY. Forward PE 29.4x. EPS trend: insufficient.
+  Key inputs:
+    -30.19  [MED] src=fmp as_of=2026-08-28
+    29.42  [MED] src=fmp as_of=2026-08-28
+    3  [MED] src=fmp as_of=2026-08-28
+    insufficient  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: trough (TTM). Trailing earnings yield unavailable. 10Y rate 4.67%.
+  Key inputs:
+    -30.19  [MED] src=fmp as_of=2026-08-28
+    29.42  [MED] src=fmp as_of=2026-08-28
+    0.2436  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 2.6/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE, AVERAGE-EARNINGS-MISS
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    None
+  Above MA200:   None
+  RSI-14:        31.8
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+  Note: Price $44.08. MA50=n/a MA200=n/a RSI=31.8. Volume confirmation: False.
+  Data rows: 46
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage YOUNG is not a measurement (INSUFFICIENT-HISTORY) — default band, because absence must not buy the wider one
+  [anchor] implied=$42.42 live=$44.08 divergence=3.8%  (armed @ 15%, no trip)
+
+  Current price: $44.08 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        20%         $62    +40.7%
+  Base        50%         $36    -18.3%
+  Bear        30%         $20    -54.6%
+  ----------------------------------------
+  E(R) probability-weighted: -17.4%
+
+  Verdict confidence: low
+  Reason: Negative operating margin (-21.4%), negative ROE (-66.5%), 0% EPS beat rate, and near-zero FCF at a cyclical trough make risk/reward highly uncertain. Confidence capped by weak fundamentals and sparse data.
+
+  Red flags:
+    - Operating margin deeply negative at -21.4% — not a mild cyclical dip
+    - ROE of -66.5% signals significant capital destruction
+    - 0% EPS beat rate with average surprise of -28.6% — management guidance credibility near zero
+    - FCF effectively zero; no cash generation buffer at trough
+    - Forward PE of 29.4x is expensive for a loss-making cyclical at trough
+    - RSI 31.8 approaching oversold but without volume confirmation — weak technical support
+    - No insider transaction data available to gauge management conviction
+
+  Bear thesis: Losses deepen, balance sheet deteriorates, and the stock de-rates sharply as the market prices in dilution risk or covenant stress.
+
+  Data gaps (8):
+    - MA50 and MA200 unavailable due to insufficient price history (46 rows)
+    - Revenue growth YoY not provided — cannot assess top-line trajectory
+    - Insider transaction data absent — cannot gauge management conviction
+    - No independent or sell-side analyst coverage identified
+    - EPS trend data insufficient — forward earnings path highly uncertain
+    - No segment-level margin data to identify which business lines are loss-making
+    - Debt maturity schedule and covenant details unknown — credit risk unquantifiable
+    - End-market exposure (e.g., automotive, construction, defense) not specified — cycle timing unclear
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: YOUNG   (rule: rule2_young_insufficient_history, lens: cyclical)
+  Flags: INSUFFICIENT-HISTORY, YOUNG-UNCALIBRATED
+  Absent legs: decline_streak(history_under_2_fy), revenue_cagr(no_fy_exactly_3y_before_latest), margin_trend_bp(no_fy_exactly_3y_before_latest), cyclical_peak_to_peak(under_8_fy_cannot_see_a_cycle), fcf_negative_2of3(no_fcf_series), cyclical_has_earned(no_fcf_series_cannot_establish_earnings), net_buyback(insufficient_share_series), reinvestment_heavy(no_series)
+    OK  rule2_young      fy_count               1 usable FY < 2 required
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=49, DPC); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=277)
+========================================================================
+  Readout complete.
+========================================================================

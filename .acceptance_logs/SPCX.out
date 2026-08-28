@@ -1,0 +1,191 @@
+========================================================================
+  CALIBER v3  --  SPCX
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Space Exploration Technologies Corp.  sector=Industrials  industry=Aerospace & Defense
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001181412  SIC=7370  (Services-Computer Programming, Data Processing, Etc.)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] SPCX  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=2 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   5.115            5.115      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                  30.94                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_debt(no_tag)]
+  free_cashflow              -1.395e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_cashflow(ttm_unavailable), capex(ttm_unavailable)]
+  gross_margin                   0.5267                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: gross_profit(derive_incomplete), revenue(ttm_unavailable)]
+  operating_cashflow          6.785e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_cashflow(ttm_unavailable)]
+  operating_margin              -0.1242                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(ttm_unavailable), revenue(ttm_unavailable)]
+  profit_margin                 -0.3225                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable), revenue(ttm_unavailable)]
+  roa                          -0.02773                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable)]
+  roe                          -0.07631                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(ttm_unavailable)]
+  shares_outstanding          7.488e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: shares_outstanding(no_tag)]
+  total_cash                  2.475e+10            1e+11    304.1   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+ *total_cash@FY               2.475e+10        2.475e+10      0.0   2025-12-31  240d  medium→high      agree  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  total_debt                   2.29e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: current_debt(no_tag)]
+ dtotal_debt(reported)         2.29e+10        3.936e+10     71.9   2026-06-30   59d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ; no operating-lease tag filed; gross debt vs FMP lease-inclusive totalDebt [operating_lease_liability(no_tag)]]
+ dtotal_debt@FY                2.29e+10         2.29e+10      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [no operating-lease tag filed; gross debt vs FMP lease-inclusive totalDebt [operating_lease_liability(no_tag)]]
+  totals: agree=2, basis_mismatch=3, no_edgar=10 | would-change 2/15 applied 2: current_ratio→high, total_cash→high
+
+  Valuation lens: STANDARD (standard)
+[SPLITS] SPCX: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon —)
+  NOTE UNPLACEABLE SPLIT SPCX — edgar_tagged_ratio implies ~5:1 (StockholdersEquityNoteStockSplitConversionRatio1@2026-05-31: 5) but FMP reports no matching split, so there is no ex-date to apply it at.
+[VAL-PANEL D-0] SPCX  lens=standard  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free           —     4.67        —  UNAVAILABLE: earnings_yield_trailing unavailable or non-positive
+  earnings_yield_trailing    sector              —     5.26        —  UNAVAILABLE: metric or sector yield unavailable
+  earnings_yield_trailing    own_history         —        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free        3.02     4.67    -1.65  
+  earnings_yield_forward     sector           3.02     5.26    -2.25  
+  earnings_yield_forward     own_history      3.02        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free       -1.54     4.67    -6.21  
+  fcf_yield                  sector          -1.54     5.26    -6.80  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history     -1.54        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (operating_cashflow:ttm_unavailable; capex:ttm_unavailable)
+  ebitda_yield               risk_free        0.23     4.67    -4.44  
+  ebitda_yield               sector           0.23     5.26    -5.03  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      0.23        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_forward     least-flattering=sector (-2.25pp), anchors 0.59pp apart  all anchors agree
+  fcf_yield                  least-flattering=sector (-6.80pp), anchors 0.59pp apart  all anchors agree
+  ebitda_yield               least-flattering=sector (-5.03pp), anchors 0.59pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] SPCX — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  standard    ebitda_yield                1     1    1  +0  sector        -5.03pp  VERY-RICH-VS-SECTOR,PANEL-NARROWED-MARKET-ONLY
+
+  Business Quality
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Gross margin 52.7%, operating margin -12.4%, ROE -7.6%.
+  Flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE
+  Key inputs:
+    0.5267  [MED] src=fmp as_of=2026-08-28
+    -0.1242  [MED] src=fmp as_of=2026-08-28
+    -0.0763  [MED] src=fmp as_of=2026-08-28
+    -0.0277  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Current ratio 5.12, debt/equity 31%, FCF $-14.0B.
+  Flags: NEGATIVE-FCF, NET-CASH-POSITIVE
+  Key inputs:
+    5.12  [HI] src=fmp+EDGAR as_of=2026-08-28
+    30.94  [MED] src=fmp as_of=2026-08-28
+    -13952000000  [MED] src=fmp as_of=2025-12-31
+    22896000000  [MED] src=fmp as_of=2025-12-31
+    24747000000  [HI] src=fmp+EDGAR as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: standard
+  Rationale: EPS beat rate 100%, avg surprise +60.1%, trend insufficient. Insider signal: no_data.
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    7488063500  [MED] src=fmp as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: standard
+  Rationale: Revenue growth 33.2% YoY. Forward PE 33.2x. EPS trend: insufficient.
+  Key inputs:
+    0.3324  [MED] src=fmp as_of=2026-08-28
+    -91.88  [MED] src=fmp as_of=2026-08-28
+    33.17  [MED] src=fmp as_of=2026-08-28
+    7  [MED] src=fmp as_of=2026-08-28
+    insufficient  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 1/5  [ ][ ][ ][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Standard valuation lens. EV/EBITDA 431.0x. EBITDA yield vs sector (-5.0pp). P/E -91.9x. FCF yield -1.5%. 10Y rate 4.67%.
+  Flags: VERY-RICH-VS-SECTOR, PANEL-NARROWED-MARKET-ONLY
+  Key inputs:
+    431.02  [MED] src=fmp as_of=2026-08-28
+    -91.88  [MED] src=fmp as_of=2026-08-28
+    -0.0154  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.0/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE, NEGATIVE-FCF, NET-CASH-POSITIVE, VERY-RICH-VS-SECTOR, PANEL-NARROWED-MARKET-ONLY
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BULLISH
+  Above MA50:    True
+  Above MA200:   None
+  RSI-14:        52.5
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: 2.86  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $141.50. MA50=137.56 MA200=n/a RSI=52.5. Volume confirmation: False.
+  Data rows: 54
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 30% — stage YOUNG band 30%
+  [anchor] implied=$160.43 live=$141.50 divergence=13.4%  (armed @ 30%, no trip)
+
+  Current price: $141.50 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        20%        $230    +62.5%
+  Base        45%        $130     -8.1%
+  Bear        35%         $75    -47.0%
+  ----------------------------------------
+  E(R) probability-weighted: -7.6%
+
+  Verdict confidence: low
+  Reason: EV/EBITDA 431x, negative FCF of $14B, negative operating margin, and negative ROE make valuation indefensible on standard metrics. Growth is real (33% YoY) but priced for perfection with no margin of safety.
+
+  Red flags:
+    - EV/EBITDA 431x — extreme valuation with no near-term earnings support
+    - Negative FCF of $14.0B signals massive ongoing cash burn
+    - Negative operating margin (-12.4%) despite 52.7% gross margin — cost structure not yet scaled
+    - Negative ROE (-7.6%) — equity destruction at current price
+    - FCF yield -1.5% at 4.67% risk-free rate — deeply negative real return spread
+    - Volume confirmation absent — price trend not supported by conviction buying
+    - PANEL-NARROWED-MARKET-ONLY flag suggests valuation comparables are thin
+
+  Bear thesis: Starship development delays, regulatory setbacks, or Starlink competitive pressure force a valuation reset; cash burn at $14B/yr becomes existential without fresh capital at punishing terms.
+
+  Data gaps (8):
+    - MA200 unavailable — insufficient price history (54 rows); long-term trend unknown
+    - Insider ownership and transaction data absent — cannot assess alignment
+    - EPS trend data insufficient — cannot confirm earnings trajectory
+    - No public analyst price targets available — SPCX appears to trade OTC or via private markets
+    - Starlink subscriber count and ARPU not provided — key revenue driver unquantified
+    - Starship capex breakdown not provided — cannot isolate maintenance vs growth capex
+    - Debt maturity schedule unknown — refinancing risk at elevated rates unassessable
+    - Share count and dilution history not provided — equity burn rate unknown
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: YOUNG   (rule: rule2_young, lens: standard)
+  Flags: YOUNG-UNCALIBRATED
+  Absent legs: margin_trend_bp(no_fy_exactly_3y_before_latest), fcf_negative_2of3(no_fcf_series)
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    ABS rule1_decline    margin_trend_bp        asserted-absent (no_fy_exactly_3y_before_latest)
+    no  rule1_decline    capital_returns        pays_dividend=False
+    OK  rule2_young      margin_sign            latest FY operating margin -13.86% (negative)
+    ABS rule2_young      fcf_negative_2of3      asserted-absent (no_fcf_series)
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=64, SPCX); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=292)
+========================================================================
+  Readout complete.
+========================================================================

@@ -1,0 +1,190 @@
+========================================================================
+  CALIBER v3  --  RKLB
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Rocket Lab USA, Inc.  sector=Industrials  industry=Aerospace & Defense
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001819994  SIC=3760  (Guided Missiles & Space Vehicles & Parts)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] RKLB  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=8 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   5.482            5.482      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                  3.828                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  free_cashflow              -3.218e+08       -3.711e+08     15.3   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.3726           0.3726      0.0   2026-06-30   59d  medium→high      agree
+  operating_cashflow         -1.655e+08       -2.225e+08     34.4   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin              -0.2906          -0.2906      0.0   2026-06-30   59d  medium→high      agree
+ *profit_margin                 -0.2151          -0.2151      0.0   2026-06-30   59d  medium→high      agree
+ *roa                          -0.03951         -0.03951      0.0   2026-06-30   59d  medium→high      agree
+ *roe                          -0.07556         -0.07915      4.8   2026-06-30   59d  medium→high      agree
+ *shares_outstanding          5.789e+08        5.984e+08      3.4   2026-08-05   23d  medium→high      agree
+  total_cash                  1.017e+09        2.302e+09    126.5   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+ *total_cash@FY               1.017e+09        1.017e+09      0.0   2025-12-31  240d  medium→high      agree  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  total_debt                   2.54e+08                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+ dtotal_debt(reported)         2.54e+08                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY                2.54e+08                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(synonym_conflict)]
+  totals: agree=8, basis_mismatch=3, no_edgar=4 | would-change 8/15 applied 8: gross_margin→high, operating_margin→high, profit_margin→high, roe→high, roa→high, current_ratio→high, shares_outstanding→high, total_cash→high
+
+  Valuation lens: STANDARD (standard)
+[SPLITS] RKLB: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon 2021-11-15)
+[VAL-PANEL D-0] RKLB  lens=standard  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free           —     4.67        —  UNAVAILABLE: earnings_yield_trailing unavailable or non-positive
+  earnings_yield_trailing    sector              —     5.26        —  UNAVAILABLE: metric or sector yield unavailable
+  earnings_yield_trailing    own_history         —        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free        1.37     4.67    -3.30  
+  earnings_yield_forward     sector           1.37     5.26    -3.89  
+  earnings_yield_forward     own_history      1.37        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free       -1.07     4.67    -5.74  
+  fcf_yield                  sector          -1.07     5.26    -6.33  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history     -1.07        —        —  UNAVAILABLE: only 0 historical points (<8); basis=unavailable (no usable fcf_yield quarters)
+  ebitda_yield               risk_free           —     4.67        —  UNAVAILABLE: ebitda_yield unavailable or non-positive
+  ebitda_yield               sector              —     5.26        —  UNAVAILABLE: metric or sector yield unavailable
+  ebitda_yield               own_history         —        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_forward     least-flattering=sector (-3.89pp), anchors 0.59pp apart  all anchors agree
+  fcf_yield                  least-flattering=sector (-6.33pp), anchors 0.59pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+  NOTE own-history FCF anchor unavailable: no usable FCF-yield quarters (no capex concept filed, or every quarter excluded)
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] RKLB — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  standard    —                           —     —    —   —  —                   —  no available anchor for ebitda_yield
+
+  Business Quality
+  Score: 1/5  [ ][ ][ ][ ][ ]  [HI]
+  Lens: standard
+  Rationale: Gross margin 37.3%, operating margin -29.1%, ROE -7.6%.
+  Flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE
+  Key inputs:
+    0.3726  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -0.2906  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -0.0756  [HI] src=fmp+EDGAR as_of=2026-08-28
+    -0.0395  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Current ratio 5.48, debt/equity 4%, FCF $-0.3B.
+  Flags: NEGATIVE-FCF, NET-CASH-POSITIVE
+  Key inputs:
+    5.48  [HI] src=fmp+EDGAR as_of=2026-08-28
+    3.83  [MED] src=fmp as_of=2026-08-28
+    -321806000  [MED] src=fmp as_of=2025-12-31
+    253955000  [MED] src=fmp as_of=2025-12-31
+    1016577000  [HI] src=fmp+EDGAR as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: standard
+  Rationale: EPS beat rate 43%, avg surprise +17.6%, trend deteriorating. Insider signal: no_data.
+  Flags: BEAT-TREND-DETERIORATING
+  Key inputs:
+    0.4286  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    578867475  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Revenue growth 38.0% YoY. Forward PE 73.0x. EPS trend: deteriorating.
+  Flags: EPS-TREND-DETERIORATING
+  Key inputs:
+    0.3796  [MED] src=fmp as_of=2026-08-28
+    -232.54  [MED] src=fmp as_of=2026-08-28
+    73.00  [MED] src=fmp as_of=2026-08-28
+    2  [MED] src=fmp as_of=2026-08-28
+    deteriorating  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 1/5  [ ][ ][ ][ ][ ]  [MED]
+  Lens: standard
+  Rationale: Standard valuation lens. EV/EBITDA -288.8x. P/E -232.5x. FCF yield -1.1%. 10Y rate 4.67%.
+  Flags: NEGATIVE-MULTIPLE-CHEAP-RUNGS-WITHHELD
+  Key inputs:
+    -288.81  [MED] src=fmp as_of=2026-08-28
+    -232.54  [MED] src=fmp as_of=2026-08-28
+    -0.0107  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 2.6/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: NEGATIVE-OPERATING-MARGIN, NEGATIVE-ROE, NEGATIVE-FCF, NET-CASH-POSITIVE, BEAT-TREND-DETERIORATING, EPS-TREND-DETERIORATING, NEGATIVE-MULTIPLE-CHEAP-RUNGS-WITHHELD
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BEARISH
+  Above MA50:    False
+  Above MA200:   False
+  RSI-14:        18.2
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -17.38  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: -18.56  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $64.39. MA50=77.94 MA200=79.06 RSI=18.2. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 30% — stage YOUNG band 30%
+  [anchor] implied=$67.73 live=$64.39 divergence=5.2%  (armed @ 30%, no trip)
+
+  Current price: $64.39 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        20%        $110    +70.8%
+  Base        45%         $52    -19.2%
+  Bear        35%         $28    -56.5%
+  ----------------------------------------
+  E(R) probability-weighted: -14.3%
+
+  Verdict confidence: low
+  Reason: Deep losses, negative FCF, deteriorating EPS trend, and a valuation anchored entirely on speculative future cash flows at 4.67% risk-free rate. RSI=18 signals capitulation but no fundamental floor is visible.
+
+  Red flags:
+    - Operating margin -29.1% with no near-term path to profitability visible in provided data
+    - EV/EBITDA and P/E both deeply negative — standard valuation framework inapplicable
+    - FCF -$0.3B: cash burn ongoing despite net-cash-positive balance sheet
+    - EPS beat rate only 43% and trend deteriorating — execution risk elevated
+    - Price below both MA50 ($77.94) and MA200 ($79.06); RSI 18.2 — extreme oversold but in confirmed downtrend
+    - Forward PE 73x on a loss-making company implies extreme multiple compression risk if growth disappoints
+    - 10Y rate 4.67% severely discounts long-duration growth stories
+
+  Bear thesis: Neutron delays, continued cash burn, and multiple compression in a high-rate environment drive significant further downside; competitive pressure intensifies.
+
+  Data gaps (7):
+    - Insider ownership and recent transaction data not provided — limits management alignment assessment
+    - Neutron development timeline, cost-to-completion, and contract backlog detail not in provided data
+    - Segment-level margin breakdown (Launch Services vs Space Systems) not provided
+    - Institutional ownership changes and short interest not provided
+    - Customer concentration data absent — key risk for a company with limited launch cadence
+    - Cash runway duration (cash balance / quarterly burn rate) not calculable from provided data
+    - Specific sell-side price targets not verifiable against current live price anchor
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: YOUNG   (rule: rule2_young, lens: standard)
+  Flags: YOUNG-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +2605bp 2022-12-31->2025-12-31 (-64.08% -> -38.03%)
+    no  rule1_decline    capital_returns        pays_dividend=False; net_buyback=False
+    OK  rule2_young      margin_sign            latest FY operating margin -38.03% (negative)
+    OK  rule2_young      fcf_negative_2of3      3 of last 3 FY FCF negative (2023, 2024, 2025)
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=62, RKLB); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=290)
+========================================================================
+  Readout complete.
+========================================================================

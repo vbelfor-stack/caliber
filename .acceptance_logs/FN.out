@@ -1,0 +1,198 @@
+========================================================================
+  CALIBER v3  --  FN
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Fabrinet  sector=Technology  industry=Hardware, Equipment & Parts
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001408710  SIC=3661  (Telephone & Telegraph Apparatus)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] FN  as_of=2026-08-28  latest_period_end=2026-06-26  APPLIED=8 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   2.253            2.253      0.0   2026-06-26   63d  medium→high      agree
+  debt_to_equity                 0.1635                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(stale_tag), current_debt(stale_tag)]
+  free_cashflow               4.222e+06        4.222e+06      0.0   2026-06-26   63d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.1199           0.1199      0.0   2026-06-26   63d  medium→high      agree
+  operating_cashflow          2.567e+08        2.567e+08      0.0   2026-06-26   63d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin              0.09974          0.09974      0.0   2026-06-26   63d  medium→high      agree
+ *profit_margin                  0.1019           0.1019      0.0   2026-06-26   63d  medium→high      agree
+ *roa                            0.1209           0.1209      0.0   2026-06-26   63d  medium→high      agree
+ *roe                            0.2101           0.2133      1.5   2026-06-26   63d  medium→high      agree
+ *shares_outstanding          3.583e+07        3.583e+07      0.0   2026-08-07   21d  medium→high      agree
+  total_cash                  8.751e+08        8.751e+08      0.0   2026-06-26   63d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+ *total_cash@FY               8.751e+08        8.751e+08      0.0   2026-06-26   63d  medium→high      agree  [alignment revoked — FMP value no longer tracks the matched period (FMP 8.751e+08 vs matched 8.751e+08 vs MRQ 8.751e+08); aged absolutely]
+  total_debt                  4.013e+06                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(stale_tag), current_debt(stale_tag)]
+ dtotal_debt(reported)        4.013e+06                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(stale_tag)]
+ dtotal_debt@FY               4.013e+06                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: long_term_debt(stale_tag), current_debt(stale_tag)]
+  [FRESHNESS-WATCH] FN: EDGAR data 63d old; next 10-Q expected ~2026-11-10
+  totals: agree=8, basis_mismatch=3, no_edgar=4 | would-change 8/15 applied 8: gross_margin→high, operating_margin→high, profit_margin→high, roe→high, roa→high, current_ratio→high, shares_outstanding→high, total_cash→high
+
+  [FRESHNESS-WATCH] FN: EDGAR data 63d old; next 10-Q expected ~2026-11-10
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] FN: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon 2016-11-09)
+[VAL-PANEL D-0] FN  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        3.19     4.67    -1.48  
+  earnings_yield_trailing    sector           3.19     2.57    +0.62  
+  earnings_yield_trailing    own_history      3.19     4.05    -0.86  median of 20 quarters, 2021-09-24→2026-06-26; basis=split_restated
+  earnings_yield_forward     risk_free        7.07     4.67    +2.40  
+  earnings_yield_forward     sector           7.07     2.57    +4.49  
+  earnings_yield_forward     own_history      7.07        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        0.31     4.67    -4.36  
+  fcf_yield                  sector           0.31     2.57    -2.26  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      0.31     2.32    -2.01  median of 20 quarters, 2021-09-24→2026-06-26; basis=split_restated
+  ebitda_yield               risk_free        3.83     4.67    -0.84  
+  ebitda_yield               sector           3.83     2.57    +1.26  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      3.83        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (-1.48pp), anchors 2.10pp apart  SPLIT — cheap vs sector, rich vs risk_free+own_history
+  earnings_yield_forward     least-flattering=risk_free (+2.40pp), anchors 2.10pp apart  all anchors agree
+  fcf_yield                  least-flattering=risk_free (-4.36pp), anchors 2.35pp apart  all anchors agree
+  ebitda_yield               least-flattering=risk_free (-0.84pp), anchors 2.10pp apart  SPLIT — cheap vs sector, rich vs risk_free
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] FN — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    earnings_yield_trailing     2     2    2  +0  risk_free     -1.48pp  RICH-VS-RISK-FREE
+
+  Business Quality
+  Score: 2/5  [=][ ][ ][ ][ ]  [HI]
+  Lens: cyclical
+  Rationale: Gross margin 12.0%, operating margin 10.0%, ROE 21.0%.
+  Key inputs:
+    0.1199  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.0997  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.2101  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.1209  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 2.25, debt/equity 0%, FCF $0.0B.
+  Flags: NET-CASH-POSITIVE
+  Key inputs:
+    2.25  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.1635  [MED] src=fmp as_of=2026-08-28
+    4222000  [MED] src=fmp as_of=2026-06-26
+    4013000  [MED] src=fmp as_of=2026-06-26
+    875055000  [HI] src=fmp+EDGAR as_of=2026-06-26
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 100%, avg surprise +3.6%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    35829700  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth 35.7% YoY. Forward PE 14.2x. EPS trend: improving.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.3573  [MED] src=fmp as_of=2026-08-28
+    31.37  [MED] src=fmp as_of=2026-08-28
+    14.15  [MED] src=fmp as_of=2026-08-28
+    1  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: trough/early-recovery. Trailing earnings yield vs risk_free (-1.5pp). 10Y rate 4.67%.
+  Flags: RICH-VS-RISK-FREE
+  Key inputs:
+    31.37  [MED] src=fmp as_of=2026-08-28
+    14.15  [MED] src=fmp as_of=2026-08-28
+    0.1199  [HI] src=fmp+EDGAR as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.6/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: NET-CASH-POSITIVE, BEAT-TREND-IMPROVING, EARNINGS-GROWTH-EXPECTED, RICH-VS-RISK-FREE
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         BEARISH
+  Above MA50:    False
+  Above MA200:   False
+  RSI-14:        31.4
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -17.22  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: -22.79  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $414.36. MA50=500.58 MA200=536.69 RSI=31.4. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$439.22 live=$414.36 divergence=6.0%  (armed @ 15%, no trip)
+
+  Current price: $414.36 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%        $580    +40.0%
+  Base        45%        $440     +6.2%
+  Bear        30%        $290    -30.0%
+  ----------------------------------------
+  E(R) probability-weighted: +3.8%
+
+  Verdict confidence: medium
+  Reason: Strong growth and clean balance sheet offset by thin margins, rich valuation vs risk-free, and bearish technicals well below both MAs. Cyclical peak-margin risk and customer concentration warrant caution.
+
+  Red flags:
+    - RICH-VS-RISK-FREE: trailing earnings yield trails 10Y by ~150bp at 4.67% risk-free rate
+    - Price 18-20% below MA50 and MA200 — sustained technical breakdown, no volume confirmation
+    - Gross margin 12% signals contract-manufacturer vulnerability; pricing power limited
+    - Business Quality scored 2/10 on cyclical lens — low-margin model near potential cycle peak
+    - Insider signal: no_data — cannot assess alignment of management incentives with shareholders
+    - High customer concentration risk (training knowledge: Nvidia/AI optical interconnect exposure is large; mark as qualitative/unverified)
+
+  Bear thesis: AI capex cycle peaks; key customer orders slow; thin margins amplify earnings downside; rich-vs-risk-free valuation compresses multiple further.
+
+  Data gaps (6):
+    - Insider ownership and recent transaction data unavailable — cannot assess management skin-in-the-game
+    - FCF reported as $0.0B — likely a data artifact; actual free cash flow figure needed to assess capital return capacity
+    - Customer concentration breakdown not provided — key risk for a contract manufacturer
+    - Segment-level margin data absent — cannot assess which end-markets (telecom vs datacom vs industrial) drive profitability
+    - Capex trajectory and capacity utilization not provided — critical for cyclical peak/trough assessment
+    - No independent analyst coverage verified within provided data; sell-side views marked as qualitative/training knowledge only
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: cyclical)
+  Flags: INPUTS-INCOMPLETE
+  Absent legs: reinvestment_heavy(no_series)
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2026-06-26
+    OK  rule1_decline    margin_trend_bp        +46bp 2023-06-30->2026-06-26 (9.52% -> 9.97%)
+    OK  rule1_decline    capital_returns        pays_dividend=False; net_buyback=True
+    no  rule1_decline    cyclical_peak_to_peak  does not fire — no decline streak to gate (streak 0)
+    no  rule1_decline    cyclical_peaks         1 local peak(s): 2017 1,420,490,000
+    no  rule2_young      margin_sign            latest FY operating margin 9.97% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2024, 2025, 2026)
+    OK  rule2_young      cyclical_has_earned    earned in 2023, 2024, 2025, 2026 (positive operating margin AND positive FCF) — not pre-earnings
+    OK  rule3_higrowth   revenue_cagr           20.61%/y 2023-06-30->2026-06-26 (2,645,237,000 -> 4,641,097,000)
+    ABS rule3_higrowth   reinvestment_heavy     asserted-absent (no_series)
+    no  rule3_higrowth   capital_returns        pays_dividend=False; net_buyback=True
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=50, FN); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=278)
+========================================================================
+  Readout complete.
+========================================================================

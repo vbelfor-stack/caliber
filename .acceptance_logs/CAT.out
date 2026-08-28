@@ -1,0 +1,201 @@
+========================================================================
+  CALIBER v3  --  CAT
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Caterpillar Inc.  sector=Industrials  industry=Agricultural - Machinery
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0000018230  SIC=3531  (Construction Machinery & Equip)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] CAT  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=4 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   1.368            1.368      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                  232.8            186.7     19.8   2025-12-31  240d  medium→medium    basis_mismatch  [FMP debtToEquityRatioTTM is NET debt/equity; EDGAR is gross]
+  free_cashflow               7.453e+09         1.07e+10     43.5   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.3387           0.3434      1.4   2026-06-30   59d  medium→high      agree
+  operating_cashflow          1.174e+10        1.357e+10     15.6   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *operating_margin               0.1752           0.1752      0.0   2026-06-30   59d  medium→high      agree
+  profit_margin                   0.145                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag)]
+  roa                            0.1056                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag)]
+  roe                            0.5414                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag)]
+ *shares_outstanding          4.606e+08        4.597e+08      0.2   2026-06-30   59d  medium→high      agree
+  total_cash                   9.98e+09        6.713e+09     32.7   2026-06-30   59d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_cash@FY                9.98e+09         9.98e+09      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_debt                  4.333e+10        3.621e+10     16.4   2025-12-31  240d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)        4.333e+10                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY               4.333e+10        3.694e+10     14.8   2025-12-31  240d  medium→medium    stale_capped  [alignment revoked — FMP value no longer tracks the matched period (FMP 4.333e+10 vs matched 3.694e+10 vs MRQ 3.694e+10); aged absolutely; conflict suppressed — age 240d > 150d threshold]
+  totals: agree=4, basis_mismatch=6, no_edgar=4, stale_capped=1 | would-change 4/15 applied 4: gross_margin→high, operating_margin→high, current_ratio→high, shares_outstanding→high
+
+  Valuation lens: CYCLICAL / MID-CYCLE (cyclical)
+[SPLITS] CAT: 0 corroborated, 0 uncorroborated, 5 out-of-scope (horizon 2016-11-02)
+  OUT-OF-SCOPE 2005-07-14 2:1 — predates the oldest share filing (2016-11-02), cannot apply to any fact
+  OUT-OF-SCOPE 1997-07-14 2:1 — predates the oldest share filing (2016-11-02), cannot apply to any fact
+  OUT-OF-SCOPE 1994-09-06 2:1 — predates the oldest share filing (2016-11-02), cannot apply to any fact
+  OUT-OF-SCOPE 1976-07-26 1.5:1 — predates the oldest share filing (2016-11-02), cannot apply to any fact
+  OUT-OF-SCOPE 1964-07-06 2:1 — predates the oldest share filing (2016-11-02), cannot apply to any fact
+[VAL-PANEL D-0] CAT  lens=cyclical  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        2.92     4.67    -1.75  
+  earnings_yield_trailing    sector           2.92     2.64    +0.28  
+  earnings_yield_trailing    own_history      2.92        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free        5.95     4.67    +1.28  
+  earnings_yield_forward     sector           5.95     2.64    +3.31  
+  earnings_yield_forward     own_history      5.95        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        2.44     4.67    -2.23  
+  fcf_yield                  sector           2.44     2.64    -0.20  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      2.44     5.76    -3.32  median of 20 quarters, 2021-09-30→2026-06-30; basis=split_restated
+  ebitda_yield               risk_free        4.28     4.67    -0.39  
+  ebitda_yield               sector           4.28     2.64    +1.64  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      4.28        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (-1.75pp), anchors 2.03pp apart  SPLIT — cheap vs sector, rich vs risk_free
+  earnings_yield_forward     least-flattering=risk_free (+1.28pp), anchors 2.03pp apart  all anchors agree
+  fcf_yield                  least-flattering=own_history (-3.32pp), anchors 3.13pp apart  all anchors agree
+  ebitda_yield               least-flattering=risk_free (-0.39pp), anchors 2.03pp apart  SPLIT — cheap vs sector, rich vs risk_free
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] CAT — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  cyclical    earnings_yield_trailing     2     2    1  +0  risk_free     -1.75pp  RICH-VS-RISK-FREE,PANEL-NARROWED-MARKET-ONLY
+
+  Business Quality
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Gross margin 33.9%, operating margin 17.5%, ROE 54.1%.
+  Key inputs:
+    0.3387  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.1752  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.5414  [MED] src=fmp as_of=2026-08-28
+    0.1056  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Current ratio 1.37, debt/equity 233%, FCF $7.5B.
+  Flags: HIGH-LEVERAGE
+  Key inputs:
+    1.37  [HI] src=fmp+EDGAR as_of=2026-08-28
+    232.77  [MED] src=fmp as_of=2026-08-28
+    7453000000  [MED] src=fmp as_of=2025-12-31
+    43330000000  [MED] src=fmp as_of=2025-12-31
+    9980000000  [MED] src=fmp as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: EPS beat rate 71%, avg surprise +9.3%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING
+  Key inputs:
+    0.7143  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    460637000  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: cyclical
+  Rationale: Revenue growth 4.3% YoY. Forward PE 16.8x. EPS trend: improving.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.0429  [MED] src=fmp as_of=2026-08-28
+    34.29  [MED] src=fmp as_of=2026-08-28
+    16.80  [MED] src=fmp as_of=2026-08-28
+    10  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: cyclical/mid-cycle
+  Rationale: Cyclical. Cycle: mid-cycle recovery. Trailing earnings yield vs risk_free (-1.8pp). 10Y rate 4.67%.
+  Flags: RICH-VS-RISK-FREE, PANEL-NARROWED-MARKET-ONLY
+  Key inputs:
+    34.29  [MED] src=fmp as_of=2026-08-28
+    16.80  [MED] src=fmp as_of=2026-08-28
+    0.3387  [HI] src=fmp+EDGAR as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.4/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: HIGH-LEVERAGE, BEAT-TREND-IMPROVING, EARNINGS-GROWTH-EXPECTED, RICH-VS-RISK-FREE, PANEL-NARROWED-MARKET-ONLY
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    False
+  Above MA200:   True
+  RSI-14:        39.3
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -10.48  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 4.29  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $800.25. MA50=893.91 MA200=767.30 RSI=39.3. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$838.20 live=$800.25 divergence=4.7%  (armed @ 15%, no trip)
+
+  Current price: $800.25 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        25%       $1040    +30.0%
+  Base        45%        $820     +2.5%
+  Bear        30%        $580    -27.5%
+  ----------------------------------------
+  E(R) probability-weighted: +0.3%
+
+  Verdict confidence: medium
+  Reason: CAT trades rich vs risk-free (-1.8pp earnings yield gap) at mid-cycle, with HIGH-LEVERAGE and neutral technicals below MA50. Quality is real but valuation is the cycle's soft underbelly.
+
+  Red flags:
+    - RICH-VS-RISK-FREE: Earnings yield trails 10Y rate by 1.8pp — negative real equity risk premium at mid-cycle
+    - HIGH-LEVERAGE: Debt/equity 233% amplifies downside in a demand downturn
+    - PANEL-NARROWED-MARKET-ONLY: Valuation comp set limited; cross-sector context incomplete
+    - Below MA50 ($893.91) with no volume confirmation — momentum deteriorating
+    - Cyclical peak-margin risk: 17.5% operating margin may not be trough-to-trough sustainable
+
+  Bear thesis: Cycle turns: construction/mining demand rolls over, margins revert, leverage becomes a liability, multiple compresses.
+
+  Data gaps (8):
+    - Insider ownership and recent insider transaction data not provided — limits management alignment assessment
+    - Segment-level revenue breakdown (Construction Industries vs Resource Industries vs Energy & Transportation) not provided — cycle positioning unclear
+    - Dealer inventory levels and order backlog data not provided — critical for cyclical timing
+    - Geographic revenue split not provided — China/EM exposure unknown from provided data
+    - Normalized mid-cycle EPS estimate not provided — makes cyclical valuation (e.g., P/normalized E) impossible to compute
+    - Dividend yield and payout ratio not provided
+    - Peer valuation comparables (DE, CNHI, Komatsu) not provided — relative value assessment incomplete
+    - PANEL-NARROWED-MARKET-ONLY flag unresolved — valuation panel may be missing sector peers
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: cyclical)
+  Flags: GUARD-TOLERANCE-UNCALIBRATED, REINVESTMENT-THRESHOLD-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +329bp 2022-12-31->2025-12-31 (13.30% -> 16.59%)
+    OK  rule1_decline    capital_returns        pays_dividend=True; net_buyback=True
+    no  rule1_decline    cyclical_peak_to_peak  does not fire — no decline streak to gate (streak 0)
+    no  rule1_decline    cyclical_peaks         2 local peak(s): 2018 54,722,000,000; 2023 67,060,000,000 — two most recent delta +22.55%
+    no  rule2_young      margin_sign            latest FY operating margin 16.59% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2023, 2024, 2025)
+    OK  rule2_young      cyclical_has_earned    earned in 2022, 2023, 2024, 2025 (positive operating margin AND positive FCF) — not pre-earnings
+    no  rule3_higrowth   revenue_cagr           4.38%/y 2022-12-31->2025-12-31 (59,427,000,000 -> 67,589,000,000)
+    OK  rule3_higrowth   reinvestment_heavy     sales/capital 1.421 @ 2025-12-31 vs bar 1.50 — HEAVY reinvestment
+    no  rule3_higrowth   capital_returns        pays_dividend=True; net_buyback=True
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=47, CAT); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=275)
+========================================================================
+  Readout complete.
+========================================================================

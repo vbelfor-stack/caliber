@@ -1,0 +1,194 @@
+========================================================================
+  CALIBER v3  --  LLY
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Eli Lilly and Company  sector=Healthcare  industry=Drug Manufacturers - General
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0000059478  SIC=2834  (Pharmaceutical Preparations)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] LLY  as_of=2026-08-28  latest_period_end=2026-06-30  APPLIED=6 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+ *current_ratio                   1.355            1.355      0.0   2026-06-30   59d  medium→high      agree
+  debt_to_equity                  162.1            162.1      0.0   2026-06-30   59d  medium→medium    basis_mismatch  [FMP debtToEquityRatioTTM is NET debt/equity; EDGAR is gross]
+  free_cashflow               8.972e+09        1.819e+10    102.7   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+ *gross_margin                   0.8401            0.834      0.7   2026-06-30   59d  medium→high      agree
+  operating_cashflow          1.681e+10        2.808e+10     67.0   2026-06-30   59d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  operating_margin               0.4392                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: operating_income(no_tag)]
+ *profit_margin                  0.3353           0.3353      0.0   2026-06-30   59d  medium→high      agree
+ *roa                            0.1877           0.1877      0.0   2026-06-30   59d  medium→high      agree
+ *roe                            0.9258            1.024     10.6   2026-06-30   59d  medium→low       conflict
+ *shares_outstanding          9.417e+08        9.414e+08      0.0   2026-08-03   25d  medium→high      agree
+  total_cash                  7.268e+09        9.072e+09     24.8   2025-09-30  332d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ]
+  total_cash@FY               7.268e+09        7.268e+09      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(not filed @2025-12-31)]]
+  total_debt                   4.25e+10        5.491e+10     29.2   2026-06-30   59d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)         4.25e+10         4.25e+10      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ; no operating-lease tag filed; gross debt vs FMP lease-inclusive totalDebt [operating_lease_liability(stale_tag)]]
+ dtotal_debt@FY                4.25e+10         4.25e+10      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [no operating-lease tag filed; gross debt vs FMP lease-inclusive totalDebt [operating_lease_liability(stale_tag)]]
+  totals: agree=5, basis_mismatch=8, conflict=1, no_edgar=1 | would-change 6/15 applied 6: gross_margin→high, profit_margin→high, roe→low, roa→high, current_ratio→high, shares_outstanding→high
+
+  Valuation lens: QUALITY COMPOUNDER (compounder)
+[SPLITS] LLY: 0 corroborated, 0 uncorroborated, 4 out-of-scope (horizon 2016-10-28)
+  OUT-OF-SCOPE 1997-10-16 2:1 — predates the oldest share filing (2016-10-28), cannot apply to any fact
+  OUT-OF-SCOPE 1995-12-21 2:1 — predates the oldest share filing (2016-10-28), cannot apply to any fact
+  OUT-OF-SCOPE 1989-05-01 2:1 — predates the oldest share filing (2016-10-28), cannot apply to any fact
+  OUT-OF-SCOPE 1986-01-30 2:1 — predates the oldest share filing (2016-10-28), cannot apply to any fact
+[VAL-PANEL D-0] LLY  lens=compounder  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        2.55     4.67    -2.12  
+  earnings_yield_trailing    sector           2.55     4.10    -1.56  
+  earnings_yield_trailing    own_history      2.55     1.82    +0.72  median of 20 quarters, 2021-09-30→2026-06-30; basis=split_restated
+  earnings_yield_forward     risk_free        5.64     4.67    +0.97  
+  earnings_yield_forward     sector           5.64     4.10    +1.54  
+  earnings_yield_forward     own_history      5.64        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        1.82     4.67    -2.85  
+  fcf_yield                  sector           1.82     4.10    -2.29  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      1.82     0.83    +0.98  median of 15 quarters, 2021-12-31→2026-06-30; basis=split_restated
+  ebitda_yield               risk_free        3.06     4.67    -1.61  
+  ebitda_yield               sector           3.06     4.10    -1.04  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      3.06        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (-2.12pp), anchors 2.85pp apart  SPLIT — cheap vs own_history, rich vs risk_free+sector
+  earnings_yield_forward     least-flattering=risk_free (+0.97pp), anchors 0.57pp apart  all anchors agree
+  fcf_yield                  least-flattering=risk_free (-2.85pp), anchors 3.84pp apart  SPLIT — cheap vs own_history, rich vs risk_free+sector
+  ebitda_yield               least-flattering=risk_free (-1.61pp), anchors 0.57pp apart  all anchors agree
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] LLY — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  compounder  fcf_yield                   2     2    2  +0  risk_free     -2.85pp  RICH-VS-RISK-FREE
+
+  Business Quality
+  Score: 5/5  [=][=][=][=][=]  [LOW]
+  Lens: compounder
+  Rationale: Gross margin 84.0%, operating margin 43.9%, ROE 92.6%.
+  Key inputs:
+    0.8401  [HI] src=fmp+EDGAR as_of=2026-08-28
+    0.4392  [MED] src=fmp as_of=2026-08-28
+    0.9258  [LOW] src=fmp[0.9258@2026-08-28] vs EDGAR[1.024@2026-06-30] CONFLICT as_of=2026-08-28
+    0.1877  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Financial Health
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Current ratio 1.35, debt/equity 162%, FCF $9.0B.
+  Key inputs:
+    1.35  [HI] src=fmp+EDGAR as_of=2026-08-28
+    162.07  [MED] src=fmp as_of=2026-08-28
+    8972000000  [MED] src=fmp as_of=2025-12-31
+    42503000000  [MED] src=fmp as_of=2025-12-31
+    7268000000  [MED] src=fmp as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: EPS beat rate 100%, avg surprise +15.3%, trend improving. Insider signal: no_data.
+  Flags: BEAT-TREND-IMPROVING
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    941741000  [HI] src=fmp+EDGAR as_of=2026-08-28
+
+  Growth / Forward
+  Score: 5/5  [=][=][=][=][=]  [MED]
+  Lens: compounder
+  Rationale: Revenue growth 44.7% YoY. Forward PE 17.7x. EPS trend: improving.
+  Flags: EARNINGS-GROWTH-EXPECTED
+  Key inputs:
+    0.4470  [MED] src=fmp as_of=2026-08-28
+    39.29  [MED] src=fmp as_of=2026-08-28
+    17.73  [MED] src=fmp as_of=2026-08-28
+    5  [MED] src=fmp as_of=2026-08-28
+    improving  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: compounder
+  Rationale: Quality compounder (asset-light network) lens. FCF yield vs risk_free (-2.9pp). 10Y rate 4.67%.
+  Flags: RICH-VS-RISK-FREE
+  Key inputs:
+    0.0182  [MED] src=fmp as_of=2026-08-28
+    32.68  [MED] src=fmp as_of=2026-08-28
+    0.4470  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.8/5.0
+  Overall confidence:  low  (min of pillar confidences)
+  All flags: BEAT-TREND-IMPROVING, EARNINGS-GROWTH-EXPECTED, RICH-VS-RISK-FREE
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    False
+  Above MA200:   True
+  RSI-14:        39.9
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -1.18  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 10.67  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $1172.86. MA50=1186.81 MA200=1059.77 RSI=39.9. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 15% — stage MATURE band 15%
+  [anchor] implied=$1272.65 live=$1172.86 divergence=8.5%  (armed @ 15%, no trip)
+
+  Current price: $1172.86 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        30%       $1583    +35.0%
+  Base        45%       $1267     +8.0%
+  Bear        25%        $915    -22.0%
+  ----------------------------------------
+  E(R) probability-weighted: +8.6%
+
+  Verdict confidence: low
+  Reason: Exceptional business quality and GLP-1/incretin growth runway, but valuation scores low (FCF yield -2.9pp vs risk-free), Business Quality confidence is low, and execution risk on capacity ramp is material. Medium confidence warranted.
+
+  Red flags:
+    - FCF yield negative vs 10Y risk-free rate by 2.9pp — stock priced for near-perfection
+    - Business Quality pillar confidence flagged LOW despite top scores — data reliability concern
+    - Debt/equity 162% — elevated leverage as capex ramp for manufacturing accelerates
+    - Below MA50 with no volume confirmation — near-term technical weakness
+    - RSI ~40 approaching oversold but no confirmed reversal signal
+
+  Bear thesis: Valuation premium collapses if growth disappoints: manufacturing delays, pipeline failures, or GLP-1 pricing pressure from PBM/government negotiations compress both earnings and multiple simultaneously.
+
+  Data gaps (7):
+    - Insider transaction data flagged as no_data — cannot assess management conviction via open-market buying
+    - Business Quality pillar confidence is LOW — underlying data reliability for gross/operating margin and ROE figures should be verified against latest 10-K/10-Q
+    - No independent analyst price targets provided — sell-side views only inferred from training knowledge, not input data
+    - Pipeline probability-weighted NPV not provided — orforglipron, donanemab, and retatrutide optionality unquantified
+    - Manufacturing capacity ramp timeline and capex schedule not provided — key variable for near-term FCF trajectory
+    - IRA pricing negotiation exposure for tirzepatide not quantified in provided data
+    - Segment-level revenue breakdown (Mounjaro vs Zepbound vs legacy) not provided
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: MATURE   (rule: rule4_mature, lens: compounder)
+  Flags: REINVESTMENT-THRESHOLD-UNCALIBRATED
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +1524bp 2022-12-31->2025-12-31 (30.32% -> 45.56%)
+    OK  rule1_decline    capital_returns        pays_dividend=True; net_buyback=True
+    no  rule2_young      margin_sign            latest FY operating margin 45.56% (positive)
+    no  rule2_young      fcf_negative_2of3      0 of last 3 FY FCF negative (2023, 2024, 2025)
+    OK  rule3_higrowth   revenue_cagr           31.69%/y 2022-12-31->2025-12-31 (28,541,400,000 -> 65,179,000,000)
+    OK  rule3_higrowth   reinvestment_heavy     sales/capital 1.057 @ 2025-12-31 vs bar 1.50 — HEAVY reinvestment
+    no  rule3_higrowth   capital_returns        pays_dividend=True; net_buyback=True
+    OK  rule4_mature     residual               no earlier rule fired — positive earnings, moderate growth, capital returns present or reinvestment moderate
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=56, LLY); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=284)
+========================================================================
+  Readout complete.
+========================================================================

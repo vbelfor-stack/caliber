@@ -1,0 +1,198 @@
+========================================================================
+  CALIBER v3  --  BE
+========================================================================
+
+[1/3] Fetching FMP data (live)...
+      OK  name=Bloom Energy Corporation  sector=Industrials  industry=Electrical Equipment & Parts
+
+[2/3] Fetching EDGAR data (live)...
+      OK  CIK=0001664703  SIC=3620  (Electrical Industrial Apparatus)
+
+[3/3] Fetching FRED rate (live)...
+      OK  10Y rate=4.67%  conf=high
+[EDGAR-XCHECK ARMED] BE  as_of=2026-08-28  latest_period_end=2026-03-31  APPLIED=0 field(s)
+  field                             FMP            EDGAR     div%   period_end   age  conf→would-be    verdict
+  current_ratio                   4.087            5.026     23.0   2026-03-31  150d  medium→medium    stale_capped  [conflict suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  debt_to_equity                  174.4                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: equity(synonym_conflict)]
+  free_cashflow               5.719e+07        2.296e+08    301.4   2026-03-31  150d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  gross_margin                   0.3124           0.2957      5.4   2026-03-31  150d  medium→medium    stale_capped  [conflict suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  operating_cashflow          1.139e+08        2.982e+08    161.7   2026-03-31  150d  medium→medium    basis_mismatch  [FMP cash-flow is annual; EDGAR is TTM]
+  operating_margin               0.1124          0.06699     40.4   2026-03-31  150d  medium→medium    stale_capped  [conflict suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  profit_margin                 0.07868                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag)]
+  roa                           0.04352                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag)]
+  roe                            0.2477                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: net_income(stale_tag), equity(synonym_conflict)]
+  shares_outstanding          2.945e+08        2.844e+08      3.4   2026-04-24  126d  medium→medium    stale_capped  [agreement suppressed — XBRL behind submissions (newer period 2026-06-30 filed)]
+  total_cash                  2.454e+09        2.491e+09      1.5   2026-03-31  150d  medium→medium    basis_mismatch  [FMP total_cash is annual balance-sheet; EDGAR is MRQ; no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_cash@FY               2.454e+09        2.454e+09      0.0   2025-12-31  240d  medium→medium    basis_mismatch  [no ST-investment tag filed; cash-only vs FMP cash+ST-investments [short_term_investments(stale_tag)]]
+  total_debt                  2.992e+09        2.603e+09     13.0   2026-03-31  150d  medium→medium    basis_mismatch  [FMP totalDebt is annual balance-sheet; EDGAR is MRQ]
+ dtotal_debt(reported)        2.992e+09                —        —            —     —  medium→medium    no_edgar  [EDGAR unresolved: total_debt_reported(no_tag)]
+ dtotal_debt@FY               2.992e+09        2.747e+09      8.2   2025-12-31  240d  medium→low       conflict  [matched period 2025-12-31 (abs age 240d); gated on alignment]
+  FLAG XBRL-LAG: submissions index has period 2026-06-30 but companyfacts tops out at 2026-03-31 — EDGAR values are one filing behind FMP
+  [FRESHNESS-WATCH] BE: EDGAR data 150d old; June-Q filed 2026-07-29, extraction pending (XBRL-LAG); fresher data expected imminently
+  totals: basis_mismatch=5, conflict=1, no_edgar=5, stale_capped=4 | would-change 0/15 (nothing to apply)
+
+  [FRESHNESS-WATCH] BE: EDGAR data 150d old; June-Q filed 2026-07-29, extraction pending (XBRL-LAG); fresher data expected imminently
+
+  Valuation lens: GROWTH / RULE-OF-40 (growth)
+  LENS OVERRIDDEN (explicit, hand-curated): Bloom Energy. SIC 3620 (Electrical Industrial Apparatus) put it on the cyclical lens, but the demand driver is SECULAR data-centre power, not an industrial cycle. Project lumpiness is not an end-market cycle, and the specific exposure is that a future lumpy dip builds a decline streak and trips the peak gate on revenue recognition timing rather than on a downcycle.
+[SPLITS] BE: 0 corroborated, 0 uncorroborated, 0 out-of-scope (horizon 2018-09-07)
+  NOTE UNPLACEABLE SPLIT BE — edgar_tagged_ratio implies ~0.6667:1 (StockholdersEquityNoteStockSplitConversionRatio1@2018-07-07: 0.6667) but FMP reports no matching split, so there is no ex-date to apply it at.
+[VAL-PANEL D-0] BE  lens=growth  as_of=2026-08-28  APPLIED=NOTHING
+  metric                     anchor        ticker%  anchor%   spread  note
+  earnings_yield_trailing    risk_free        0.40     4.67    -4.27  
+  earnings_yield_trailing    sector           0.40     2.64    -2.24  
+  earnings_yield_trailing    own_history      0.40        —        —  UNAVAILABLE: only 0 historical points (<8); basis=truncated
+  earnings_yield_forward     risk_free        6.11     4.67    +1.44  
+  earnings_yield_forward     sector           6.11     2.64    +3.47  
+  earnings_yield_forward     own_history      6.11        —        —  UNAVAILABLE: no own-history series for this metric
+  fcf_yield                  risk_free        1.01     4.67    -3.66  
+  fcf_yield                  sector           1.01     2.64    -1.62  basis: fcf_yield vs sector EARNINGS yield
+  fcf_yield                  own_history      1.01        —        —  UNAVAILABLE: only 6 historical points (<8); basis=split_restated
+  ebitda_yield               risk_free        0.56     4.67    -4.11  
+  ebitda_yield               sector           0.56     2.64    -2.07  basis: ebitda_yield vs sector EARNINGS yield
+  ebitda_yield               own_history      0.56        —        —  UNAVAILABLE: no own-history series for this metric
+  earnings_yield_trailing    least-flattering=risk_free (-4.27pp), anchors 2.03pp apart  all anchors agree
+  earnings_yield_forward     least-flattering=risk_free (+1.44pp), anchors 2.03pp apart  all anchors agree
+  fcf_yield                  least-flattering=risk_free (-3.66pp), anchors 2.03pp apart  all anchors agree
+  ebitda_yield               least-flattering=risk_free (-4.11pp), anchors 2.03pp apart  all anchors agree
+  NOTE own-history anchor unavailable: no overlapping TTM earnings, share count and price series
+
+========================================================================
+  FIVE-PILLAR SCORECARD
+========================================================================
+[VAL-LENS D-3 DARK] BE — live vs would-be panel score (APPLIES NOTHING)
+  lens        metric                   live panel  cut   Δ  binding        spread  flags
+  growth      ebitda_yield                2     2    1  +0  risk_free     -4.11pp  RICH-VS-RISK-FREE,PANEL-NARROWED-MARKET-ONLY
+
+  Business Quality
+  Score: 3/5  [=][=][ ][ ][ ]  [MED]
+  Lens: growth
+  Rationale: Gross margin 31.2%, operating margin 11.2%, ROE 24.8%.
+  Key inputs:
+    0.3124  [MED] src=fmp as_of=2026-08-28
+    0.1124  [MED] src=fmp as_of=2026-08-28
+    0.2477  [MED] src=fmp as_of=2026-08-28
+    0.0435  [MED] src=fmp as_of=2026-08-28
+
+  Financial Health
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: growth
+  Rationale: Current ratio 4.09, debt/equity 174%, FCF $0.1B.
+  Key inputs:
+    4.09  [MED] src=fmp as_of=2026-08-28
+    174.42  [MED] src=fmp as_of=2026-08-28
+    57190000  [MED] src=fmp as_of=2025-12-31
+    2991952000  [MED] src=fmp as_of=2025-12-31
+    2454108000  [MED] src=fmp as_of=2025-12-31
+
+  Management & Capital Allocation
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: growth
+  Rationale: EPS beat rate 100%, avg surprise +193.4%, trend deteriorating. Insider signal: no_data.
+  Flags: BEAT-TREND-DETERIORATING
+  Key inputs:
+    1.00  [MED] src=fmp/earnings_history as_of=2026-08-28
+    no_data  [MED] src=fmp/insider_transactions as_of=2026-08-28
+    294527000  [MED] src=fmp as_of=2026-08-28
+
+  Growth / Forward
+  Score: 4/5  [=][=][=][ ][ ]  [MED]
+  Lens: growth
+  Rationale: Revenue growth 37.3% YoY. Forward PE 16.4x. EPS trend: deteriorating.
+  Flags: EARNINGS-GROWTH-EXPECTED, EPS-TREND-DETERIORATING
+  Key inputs:
+    0.3733  [MED] src=fmp as_of=2026-08-28
+    252.18  [MED] src=fmp as_of=2026-08-28
+    16.37  [MED] src=fmp as_of=2026-08-28
+    8  [MED] src=fmp as_of=2026-08-28
+    deteriorating  [MED] src=fmp/earnings_history as_of=2026-08-28
+
+  Valuation
+  Score: 2/5  [=][ ][ ][ ][ ]  [MED]
+  Lens: growth
+  Rationale: Growth/SaaS lens. Rule-of-40 score: 49 (37% growth + 11% margin). EV/Revenue 20.0x vs rate-shifted thresholds [7.42, 13.9] (k=0.93). 10Y rate 4.67%.
+  Flags: RULE40=49, RATE-SHIFT-K=0.93
+  Key inputs:
+    19.99  [MED] src=fmp as_of=2026-08-28
+    0.3733  [MED] src=fmp as_of=2026-08-28
+    0.1124  [MED] src=fmp as_of=2026-08-28
+    4.67  [HI] src=FRED as_of=2026-08-27
+
+------------------------------------------------------------------------
+  Composite avg score: 3.4/5.0
+  Overall confidence:  medium  (min of pillar confidences)
+  All flags: BEAT-TREND-DETERIORATING, EARNINGS-GROWTH-EXPECTED, EPS-TREND-DETERIORATING, RULE40=49, RATE-SHIFT-K=0.93
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+TECHNICAL OVERLAY  (timing only - NOT a pillar, NOT scored)
+------------------------------------------------------------------------
+  Trend:         NEUTRAL
+  Above MA50:    False
+  Above MA200:   True
+  RSI-14:        50.1
+  Vol confirm:   False  (>=1.5x 30d avg = conviction)
+    vs MA50 %: -10.92  [MED] src=fmp/price_history as_of=2026-08-28
+    vs MA200 %: 11.81  [MED] src=fmp/price_history as_of=2026-08-28
+  Note: Price $210.77. MA50=236.61 MA200=188.51 RSI=50.1. Volume confirmation: False.
+  Data rows: 1255
+
+========================================================================
+  SYNTHESIS  (Anthropic API)
+========================================================================
+  Calling synthesis engine...
+  [anchor] B-2 tolerance 20% — stage HIGROWTH band 20%
+  [anchor] implied=$204.95 live=$210.77 divergence=2.8%  (armed @ 20%, no trip)
+
+  Current price: $210.77 (as-of 2026-08-28)
+  Scenario   Prob      Target    Return
+  ----------------------------------------
+  Bull        20%        $295    +40.0%
+  Base        45%        $178    -15.5%
+  Bear        35%        $105    -50.2%
+  ----------------------------------------
+  E(R) probability-weighted: -16.6%
+
+  Verdict confidence: low
+  Reason: EV/Revenue 20x sits well above rate-adjusted thresholds; EPS trend deteriorating; agentic-AI commoditization risk unresolved for distributed-energy software stack; multiple compression risk is acute at 4.67% rates.
+
+  Red flags:
+    - EV/Revenue 20.0x vs rate-shifted ceiling of 13.9x — significant premium to fair-value band at current rates
+    - EPS trend deteriorating despite 100% beat rate — beat quality declining (avg surprise inflated by low bar)
+    - BEAT-TREND-DETERIORATING: consensus estimates may be catching up, reducing future upside surprises
+    - Price 10.9% below MA50 ($236.61) with no volume confirmation — momentum headwind
+    - Debt/equity 174% limits financial flexibility if growth disappoints
+    - FCF only $0.1B on a $20x revenue multiple — thin free-cash-flow cushion for valuation support
+
+  Bear thesis: Multiple compression from rates + agentic-AI commoditization of energy-management software + EPS misses drive sharp de-rating.
+
+  Data gaps (7):
+    - Insider ownership and recent insider transaction data not provided — material for conviction
+    - Backlog and order pipeline data absent — critical for validating 37% growth sustainability
+    - Hydrogen electrolyzer revenue breakdown not provided — optionality value unquantifiable
+    - Customer concentration data missing — single hyperscaler dependency risk unknown
+    - Agentic-AI impact on Bloom's software/services revenue not assessed in provided data
+    - Debt maturity schedule not provided — refinancing risk at elevated rates unquantified
+    - Capex trajectory and cash burn rate beyond FCF $0.1B not detailed
+
+------------------------------------------------------------------------
+LIFECYCLE STAGE  (Phase L — annotation only, reads into NO score)
+------------------------------------------------------------------------
+  Stage: HIGROWTH   (rule: rule3_higrowth, lens: growth)
+  Flags: INPUTS-INCOMPLETE
+  Absent legs: reinvestment_heavy(no_series)
+    no  rule1_decline    decline_streak         0 consecutive declining FY ending 2025-12-31
+    no  rule1_decline    margin_trend_bp        +2536bp 2022-12-31->2025-12-31 (-21.77% -> 3.60%)
+    no  rule1_decline    capital_returns        pays_dividend=False; net_buyback=False
+    no  rule2_young      margin_sign            latest FY operating margin 3.60% (positive)
+    no  rule2_young      fcf_negative_2of3      1 of last 3 FY FCF negative (2023, 2024, 2025)
+    OK  rule3_higrowth   revenue_cagr           19.06%/y 2022-12-31->2025-12-31 (1,199,125,000 -> 2,023,994,000)
+    ABS rule3_higrowth   reinvestment_heavy     asserted-absent (no_series)
+    OK  rule3_higrowth   capital_returns        pays_dividend=False; net_buyback=False
+
+  PRODUCTION WRITE: lifecycle_stage +1 row (id=46, BE); lifecycle_transitions +0  -> /home/runner/workspace/caliber.db
+
+------------------------------------------------------------------------
+  Evaluation saved  (id=274)
+========================================================================
+  Readout complete.
+========================================================================
