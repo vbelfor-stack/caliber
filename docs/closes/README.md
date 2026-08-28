@@ -18,6 +18,11 @@ Newest first.
 | 2026-08-28 first, SKHY USD-only + financials class | `2026-08-28-first.md` | `70be9730` | 1011 |
 | 2026-08-22, L-4d.1 LLY capex basis | `2026-08-22-l4d1.md` | `eec96270` | 975 |
 
+**`docs/armed-state.md` DOES NOT LIVE HERE, DELIBERATELY.** Armed state is the current
+answer to "what reads what" and carries forward across closes, so it is a LIVING file
+updated in place — one copy, never dated, never forked per close. Close state measures a
+moment; armed state does not.
+
 The three pre-2026-08-28-micro files were **relocated verbatim** out of CLAUDE.md when this
 rule landed — relocation only, nothing edited, all 44 lines verified present in the
 destination before removal from the source.
