@@ -81,6 +81,21 @@ _EVALUATIONS_ADDED_COLUMNS = {
     "defect_tags": "TEXT",
 }
 
+# Added to `lifecycle_stage` 2026-08-28 (Vic ruling 1, financials gate extension).
+#
+# A stage row for a model-inapplicable issuer is not WRONG — it was computed correctly from
+# the inputs it had. It is INADMISSIBLE, which is a different claim and needs its own column
+# rather than a deletion or an edit. Deleting would destroy the record of what was believed
+# when; editing `computed_stage` would forge a computation that never happened. So the row
+# stays exactly as written and grows a typed reason it must no longer be read.
+#
+# `tolerance_for()` and every other reader must SKIP a row with a non-NULL `retired_reason`.
+# That is the enforcement point, and it is pinned.
+_LIFECYCLE_STAGE_ADDED_COLUMNS: Dict[str, str] = {
+    "retired_reason": "TEXT",       # typed code; NULL means live
+    "retired_at": "TEXT",           # set IFF retired_reason is set
+}
+
 
 def _ensure_columns(conn: sqlite3.Connection, table: str, columns: Dict[str, str]) -> List[str]:
     """Add any missing columns to `table`. Returns the names actually added.
@@ -287,6 +302,31 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
                 detected_at      TEXT    NOT NULL
             );
 
+            -- ★ STAGE-FLIP APPROVALS (Vic ruling 2, 2026-08-28). "NOTHING persists until
+            -- Vic approves per name. No silent stage flips, ever."
+            --
+            -- THIS IS DELIBERATELY *NOT* `lifecycle_overrides`, AND THE DISTINCTION IS THE
+            -- WHOLE POINT. An override says "the approved stage REPLACES the computed one"
+            -- — it is a disagreement with the classifier. An approval says "the classifier
+            -- is right and MAY WRITE" — it is consent to persist. Folding consent into
+            -- disagreement would mean every approval silently pinned a standing override on
+            -- the name, which is the semantic conflation this project keeps punishing.
+            --
+            -- Keyed on (ticker, from_stage, to_stage): approval is for a SPECIFIC flip, not
+            -- a blanket unlock. A name approved YOUNG->MATURE that later recomputes to
+            -- DECLINE halts again, which is correct — that is a different claim.
+            CREATE TABLE IF NOT EXISTS stage_flip_approvals (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker           TEXT    NOT NULL,
+                from_stage       TEXT    NOT NULL,
+                to_stage         TEXT    NOT NULL,
+                rationale_text   TEXT    NOT NULL,
+                approved_at      TEXT    NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_stage_flip_approvals_ticker
+                ON stage_flip_approvals (ticker, approved_at);
+
             CREATE INDEX IF NOT EXISTS idx_lifecycle_transitions_ticker
                 ON lifecycle_transitions (ticker, detected_at);
         """)
@@ -294,6 +334,7 @@ def init_db(db_path: Path = _DEFAULT_DB) -> None:
         # Bring a pre-existing evaluations table up to the current column set. A DB
         # created fresh by the DDL above already has them and this is a no-op.
         _ensure_columns(conn, "evaluations", _EVALUATIONS_ADDED_COLUMNS)
+        _ensure_columns(conn, "lifecycle_stage", _LIFECYCLE_STAGE_ADDED_COLUMNS)
 
 
 def _validate_supersede_link(
@@ -999,6 +1040,85 @@ def save_lifecycle_override(
              str(rationale_text).strip(), now),
         )
         return cur.lastrowid
+
+
+def retire_lifecycle_stages(
+    ticker: str, reason: str, *, db_path: Path,
+) -> int:
+    """Mark every live stage row for `ticker` inadmissible. Returns rows touched.
+
+    RULING 1, 2026-08-28. A stage computed for a model-inapplicable issuer is not WRONG —
+    it was derived correctly from the inputs it had. It is INADMISSIBLE, and those are
+    different claims:
+
+      * DELETING the row would destroy the record of what was believed when, which is the
+        one thing the append-only discipline exists to preserve;
+      * EDITING `computed_stage` would forge a computation that never ran.
+
+    So the row is left byte-for-byte as written and stamped with a typed reason it must no
+    longer be read. Idempotent — an already-retired row is skipped, not re-stamped, so a
+    re-run does not rewrite `retired_at` and lose the date it actually happened.
+
+    `db_path` is keyword-only and has NO default, on the L-2a precedent: this is a writer,
+    and a writer that can default to production is the failure mode that produced the 2026-
+    08-17 contamination.
+    """
+    if not str(reason or "").strip():
+        raise ValueError(f"{ticker}: retirement refused — a typed reason is mandatory")
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn(db_path) as conn:
+        cur = conn.execute(
+            "UPDATE lifecycle_stage SET retired_reason=?, retired_at=? "
+            "WHERE ticker=? AND retired_reason IS NULL",
+            (str(reason).strip(), now, ticker.upper()),
+        )
+        return cur.rowcount
+
+
+def save_stage_flip_approval(
+    ticker: str, from_stage: str, to_stage: str, rationale_text: Optional[str],
+    *, db_path: Path,
+) -> int:
+    """Record Vic's consent for ONE specific stage flip. Ruling 2, 2026-08-28.
+
+    Validated ahead of the INSERT, on the `save_lifecycle_override` precedent: a refusal
+    that has already written something is not a refusal.
+    """
+    if rationale_text is None or not str(rationale_text).strip():
+        raise OverrideRationaleMissing(
+            f"{ticker}: stage-flip approval {from_stage} -> {to_stage} refused — "
+            f"a rationale is mandatory")
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn(db_path) as conn:
+        cur = conn.execute(
+            """INSERT INTO stage_flip_approvals
+               (ticker, from_stage, to_stage, rationale_text, approved_at)
+               VALUES (?,?,?,?,?)""",
+            (ticker.upper(), from_stage, to_stage, str(rationale_text).strip(), now),
+        )
+        return cur.lastrowid
+
+
+def get_stage_flip_approval(
+    ticker: str, from_stage: str, to_stage: str, db_path: Path = _DEFAULT_DB,
+) -> Optional[Dict]:
+    """The approval for THIS EXACT flip, or None.
+
+    Exact-match on all three keys deliberately: approval is consent to one transition, not
+    a blanket unlock on the name. A name approved YOUNG -> MATURE that later recomputes to
+    DECLINE halts again, because that is a different claim about the business.
+    """
+    with _conn(db_path) as conn:
+        try:
+            row = conn.execute(
+                "SELECT * FROM stage_flip_approvals "
+                "WHERE ticker=? AND from_stage=? AND to_stage=? "
+                "ORDER BY id DESC LIMIT 1",
+                (ticker.upper(), from_stage, to_stage),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            return None
+    return dict(row) if row else None
 
 
 def get_standing_override(ticker: str, db_path: Path = _DEFAULT_DB) -> Optional[Dict]:

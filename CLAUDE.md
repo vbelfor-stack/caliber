@@ -53,7 +53,52 @@ GATE EXISTS anywhere in the runtime, so that trigger is currently unreachable.**
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
 section is the cold-start record; everything below it is the durable detail.
 
-### ▶▶ 2026-08-28 CLOSE — SKHY USD-ONLY + THE FINANCIALS CLASS. READ THE C FINDING FIRST.
+### ▶▶▶ 2026-08-28 SECOND CLOSE (the "closer" order) — READ THIS BEFORE THE BLOCK BELOW IT.
+Order `docs/orders/2026-08-28-closer.md`, report `docs/2026-08-28-closer.md`.
+Suite **1011 → 1051**. caliber.db **`70be9730` → `19d615fe`**.
+
+**★★ TOMORROW'S FIRST ACTION — ONE PER-NAME RULING IS PENDING AND NOTHING WILL PROCEED PAST
+IT: `QBTS  HIGROWTH → YOUNG`, band `20% → 30%` (the WIDER direction), `rule2_young`.**
+Detected by the new stage-freshness sweep, **read-only, NOTHING PERSISTED**. Approve or
+reject per name:
+`python -m tools.stage_freshness_sweep --approve QBTS --rationale "..."`
+**Vic expected the sweep to find zero after the financials gate; it found one, and the
+reason is structural: EVERY stage row in the table predates its own inputs** (all 44 written
+2026-08-17; L-4c/L-4d/L-4f/L-4d.1 wrote series 21–22 August). **C was never the only case —
+it was the first one anyone looked at.** 13 names recomputed to the SAME stage; QBTS is the
+only flip.
+
+**WHAT LANDED.** (a) The financials gate now binds the **evaluator** (exit 5) and the
+**batch path** (`status='model_inapplicable'`), not just the score builder — and **8
+`lifecycle_stage` rows for BK/C/JPM/USB are RETIRED**, not deleted or edited, with
+`tolerance_for()` now filtering `retired_reason IS NULL`. (b) `core/stage_freshness.py` +
+`tools/stage_freshness_sweep.py`, with a NEW approval table `stage_flip_approvals`. (c) The
+currency guard on 8 MONETARY score-bearing fields (`core/reporting_currency.py`) — ratios
+deliberately NOT guarded, because KRW/KRW reads the same as USD/USD. (d) The SKHY anchor
+**written**: `market-capitalization?symbol=SKHY` → **$1,143,150,316,466 USD, 2026-08-28**,
+`metric='market_cap_anchor'`, `period_type='ANCHOR'`, full-cap basis. (e) Pre-flight rescope
+doc-level only. (f) A 32-item punch-list census — **that census in the report is now the
+authoritative "what's left" list; this file is the narrative.**
+
+**★★ MAJOR FLAG — FINANCIALS ARE UNSCOREABLE. Router + gate SHIPPED; ENGINE NOT BUILT;
+scoping order QUEUED behind the open items.** BK/C/JPM/USB get no stage, no score, no band.
+**Consequence Vic priced in: they are the only four bank-lens names, so D-5/D-6 bank-lens
+calibration has NO POPULATION until a dedicated financials leg exists.**
+
+**★ TWO DEFECTS WERE CAUGHT IN MY OWN WORK THIS SESSION AND BOTH ARE WORTH THE READ.**
+**(1)** `tools/retire_financial_stages.py` reported "0 live rows" for four names holding
+eight — an `except OperationalError: return []` masking an unmigrated column. **A `--commit`
+on that output would have retired nothing and RECONCILED TO MATCH**, because expected and
+actual would both have been zero. **(2)** The currency guard's first version declared
+`market_cap`'s basis STATICALLY, and the dark diff showed it BLOCKING the very USD figure
+ruling 3 exists to supply — **a field's currency basis belongs to the ENDPOINT THAT SUPPLIED
+IT, not to its name**, and ruling 3 had just moved that endpoint.
+
+**★ AND A THIRD, IN THE PINS, FOR THE SECOND TIME IN ONE DAY:** two new pins scanned module
+TEXT for a forbidden word and fired on the prose explaining the prohibition. Both rewritten
+over the AST. *A pin that prose can break is one a later session weakens instead of heeding.*
+
+### ▶▶ 2026-08-28 FIRST CLOSE — SKHY USD-ONLY + THE FINANCIALS CLASS. READ THE C FINDING.
 Order `docs/orders/2026-08-28-skhy-usd-only-and-financials-class.md`, report
 `docs/2026-08-28-skhy-usd-only-and-financials-class.md`. Suite **984 → 1011**. One write
 point, **+133 rows in `fundamental_series`**, reconciled exactly, every other table +0.
@@ -134,7 +179,21 @@ STATE below. It is the one thing L-4b left deliberately observable rather than s
 **THE B-2 BAND RULING IS SETTLED (2026-08-20): arm on the existing 15/20/30 set, no
 re-derivation. L-4b is DONE.**
 
-### STATE AT CLOSE 2026-08-28 — MEASURED at close. This SUPERSEDES the 2026-08-22 table below for every row it names.
+### STATE AT CLOSE 2026-08-28 (SECOND close, the "closer" order) — MEASURED. Supersedes every table below it.
+
+| | |
+|---|---|
+| HEAD | the **closer close commit** — verify with `git log -1`. THREE commits this session: the order doc (`7563b83`, before execution), then the arm+write+close. Previous session's last commit was **`ebd95d9`**. |
+| Suite | **1051 passed** (was 1011; +40). No pre-existing test broke. **11 of 40 verified to FAIL against disarmed guards.** |
+| caliber.db md5 | **`19d615fed542e1804fbb4bf0405878b1`**. Trail: `70be9730` (open) → `85417a2e` (**SCHEMA MIGRATION ONLY — 0 rows in any table**) → `08cb3eb3` (8 stage rows retired) → `19d615fe` (+1 anchor row). Backup `caliber.db.pre-closer-70be9730.bak`. |
+| **PRODUCTION WRITES** | **THREE, and one has no rows.** (0) additive schema: `lifecycle_stage.retired_reason/retired_at` + new table `stage_flip_approvals` — **md5 moved with ZERO row delta, say so out loud**. (1) **8 `lifecycle_stage` rows STAMPED retired** (0 inserted, 0 deleted, 0 edited) — expected 8, actual 8. (2) **+1 `fundamental_series` row** (the SKHY anchor) — expected +1, actual +1, restatements 0. Every other table re-counted: **all +0**. |
+| fundamental_series | **2622 rows** (was 2621). |
+| lifecycle_stage | **44 rows, unchanged — 8 RETIRED, 36 live.** |
+| stage_flip_approvals | **0 rows** — NEW TABLE, empty. QBTS is unapproved on purpose. |
+| step-4 evaluable | **20 of 28 — unchanged.** `SELECT DISTINCT ticker` reads 23; still do not use it. |
+| evaluations / field_provenance / transitions / grades / overrides / synthesis_cache | 80 / 1437 / 1 / 0 / 0 / 16 — **all unchanged**. |
+
+### STATE AT CLOSE 2026-08-28 (FIRST close) — superseded above where they overlap.
 
 | | |
 |---|---|
@@ -171,6 +230,96 @@ re-derivation. L-4b is DONE.**
 | **L-4b band assignment** | 18 of 28 names at the default 15%; **10 widen** — ARM/BE/CBRS/LITE/NOW/QBTS/SKHY @20%, IONQ/RKLB/SPCX @30%. DPC and INFQ read YOUNG but are correctly DENIED 30% (`INSUFFICIENT-HISTORY`). INFQ sits **0.37pp** from tripping at its 15%. |
 
 ### ARMED STATE — what reads what, precisely
+
+- **★★ THE FINANCIALS GATE IS ARMED ON THREE SURFACES (Vic ruling 1, 2026-08-28).** Not just
+  `build_fcf_series` any more: **the EVALUATOR** (`evaluate.py`, refuses after lens selection
+  and BEFORE `build_panel`, **exit 5**) and **the BATCH path** (`batch/runner.py` raises
+  `ModelInapplicable` → `status='model_inapplicable'` via `save_failed_evaluation`, which
+  writes no pillars, no score, no E(R)). The classifier is reached transitively — evaluate.py
+  is the sole annotator, so refusing there means no stage is computed.
+  - **★ THE BATCH GATE'S POSITION IS LOAD-BEARING IN A WAY THE INTERACTIVE ONE IS NOT: it
+    sits ABOVE `run_dark_fcf_series`, WHICH IS A WRITER.** "Nothing numeric" is not satisfied
+    by declining to score if a writer already ran. Pinned by line order.
+  - **8 `lifecycle_stage` ROWS ARE RETIRED, NOT DELETED AND NOT EDITED** (BK 7/35, C 9/37,
+    JPM 6/34, USB 8/36). The rows were computed CORRECTLY from the inputs they had — they are
+    **INADMISSIBLE, not wrong**, and that is a different claim. `computed_stage`, `rule_fired`
+    and `run_at` all survive byte-for-byte; pinned.
+  - **`retired_reason` IS A GUARD, NOT A NOTE:** `core.stage_tolerance._latest_stage_row` and
+    `core.stage_freshness` both filter `retired_reason IS NULL`. Measured after the write:
+    BK/C/JPM/USB → `tolerance 0.15, stage=None`; V and IONQ untouched. **"No band" is
+    represented as the DEFAULT, never undefined and never the widest** — pinned that
+    retirement can never WIDEN a band.
+  - **THE NAMES ARE NOT HARDCODED** — membership is recomputed live through
+    `fcf_model_applicability`. V and WU were passed to the retirement tool explicitly and
+    correctly SKIPPED.
+- **★★ STAGE FRESHNESS IS ARMED — NO SILENT STAGE FLIPS (Vic ruling 2, 2026-08-28).**
+  `core/stage_freshness.guard_stage_write` raises `StageFlipRequiresApproval` **before** the
+  write. Four outcomes, one raises: not stale → write; stale but same stage → write; stale +
+  flipped + APPROVED → write; stale + flipped + unapproved → **HALT, exit 6, nothing
+  persists.**
+  - **★★ THE STALENESS SIGNAL IS *NOT* "ANY NEWER ROW", AND THE NAIVE VERSION IS ALREADY
+    WRONG.** `max(first_observed)` over all rows flags **19 of 28**, but JPM/SKHY/USB appear
+    only because of the `value=NULL` currency-block and class-flag rows written that morning.
+    **A row the classifier cannot read cannot change a stage.** The signal is
+    `period_type='FY'` AND `value IS NOT NULL` AND `metric IN ('fcf','sales_to_capital')` —
+    pinned over the **AST** against the actual `build_legs` call, so a third leg cannot be
+    wired in without the guard following it.
+  - **THE APPROVAL CHANNEL IS `stage_flip_approvals`, DELIBERATELY *NOT* `lifecycle_overrides`.**
+    An override says "the approved stage REPLACES the computed one" — disagreement with the
+    classifier. An approval says "the classifier is RIGHT and may write" — consent to persist.
+    **Approval is PER-TRANSITION**, keyed `(ticker, from_stage, to_stage)`: approving
+    `HIGROWTH → YOUNG` does not license a later `HIGROWTH → DECLINE`. Both pinned.
+  - **THE HALT IS CAUGHT AHEAD OF THE BROAD `except Exception` around `_lifecycle_block`** —
+    that handler degrades an annotation failure to a one-line WARN, which is right for a feed
+    flake and **IS the silent stage flip** here. Pinned over the AST on handler order.
+  - **RUN THE SWEEP BEFORE ANY EVALUATION RUN** — `python -m tools.stage_freshness_sweep`,
+    read-only. **QBTS `HIGROWTH → YOUNG` is OUTSTANDING AND UNAPPROVED.**
+- **★ THE USD-ONLY CURRENCY GUARD IS ARMED ON SCORE-BEARING FIELDS (Vic ruling 4,
+  2026-08-28).** `adapters.fmp_adapter.apply_currency_guard`, applied at the payload boundary
+  so ONE enforcement point covers the live AND fixture paths.
+  **GUARDED (8 MONETARY):** `total_debt`, `total_cash`, `free_cashflow`,
+  `operating_cashflow`, `market_cap`, `enterprise_value`, `current_price`,
+  `target_mean_price`. **NOT GUARDED (currency-neutral), and stated in code:** every margin,
+  `roe`, `roa`, `current_ratio`, `debt_to_equity`, `revenue_growth`, `trailing_pe`,
+  `forward_pe`, `price_to_book`, `ev_to_ebitda`, `ev_to_revenue`, `fcf_yield`, `beta`,
+  `shares_outstanding`, `analyst_count`.
+  - **"ALL score-bearing fields" IS READ AS "every field a currency error can REACH."** A
+    ratio sharing a basis top and bottom reads the same in KRW and USD — verified live, not
+    assumed: SKHY's `freeCashFlowYieldTTM` is 0.0777 and KRW TTM FCF ÷ KRW cap reproduces
+    7.77%. Blocking those would DISCARD VALID DATA.
+  - **BLOCK = `missing_prov` with a typed source. NOTHING IS CONVERTED** — no rate, no forex
+    call, no arithmetic. Pinned behaviourally and over the AST. **UNKNOWN BLOCKS**, including
+    two statements disagreeing about the currency (UNKNOWN, never a majority vote).
+  - **BLAST RADIUS: ONE NAME.** SKHY is the universe's only non-USD reporter; all 28 are
+    USD-quoted.
+- **★ MARKET CAP NOW COMES FROM `market-capitalization`, NOT `key-metrics-ttm` (ruling 3).**
+  Dark diff over all 28: **26 agree to 1.0000**; **SKHY ratio 0.0010** (key-metrics served
+  the KRW cap of `000660.KS`, byte-identical) and **GOOG ratio 0.9921** — key-metrics serves
+  GOOG the ISSUER cap (byte-identical to GOOGL) while this endpoint serves the class-specific
+  one. **GOOG's −0.79% was NOT anticipated by the ruling; reported, not absorbed.**
+  **ZERO PILLAR SCORES MOVED on any of the 28.**
+  - **★★ THE GUARD IS WHAT MAKES THIS SAFE, NOT AN INDEPENDENT IMPROVEMENT.**
+    `core/pillars.py:237-238` computes `fcf / market_cap`; both legs were KRW for SKHY and
+    **accidentally correct**. Making `market_cap` USD without blocking the KRW
+    `free_cashflow` would be wrong by ~1,378x. **Rulings 3 and 4 land together or not at all.**
+  - **★ `market_cap` IS DELIBERATELY ABSENT FROM `FIELD_CURRENCY_BASIS`.** Its basis belongs
+    to **the endpoint that supplied it**, and ruling 3 moved that endpoint; the adapter still
+    falls back to key-metrics when the newer endpoint is absent, which is what every recorded
+    fixture does. A static answer BLOCKED the very USD figure ruling 3 exists to supply —
+    caught by the dark diff. `market_cap_basis()` resolves it per payload and fails toward
+    the basis that blocks. Pinned so a static answer cannot be re-added.
+  - **FIXTURE AGING, RECORDED NOT FIXED:** recorded FMP fixtures predate the
+    `market_capitalization` key, so **offline market_cap keeps the key-metrics value while
+    live uses the new endpoint.** Same hazard L-4d pinned for the capex synonym.
+- **★ THE SKHY ANCHOR IS WRITTEN** — `fundamental_series` id 2622,
+  `metric='market_cap_anchor'`, `period_type='ANCHOR'`, **$1,143,150,316,466 USD**,
+  period_end `2026-08-28`, basis `full_market_cap`, method `market-capitalization`.
+  **Free float is NOT computed, NOT stored and NOT offered** — Vic's own ~$909.30B reference
+  IS the free-float cap and the full cap is ~$1.14T, a 25.6% gap, so "no float variants" is a
+  choice between two defensible numbers. The tool **refuses** a non-USD quote. Destination is
+  `fundamental_series` and **not `overrides`**, because `overrides` is read only by
+  `web/app.py` and by nothing on the pipeline path — a row there would be an anchor nothing
+  reads, which is worse than none.
 
 - **★ THE FCF-MODEL FINANCIALS CLASS IS ARMED (2026-08-28, `core/model_applicability.py`).**
   Banks, insurers and diversified financials are **model-inapplicable** to the FCF engine —
@@ -384,7 +533,42 @@ it showed 8 flags at flat 15% against ZERO at eval time, the gap being pure pric
 (STX itself -16.3% in two days); (c) INFQ still sits **0.37pp** from tripping (14.63% vs its
 fail-closed 15%), which is the live held name that makes the band decision non-theoretical.
 
-### PUNCH LIST — current at close
+### PUNCH LIST — ★ THE AUTHORITATIVE "WHAT'S LEFT" LIST IS NOW THE 32-ITEM CENSUS IN
+### `docs/2026-08-28-closer.md` §8 (read-only census, 2026-08-28). The entries below are the
+### NARRATIVE behind those lines — richer, but not the index. Reconcile against §8, not this.
+
+- **★★ MAJOR FLAG — FINANCIALS ARE UNSCOREABLE. ROUTER + GATE SHIPPED; ENGINE NOT BUILT;
+  SCOPING ORDER QUEUED behind the current open items (Vic, 2026-08-28).** BK, C, JPM and USB
+  produce **no stage, no score, no band** — see the financials gate in ARMED STATE.
+  **CONSEQUENCE VIC PRICED IN AND THAT A LATER SESSION MUST NOT READ AS A REGRESSION: those
+  four are the ONLY bank-lens names, so D-5/D-6 BANK-LENS CALIBRATION HAS NO POPULATION until
+  a dedicated financials leg exists.** `BANK-RUNG-UNCALIBRATED` is now unreachable for the
+  same reason. Do NOT "restore" bank scoring to fix a calibration gap — that is the ruling
+  working.
+- **★★ QBTS `HIGROWTH → YOUNG` IS OUTSTANDING AND UNAPPROVED (2026-08-28).** Band
+  `20% → 30%`, the WIDER direction, `rule2_young`. Detected read-only; **nothing persisted**.
+  `python -m tools.stage_freshness_sweep --approve QBTS --rationale "..."`
+  **The general condition behind it is the bigger item: EVERY stage row predates its own
+  inputs** (44 rows written 2026-08-17; series written 21–22 August). 13 names recomputed to
+  the SAME stage, so the exposure is bounded and measured — but nothing re-computes a stage
+  when its series changes, and the sweep is the only thing that looks.
+- **★ TWO DEFECTS FOUND IN THIS SESSION'S OWN WORK — the shapes recur, so read them.**
+  **(1) A defensive `except` that manufactured a confident wrong answer.**
+  `tools/retire_financial_stages.py` caught `OperationalError` on an unmigrated column and
+  returned `[]`, reporting "0 live rows" for four names holding eight. **A `--commit` on that
+  output would have retired nothing and RECONCILED TO MATCH**, because expected and actual
+  would both have been zero. Same family as the L-4c short-circuit. Fixed: migrate before
+  reading, and the query now RAISES.
+  **(2) A guard whose static assumption was invalidated by the same order that armed it.**
+  The currency guard declared `market_cap`'s basis statically; ruling 3 had just moved that
+  field's source endpoint, so the guard BLOCKED the very USD figure ruling 3 exists to
+  supply. Caught by the dark diff, not by review.
+- **★ AND A THIRD, IN THE PINS, FOR THE SECOND TIME IN ONE DAY:** two new pins scanned module
+  TEXT for a forbidden word (`"bank"`, `"convert"`, `"key-metrics"`) and fired on the PROSE
+  explaining why the thing is forbidden. Both rewritten over the AST. **These modules are
+  heavily commented precisely because their rulings are subtle, so text-scan pins on them are
+  structurally unsafe.** *A pin that prose can break is one a later session weakens instead
+  of heeding.*
 
 - **★★ TOP PRIORITY, RULE BEFORE ANYTHING ELSE — CITIGROUP READS *YOUNG* ON A LIVE RUN, AND
   THE STALE-STAGE PROBLEM BEHIND IT IS GENERAL (found 2026-08-28).** Full statement in the
@@ -941,6 +1125,37 @@ permanent-advisory rows, the R-A alignment preconditions, every Phase D ladder a
   overwriting data, or any change beyond what the order specifies.
 - Never add duplicate logic. If existing behavior already satisfies the order, leave it and say so.
 - Manual mode (per-action approval) is the default.
+
+## SESSION-OPEN CHECKLIST — RESCOPED FOR THE DOCTRINE (doc-level, 2026-08-28)
+Run in this order at every wake-up. **Steps 1–2 are the peer-process protocol below and are
+unchanged.** Steps 3–5 are the doctrine rescope Vic ordered as step (e) of the closer order.
+
+1. **PEER-PROCESS CHECK** — `ps aux | grep claude`, `ListAgents`, verify your OWN pid
+   empirically by PPID walk, enumerate orphans by `ppid 1`. Full rules below.
+2. **STATE VERIFICATION** — HEAD, suite count, caliber.db md5 (checkpoint WAL first),
+   `git status`, `git rev-list --count origin/master..master`. Mismatch against the
+   chat-carried pointers ⇒ **STOP, no writes.**
+3. **★ THE LIVE-EDGAR PRE-FLIGHT REMAINS MANDATORY ON EVERY LIVE RUN. IT IS *NOT* RESCOPED
+   TO ARBITRATION-ONLY, AND THAT IS THE MEASUREMENT, NOT A PARTIAL IMPLEMENTATION.**
+   The doctrine says EDGAR is the arbiter, invoked in three cases. **The code disagrees, and
+   was re-confirmed by grep on 2026-08-28: EDGAR is SCORE-BEARING ON EVERY RUN** via
+   `yf.sic = edgar.sic` → `select_lens(...)` (evaluate.py:300/310, batch/runner.py:254/255),
+   `build_panel(yf, fred, edgar, …)`, and `score_growth(yf, edgar, lens)`; and `fetch_edgar`
+   is a **hard gate** (evaluate.py exits 1; batch persists a `failed` row per ticker).
+   Rescoping the pre-flight while that holds would remove the one mechanism standing between
+   an intermittent SEC 403 and **28 `failed` rows in production**. **Vic's option (a) —
+   SEQUENCE IT — is what is implemented: the pre-flight stays until EDGAR is genuinely off
+   the pipeline path.** Re-read doctrine §5 before touching it.
+4. **FMP IS THE SOURCE.** Every pipeline input — series, TTM, scoring, market cap — comes
+   from FMP. **EDGAR is invoked only for arbitration (>25% divergence or a failed sanity
+   gate), filed-tag provenance on a challenged verdict, and rulings.**
+   **NOTE: no sanity gate exists anywhere in the runtime, so that trigger is unreachable.**
+5. **USD ONLY.** Any non-USD MONETARY score-bearing field is blocked with a typed reason and
+   **never converted** (`core/reporting_currency.py`). Any non-USD statement period is
+   blocked, never ingested. SKHY is the only current tripper.
+6. **BEFORE ANY EVALUATION RUN, run the stage-freshness sweep** —
+   `python -m tools.stage_freshness_sweep`. It is read-only. **An unapproved flip HALTS the
+   run (exit 6) and persists nothing**, so finding out at sweep time is strictly cheaper.
 
 ## SESSION-OPEN PROTOCOL (standing rule, 2026-08-15) — PEER-PROCESS CHECK
 On every wake-up: run `ps aux | grep claude` and `ListAgents`. Verify your OWN pid

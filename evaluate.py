@@ -34,6 +34,8 @@ from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
 from core.lens_overrides import lens_override
+from core.model_applicability import applicability_for
+from core.stage_freshness import StageFlipRequiresApproval
 from core.stage_tolerance import tolerance_for
 from core.universe import is_calibration_instrument
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
@@ -201,6 +203,14 @@ def _lifecycle_block(ticker: str, yf, edgar, lens: str, fixture_mode: bool,
         mark = {"satisfied": "OK ", "not_satisfied": "no ", "absent": "ABS"}[a.outcome]
         print(f"    {mark} {a.rule:16} {a.leg:22} {a.detail}")
 
+    # ── ★ RULING 2 (2026-08-28) — NO SILENT STAGE FLIPS, EVER ────────────────
+    # Raised BEFORE the write, so a halt cannot have persisted anything. Not caught here:
+    # it must reach the boundary handler, on the same reasoning D-2 applied to
+    # RateUnavailable — a policy refusal swallowed at the point of detection becomes a
+    # crash, or worse, a silence.
+    from core.stage_freshness import guard_stage_write
+    guard_stage_write(db_path, ticker, result.stage, result.rule_fired)
+
     stage_id, transition_id = save_lifecycle_stage(result, db_path=db_path)
     # EXPECTED-DELTA REPORTING (ruled): every run states what it wrote, so a production md5
     # change is logged rather than silent.
@@ -312,6 +322,37 @@ def evaluate(ticker: str, fixture_mode: bool = False,
     _ov = lens_override(ticker)
     if _ov is not None:
         print(f"  LENS OVERRIDDEN (explicit, hand-curated): {_ov[1]}")
+
+    # ── ★ THE FCF-MODEL CLASS GATE — EXTENDED TO THE EVALUATOR (Vic, 2026-08-28) ──
+    #
+    # "Model-inapplicable means NOTHING numeric: gate the classifier and evaluator, not
+    #  just the score builder. BK, C, JPM, USB get no stage, no score, no band — typed
+    #  flag rows only."
+    #
+    # PLACED AFTER THE LENS AND BEFORE THE PANEL, which is the earliest point that has the
+    # sector/industry AND has not yet computed a number. Refusing here means no panel, no
+    # pillars, no technicals, no synthesis, no E(R), no lifecycle stage and no evaluation
+    # row carrying values — the refusal is the output.
+    #
+    # THIS IS A REFUSAL, NOT A FAILURE, and it exits 5 to say so — distinct from the crash
+    # code (1) and from the other policy refusals (3). D-2's ruling on RateUnavailable is
+    # the precedent: "a policy refusal filed as a crash is exactly the conflation D-2
+    # removes."
+    _app = applicability_for(yf)
+    if not _app.applicable:
+        print(f"\n{_divider('=')}", file=sys.stderr)
+        print(f"  REFUSED TO SCORE — FCF MODEL INAPPLICABLE ({_app.class_name})",
+              file=sys.stderr)
+        print(_divider("="), file=sys.stderr)
+        print(f"\n{_app.detail}\n", file=sys.stderr)
+        print(f"Typed reason: {_app.typed_reason}", file=sys.stderr)
+        print("\nNothing numeric was computed and NOTHING was written: no pillars, no "
+              "E(R),\nno lifecycle stage, no evaluation row. The stored flag row in "
+              "`fundamental_series`\nis the record.", file=sys.stderr)
+        print("\nFinancials are UNSCOREABLE pending a dedicated leg — the router and the "
+              "gate are\nshipped, the engine is not built. Ruled by Vic 2026-08-28.",
+              file=sys.stderr)
+        sys.exit(5)
 
     # Phase D-0 DARK: measure the three valuation anchors and log the spreads.
     # Applies nothing — no Prov, score, E(R) or grade can move.
@@ -458,6 +499,26 @@ def evaluate(ticker: str, fixture_mode: bool = False,
     # consult the stage even by accident.
     try:
         _lifecycle_block(ticker, yf, edgar, lens, fixture_mode, write_db, fmp_fx)
+    except StageFlipRequiresApproval as e:
+        # ★ CAUGHT AHEAD OF THE BROAD HANDLER, AND THAT ORDERING IS THE RULING.
+        #
+        # The `except Exception` below degrades an annotation failure to a one-line WARN,
+        # which is correct for a feed flake and CATASTROPHICALLY WRONG here: a stage flip
+        # downgraded to a WARN in a wall of output is precisely the "silent stage flip"
+        # Vic's ruling forbids. This one HALTS.
+        #
+        # Nothing was persisted — the guard raises before the write. The evaluation's own
+        # scores are already computed and are NOT discarded; what is refused is the STAGE,
+        # so the run stops here rather than saving an evaluation whose band would be read
+        # from a stage table this run just proved inconsistent.
+        print(f"\n{_divider('=')}", file=sys.stderr)
+        print("  HALTED — UNAPPROVED STAGE FLIP", file=sys.stderr)
+        print(_divider("="), file=sys.stderr)
+        print(f"\n{e}\n", file=sys.stderr)
+        print("Approve the transition, then re-run:", file=sys.stderr)
+        print(f"  python -m tools.stage_freshness_sweep --approve {ticker} "
+              f"--rationale \"...\"\n", file=sys.stderr)
+        sys.exit(6)
     except Exception as e:
         # An annotation must never take down an evaluation. Loud on stderr, never silent.
         print(f"  WARN: lifecycle stage annotation failed — {e}", file=sys.stderr)

@@ -406,9 +406,11 @@ def _build(
     analyst_est: List[Dict],
     price_target: Dict,
     shares_float: Dict,
+    market_capitalization: Optional[Dict] = None,
 ) -> TickerData:
 
     as_of = TODAY_STR
+    market_capitalization = market_capitalization or {}
 
     # ── Identity ──────────────────────────────────────────────────────────
     current_price_val = coerce(profile.get("price"))
@@ -454,7 +456,34 @@ def _build(
     price_to_book = _p(ratios.get("priceToBookRatioTTM"))
     ev_to_ebitda = _p(metrics.get("evToEBITDATTM"))
     ev_to_revenue = _p(metrics.get("evToSalesTTM"))
-    market_cap = _p(metrics.get("marketCap"))
+
+    # ── ★ MARKET CAP: ONE BASIS, ONE ENDPOINT (Vic ruling 3, 2026-08-28) ──────
+    #
+    # "SKHY ANCHOR: full market cap basis, from the same endpoint as the (d) measurement
+    #  (market-capitalization?symbol=SKHY, USD), pulled live at write time (~$1.14T basis).
+    #  One basis, one endpoint, no float variants."
+    #
+    # This field used to come from `key_metrics_ttm.marketCap`, which silently resolves to
+    # the ISSUER rather than the LISTING. Measured across all 28 on 2026-08-28, the two
+    # endpoints agree to 1.0000 on 26 names and disagree on exactly two:
+    #
+    #   SKHY  ratio 0.0010 — key-metrics serves the KRW cap of the Korean ordinary line
+    #                        `000660.KS`, byte-identical, while this endpoint serves the
+    #                        ADR's USD cap. A ~1,028x error on a score-bearing field.
+    #   GOOG  ratio 0.9921 — key-metrics serves GOOG the cap of GOOGL (byte-identical),
+    #                        i.e. the issuer; this endpoint serves the class-C listing.
+    #                        −0.79%. NOT anticipated by the ruling; found by measurement
+    #                        and reported rather than absorbed.
+    #
+    # FALLBACK IS DELIBERATE AND IS NOT A SILENT ONE. Recorded fixtures predate this
+    # endpoint and carry no `market_capitalization` key, so offline runs keep the old
+    # key-metrics value. That is the SAME fixture-aging hazard L-4d recorded for the capex
+    # synonym: a fixture stores what production requested AT RECORD TIME. It is pinned by
+    # name rather than "fixed" by re-recording, because re-recording moves the regression
+    # baseline for every valuation score and is its own ruled step.
+    market_cap = _p(coerce(market_capitalization.get("marketCap")))
+    if market_cap.is_missing():
+        market_cap = _p(metrics.get("marketCap"))
     current_price = _p(current_price_val)
     enterprise_value = _p(metrics.get("enterpriseValueTTM"))
     fcf_yield = _p(metrics.get("freeCashFlowYieldTTM"))
@@ -565,6 +594,10 @@ def fetch_payload(ticker: str) -> Dict[str, Any]:
             # Phase G: part of the ONE payload production requests, so the recorder
             # captures it and an offline run cannot drift from what live asks for.
             "splits": _safe_get(f"splits?symbol={ticker}", key, []),
+            # Ruling 3 (2026-08-28): the market-cap basis. ONE endpoint, and the only one
+            # of the four that carries its own `date`, which is what an anchor needs.
+            "market_capitalization": _safe_get(
+                f"market-capitalization?symbol={ticker}", key, []),
             # Phase L: capital-returns evidence for the lifecycle classifier. Same
             # reasoning as `splits` — it joins the one payload so the recorder captures
             # it. Fixtures recorded BEFORE this key exists carry no `dividends`, and
@@ -578,9 +611,52 @@ def fetch_payload(ticker: str) -> Dict[str, Any]:
         ) from e
 
 
+def apply_currency_guard(td: TickerData, raw: Dict[str, Any]) -> TickerData:
+    """★ RULING 4 (Vic, 2026-08-28) — block every non-USD MONETARY score-bearing field.
+
+    "any non-USD value on a score-bearing field is a typed, loud block, never ingested,
+     never converted."
+
+    APPLIED AT THE PAYLOAD BOUNDARY, AFTER `_build`, AND THAT PLACEMENT IS DELIBERATE.
+    `_build` receives pre-sliced fragments and cannot see the whole payload, so it cannot
+    know an issuer's reporting currency; `_from_payload` can. Guarding here also means ONE
+    greppable enforcement point covering the live path AND the fixture path — which is the
+    property the fixture-replay hole in the EDGAR form filter did NOT have, and that hole
+    is why `form_excluded` has zero offline coverage.
+
+    "BLOCK" MEANS `missing_prov` WITH A TYPED SOURCE, NOT A DELETED FIELD. The value is
+    withheld and the reason travels with the field, so a downstream refusal can say WHY
+    rather than reporting a bare absence. Every consumer already handles `is_missing()`.
+
+    NOTHING IS CONVERTED. There is no rate here, no forex call and no arithmetic — the
+    value is dropped, not rescaled. Pinned.
+    """
+    from core.reporting_currency import (MONETARY_SCORE_BEARING_FIELDS, field_is_blocked,
+                                         market_cap_basis, payload_currencies)
+    from adapters.base import missing_prov
+
+    reporting, quote = payload_currencies(raw)
+    if reporting == "USD" and quote == "USD":
+        return td                                    # the overwhelmingly common case
+
+    # `market_cap`'s basis depends on WHICH ENDPOINT ANSWERED, so it is resolved from the
+    # payload rather than looked up by field name. See `market_cap_basis`.
+    mc_basis = market_cap_basis(raw)
+
+    for name in MONETARY_SCORE_BEARING_FIELDS:
+        prov = getattr(td, name, None)
+        if prov is None or prov.is_missing():
+            continue
+        reason = field_is_blocked(name, reporting, quote,
+                                  basis_override=mc_basis if name == "market_cap" else None)
+        if reason:
+            setattr(td, name, missing_prov(f"{SOURCE}:{reason}", prov.as_of))
+    return td
+
+
 def _from_payload(ticker: str, raw: Dict[str, Any]) -> TickerData:
     """Build TickerData from a payload, live or recorded — one code path for both."""
-    return _build(
+    return apply_currency_guard(_build(
         ticker,
         _first(raw.get("profile") or []),
         _first(raw.get("ratios_ttm") or []),
@@ -594,7 +670,8 @@ def _from_payload(ticker: str, raw: Dict[str, Any]) -> TickerData:
         raw.get("analyst_est") or [],
         _first(raw.get("price_target") or []),
         _first(raw.get("shares_float") or []),
-    )
+        _first(raw.get("market_capitalization") or []),
+    ), raw)
 
 
 def _from_live(ticker: str) -> TickerData:

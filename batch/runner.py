@@ -47,6 +47,8 @@ from core.valuation_anchors import build_panel, run_dark_lens
 from adapters.fred_adapter import fetch_fred, FredData
 from adapters.base import missing_prov
 from core.lens_select import select_lens
+from core.model_applicability import applicability_for
+from core.stage_freshness import StageFlipRequiresApproval
 from core.pillars import score_all, RateUnavailable, _cycle_position_from_trajectory
 from core.technicals import analyze_technicals
 from store.models import (save_evaluation, save_failed_evaluation, get_cached_synthesis,
@@ -137,6 +139,19 @@ class TickerResult:
     # Carried ONLY to feed the batch-level leverage uniformity tripwire below. Not scored
     # here and not persisted from here — the pillar owns the scoring.
     debt_to_equity: Optional[float] = None
+
+
+class ModelInapplicable(Exception):
+    """This issuer's CLASS has no meaningful FCF reading, so nothing numeric is produced.
+
+    Ruled by Vic 2026-08-28 as an extension of the 2026-08-28 financials class: "Model-
+    inapplicable means NOTHING numeric: gate the classifier and evaluator, not just the
+    score builder."
+
+    A REFUSAL, NOT A FAILURE — the same distinction RateUnavailable draws. The pipeline
+    worked and declined; filing that as a crash would lose the difference between "we
+    cannot answer this question" and "we are broken".
+    """
 
 
 class DegradedRunWriteRefused(Exception):
@@ -253,6 +268,22 @@ def run_single_ticker(
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
         lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
+
+        # ── ★ THE FCF-MODEL CLASS GATE — BATCH SIDE (Vic ruling 1, 2026-08-28) ──
+        #
+        # Same gate as evaluate.py and placed at the same point, for the same reason: the
+        # earliest moment that knows the sector/industry and has computed no number. It
+        # RAISES rather than returning, so it lands in the dedicated handler below and
+        # cannot be mistaken for an operational failure.
+        #
+        # Note what is skipped by raising here: build_panel, run_dark_fcf_series (which
+        # WRITES), score_all, technicals, synthesis and the lifecycle annotation. The
+        # standing rule is that a model-inapplicable name produces nothing numeric, and
+        # `run_dark_fcf_series` sitting below this line is a writer — so the gate has to be
+        # above it, not merely before the score.
+        _app = applicability_for(yf)
+        if not _app.applicable:
+            raise ModelInapplicable(_app.typed_reason or "fcf:model_inapplicable")
 
         # Phase D-0 DARK: measure the three valuation anchors; applies nothing.
         if fixture_mode:
@@ -400,6 +431,65 @@ def run_single_ticker(
             freshness_watch=freshness,
             debt_to_equity=(None if yf.debt_to_equity.is_missing()
                             else yf.debt_to_equity.value),
+        )
+
+    except ModelInapplicable as exc:
+        # ★ A REFUSAL, NOT A FAILURE, and it gets its own status for exactly the reason
+        # RateUnavailable does: "a policy refusal filed as a crash is exactly the
+        # conflation D-2 removes." The audit trail must show the pipeline worked and
+        # DECLINED, not that it broke.
+        #
+        # NOTHING NUMERIC IS PERSISTED — save_failed_evaluation writes no pillars, no
+        # avg_score, no E(R). The row is a status and a typed reason, which is what Vic's
+        # "typed flag rows only" means on a table whose purpose is the run log.
+        err = f"ModelInapplicable: {exc}"
+        _log(f"REFUSED TO SCORE — FCF model inapplicable to this issuer class. {exc}")
+        try:
+            eval_id = save_failed_evaluation(
+                ticker, err, db_path=db_path or _DEFAULT_DB,
+                status="model_inapplicable",
+            )
+        except Exception:
+            eval_id = None
+        return TickerResult(
+            ticker=ticker,
+            status="failed",       # no pillars were produced, so nothing is usable
+            eval_id=eval_id,
+            error=err,
+            duration_s=time.monotonic() - t0,
+            eval_status="model_inapplicable",
+        )
+
+    except StageFlipRequiresApproval as exc:
+        # ★ DEFENCE IN DEPTH, AND UNREACHABLE FROM THIS PATH TODAY — SAID PLAINLY RATHER
+        # THAN LEFT TO LOOK LOAD-BEARING. `batch/runner.py` writes NO lifecycle stage;
+        # evaluate.py is the sole annotator (§5 step 1), so the guard that raises this
+        # sits on the other path. The handler exists so that wiring the annotation into
+        # batch later cannot land it in the broad `except Exception` below, where a stage
+        # flip would be filed as an operational failure and the run would continue.
+        #
+        # Vic: "The run HALTS and reports ... No silent stage flips, ever." Record-and-
+        # continue is the right pattern for a rate-less ticker, whose problem is confined
+        # to itself. It is the WRONG pattern here: an unapproved flip means the stage table
+        # is known-inconsistent with its own inputs, and every subsequent ticker in the
+        # batch would read its band from that table. Continuing would spread the condition
+        # rather than contain it.
+        #
+        # Vic: "The run HALTS and reports ... No silent stage flips, ever." Record-and-
+        # continue is the right pattern for a rate-less ticker, whose problem is confined
+        # to itself. It is the WRONG pattern here: an unapproved flip means the stage table
+        # is known-inconsistent with its own inputs, and every subsequent ticker in the
+        # batch would read its band from that table. Continuing would spread the condition
+        # rather than contain it.
+        err = f"StageFlipRequiresApproval: {exc}"
+        _log(f"HALTED — unapproved stage flip. NOTHING PERSISTED FOR {ticker}.\n{exc}")
+        return TickerResult(
+            ticker=ticker,
+            status="halted",
+            eval_id=None,
+            error=err,
+            duration_s=time.monotonic() - t0,
+            eval_status="stage_flip_unapproved",
         )
 
     except RateUnavailable as exc:

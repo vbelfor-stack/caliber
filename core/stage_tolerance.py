@@ -69,9 +69,15 @@ def _latest_stage_row(db_path: Path, ticker: str) -> Optional[Dict[str, Any]]:
     conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     try:
+        # ★ RETIRED ROWS ARE NOT READ (ruling 1, 2026-08-28). A stage retired as
+        # model-inapplicable is INADMISSIBLE, not merely old, so it must not be reachable
+        # by the newest-row query — otherwise "retired" would be a label with no
+        # consequence, which is a belief rather than a guard. Falling through to `None`
+        # lands the name on DEFAULT_TOLERANCE, never the widest, which is the standing
+        # fail-closed direction.
         row = conn.execute(
             "SELECT computed_stage, flags_json FROM lifecycle_stage "
-            "WHERE ticker=? ORDER BY id DESC LIMIT 1",
+            "WHERE ticker=? AND retired_reason IS NULL ORDER BY id DESC LIMIT 1",
             (ticker.upper().strip(),),
         ).fetchone()
     except sqlite3.OperationalError:
