@@ -71,3 +71,19 @@ construction.
 3. `price_snapshot` still not captured on completing evals (census 16, PARKED) — these 24
    rows cannot be replay-verified against their own day.
 4. 16 parked census items, each with its re-arm condition.
+
+## ★ FOUND AT THE CLOSE — CENSUS ITEM 29's MECHANISM, REPRODUCED
+
+The 2026-08-19 diagnosis question *"what opened a backup as a live database?"* is answered,
+by accident and by reproduction. This session's delta reconciliation opened
+`caliber.db.pre-acceptance-8752e75e.bak` with `mode=ro`, and a `-shm` (32 KB) / `-wal`
+(0 bytes) pair appeared — **the same byte sizes as the 2026-08-17 pair.**
+
+**CAUSE: caliber.db is in WAL journal mode, and SQLite creates the shm/wal pair on OPEN,
+including read-only.** The pair is a READ-SIDE artifact, not evidence of a write. Backup md5
+verified unchanged after the read. **The original concern — that something could open the
+evidence read-write — is answered: no write occurred and none was needed to produce it.**
+
+Disposition stays CLOSED-ACCEPTED, now closed knowing why. Both stray pairs (2026-08-28 and
+the surviving 2026-08-15 one) removed at this close; both backups' md5s verified intact
+after removal.

@@ -201,11 +201,12 @@ re-derivation. L-4b is DONE.**
 
 | | |
 |---|---|
-| HEAD | the **2026-08-28 ACCEPTANCE close commit** — verify with `git log -1`. A block cannot contain its own hash. |
+| HEAD | the **2026-08-28 session-close commit** (acceptance run, then the ruled ETF-guard reorder) — verify with `git log -1`. A block cannot contain its own hash. |
 | Suite | **1091 passed** |
 | caliber.db md5 | **`69dc2328ee3af8a43d506b64665da39b`** (was `8752e75e…`; the full-universe acceptance run) |
 | Backup | `caliber.db.pre-acceptance-8752e75e.bak` |
 | Full state this close | `docs/closes/2026-08-28-acceptance.md` |
+| **★ NOTE** | **Opening a `.bak` with `mode=ro` CREATES a `-shm`/`-wal` pair** — caliber.db is WAL-mode and SQLite makes the pair on OPEN. It is a READ artifact, not a write. This is census item 29's mechanism, reproduced 2026-08-28. Delete the stray pair after reconciling; verify the backup md5 after. |
 | **★★ ACCEPTANCE** | **PASSED 2026-08-28.** 28/28 accounted for: 24 SCORED, 4 REFUSED (financials), 0 silent. Zero unexplained anomalies. **CALIBER IS IN GRADING LIFE — next sessions are grading reads, NOT construction.** First gradeable cohort ~**2026-11-26** (90d). |
 | Prior closes | `docs/closes/` — index at `docs/closes/README.md` |
 | Open items | the 32-item census in `docs/2026-08-28-closer.md` §8 is the authoritative "what's left" list |
