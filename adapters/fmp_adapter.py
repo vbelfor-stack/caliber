@@ -47,6 +47,7 @@ from adapters.base import (
     Confidence, Prov, TrajectoryPoint, coerce, min_conf, missing_prov,
     derive_trajectory_tag,
 )
+from core.etf_guard import parse_is_etf
 from core.datatypes import TickerData
 
 TODAY_STR: str  # set at import from caller; module-level default below
@@ -517,6 +518,10 @@ def _build(
         sector=profile.get("sector"),
         industry=profile.get("industry"),
         exchange=profile.get("exchange"),
+        # ETF guard (Vic ruling 2, 2026-08-28). The field was always in this payload and
+        # was always discarded. Parsed tri-state, never by Python truthiness — `bool("false")`
+        # is True. See core/etf_guard.py.
+        is_etf=parse_is_etf(profile.get("isEtf")),
         sic=None,  # populated by EDGAR adapter
         gross_margin=gross_margin,
         operating_margin=operating_margin,

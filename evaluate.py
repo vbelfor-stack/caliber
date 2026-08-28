@@ -33,6 +33,7 @@ from core.edgar_cross_check import run_cross_check
 from adapters.fred_adapter import fetch_fred
 from adapters.base import PillarResult, Prov
 from core.lens_select import select_lens, lens_label
+from core.etf_guard import etf_refusal
 from core.lens_overrides import lens_override
 from core.model_applicability import applicability_for
 from core.stage_freshness import StageFlipRequiresApproval
@@ -317,6 +318,29 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         print(f"\n  {xcheck.watch}")
 
     # ── Lens selection ────────────────────────────────────────────────────────
+    # ── ★ ETF / FUND REFUSAL (Vic ruling 2, 2026-08-28) — exit 7 ─────────────
+    #
+    # POSITIONED ABOVE `select_lens` DELIBERATELY, AND THE POSITION IS THE RULING. A fund
+    # carries a `sector` and an `industry` like anything else, so the lens selector will
+    # happily route one to the compounder or cyclical lens and every downstream number will
+    # look well-formed. The refusal has to land before the first decision that treats this
+    # payload as a company, and lens selection is that decision.
+    #
+    # It is a REFUSAL, not a failure: exit 7, distinct from the crash code (1), the rate
+    # refusal (3), the financials refusal (5) and the stage-flip halt (6). Nothing is
+    # computed and NOTHING is written.
+    _etf = etf_refusal(yf)
+    if _etf.refused:
+        print(f"\n{_divider('=')}", file=sys.stderr)
+        print("  REFUSED TO EVALUATE — THIS IS A FUND, NOT AN OPERATING COMPANY",
+              file=sys.stderr)
+        print(_divider("="), file=sys.stderr)
+        print(f"\n{_etf.detail}\n", file=sys.stderr)
+        print(f"Typed reason: {_etf.typed_reason}", file=sys.stderr)
+        print("\nNothing was computed and NOTHING was written: no lens, no pillars, no "
+              "score,\nno E(R), no lifecycle stage, no evaluation row.", file=sys.stderr)
+        sys.exit(7)
+
     lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
     print(f"\n  Valuation lens: {lens_label(lens)} ({lens})")
     _ov = lens_override(ticker)

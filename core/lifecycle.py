@@ -152,12 +152,31 @@ def _revenue_on_basis(row: Dict, lens: Optional[str]) -> Tuple[Optional[float], 
     instead of picking a side. **There is no gross fallback**: refusing is the ruling.
     """
     rev = row.get("revenue")
+    # ★ ZERO IS NOT ABSENCE, AND THE REASON MUST NOT CLAIM IT IS (2026-08-28, ruling 1).
+    # A filed revenue of exactly 0 is a REAL VALUE the feed served; a missing/unparseable
+    # one is a gap. BOTH are still DROPPED and the drop behaviour is UNCHANGED — see the
+    # guard rationale below — but they are no longer reported as the same thing.
+    #
+    # WHY THIS MATTERED: the standing feed-repair ticket read "IONQ missing FY2020". It is
+    # not missing. FMP serves IONQ FY2020 with `revenue: 0`, and THIS LINE dropped it while
+    # reporting `no_revenue` — a false claim about the issuer for something WE declined.
+    # Exactly the WITHHELD_NO_CAPEX/WITHHELD_NO_OCF mislabel class L-4d deleted rather than
+    # renamed: a constant asserting "no data" cannot know which of two causes occurred.
+    #
+    # ★★ THE DROP ITSELF IS LOAD-BEARING AND IS **NOT** TO BE "FIXED" — MEASURED, NOT
+    # ASSUMED. Admitting zeros was dark-run over the universe on 2026-08-28: only two names
+    # carry a zero-revenue FY, and while IONQ (interior FY2020) does not move, **INFQ flips
+    # YOUNG/rule2_young_insufficient_history -> MATURE/rule4_mature**, because its two MOST
+    # RECENT fiscal years are both 0. That is precisely the "a zero revenue would manufacture
+    # a 100% decline" hazard this guard was written for, firing on a live name. IONQ's hole
+    # is the PRICE of the guard that protects INFQ. Widening it is a scoring-path ruling.
+    raw_rev = rev
     try:
         rev = None if rev in (None, 0) else float(rev)
     except (TypeError, ValueError):
         rev = None
     if rev is None:
-        return None, "no_revenue"
+        return None, ("revenue_zero" if raw_rev == 0 else "no_revenue")
     if lens != BANK_LENS:
         return rev, None
 

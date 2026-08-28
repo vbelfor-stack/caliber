@@ -307,6 +307,32 @@ class TestBankArmed:
         assert r.score >= 4
         assert "BANK-RUNG-UNCALIBRATED" in r.flags
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # ★ THE `BANK-RUNG-UNCALIBRATED` TRIPWIRE IS RETIRED BY NAME (Vic ruling 5,
+    #   2026-08-28). TYPED REASON: `tripwire:unreachable_population_gated`.
+    #
+    # It was never wrong and it did not fail. It was a LIVE-EVAL tripwire: "the first
+    # production eval landing on bank rung 5 or 4 reports before its result is trusted."
+    # The financials gate (ruling 1, 2026-08-28) refuses BK/C/JPM/USB before any pillar
+    # is scored, and those four are the ENTIRE bank-lens population. A tripwire whose
+    # trigger population is structurally empty cannot fire, and a tripwire that cannot
+    # fire is not a guard — it is a belief with a flag attached.
+    #
+    # WHAT IS RETIRED IS THE TRIPWIRE'S STANDING, NOT THIS ASSERTION. The unit test above
+    # calls `score_valuation` DIRECTLY and so bypasses the gate; it still passes and is
+    # KEPT, because it pins that the flag is attached to the right rungs for the day the
+    # population comes back. The production `flags.append` in core/pillars.py is
+    # UNTOUCHED — deleting it would be the "unwind a demoted path" move that requires its
+    # own ruling.
+    #
+    # SUCCESSOR CONDITION, and it is an ENFORCEMENT POINT rather than a note:
+    # `test_the_BANK_RUNG_tripwire_REARMS_if_the_financials_leg_ships` in
+    # tests/test_2026_08_28_cleanup.py FAILS THE SUITE the moment any of the four bank
+    # names stops being gated. That is exactly when the tripwire's population returns and
+    # the uncalibrated rungs become reachable again, so the retirement reverses itself
+    # loudly instead of being rediscovered.
+    # ══════════════════════════════════════════════════════════════════════════
+
     def test_calibrated_rungs_carry_no_uncalibrated_flag(self):
         for t in ("JPM", "BK", "USB", "C"):
             r = score_valuation(self._yf(t), self._fred(), "bank")

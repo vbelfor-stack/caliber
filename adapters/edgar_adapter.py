@@ -942,7 +942,8 @@ def _from_live(ticker: str) -> EdgarData:
 def _from_fixture(ticker: str, path: Path) -> EdgarData:
     if not path.exists():
         raise RuntimeError(
-            f"[EDGAR] fixture not found: {path}. Run probe.py first."
+            f"[EDGAR] fixture not found: {path}. "
+            f"Run `python -m tools.record_edgar_fixture {ticker}` to record it."
         )
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)

@@ -84,6 +84,11 @@ class TickerData:
     # exchange, so the anchor cannot be matched to a ticker without it.
     exchange: Optional[str] = None
 
+    # Is this an ETF/fund rather than an operating company? Tri-state: True / False /
+    # None (UNKNOWN — the payload did not say, which every recorded fixture predating the
+    # 2026-08-28 ETF guard does). See core/etf_guard.py; UNKNOWN deliberately does not refuse.
+    is_etf: Optional[bool] = None
+
     fetched_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 

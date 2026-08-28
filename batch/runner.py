@@ -141,6 +141,9 @@ class TickerResult:
     debt_to_equity: Optional[float] = None
 
 
+from core.etf_guard import EtfNotEvaluable, etf_refusal
+
+
 class ModelInapplicable(Exception):
     """This issuer's CLASS has no meaningful FCF reading, so nothing numeric is produced.
 
@@ -267,6 +270,21 @@ def run_single_ticker(
 
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
+
+        # ── ★ ETF / FUND REFUSAL — BATCH SIDE (Vic ruling 2, 2026-08-28) ────────
+        #
+        # ABOVE `select_lens`, matching the interactive guard exactly. A fund carries a
+        # sector and an industry like anything else, so the selector will route one to a
+        # company lens and everything downstream will look well-formed. The refusal belongs
+        # before the first decision that treats this payload as a company.
+        #
+        # It is also above `run_dark_fcf_series`, which is a WRITER — "nothing numeric" is
+        # not satisfied by declining to score if a writer already ran. Both orderings are
+        # pinned by line index, so neither can be reshuffled quietly.
+        _etf = etf_refusal(yf)
+        if _etf.refused:
+            raise EtfNotEvaluable(_etf.typed_reason or "etf:not_a_company")
+
         lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
 
         # ── ★ THE FCF-MODEL CLASS GATE — BATCH SIDE (Vic ruling 1, 2026-08-28) ──
@@ -432,6 +450,19 @@ def run_single_ticker(
             debt_to_equity=(None if yf.debt_to_equity.is_missing()
                             else yf.debt_to_equity.value),
         )
+
+    except EtfNotEvaluable as exc:
+        # A REFUSAL, not a failure — same treatment as ModelInapplicable, its own status so
+        # the run log can tell "we declined because it is a fund" from "it broke".
+        err = f"EtfNotEvaluable: {exc}"
+        _log(f"REFUSED TO EVALUATE — this is a fund, not an operating company. {exc}")
+        try:
+            eval_id = save_failed_evaluation(
+                ticker, err, db_path=db_path or _DEFAULT_DB, status="etf_refused")
+        except Exception:
+            eval_id = None
+        return {"ticker": ticker, "status": "etf_refused", "error": err,
+                "eval_id": eval_id}
 
     except ModelInapplicable as exc:
         # ★ A REFUSAL, NOT A FAILURE, and it gets its own status for exactly the reason

@@ -11,9 +11,22 @@ so read it before acting on any EDGAR-coverage language further down — much of
 describes the AUDIT LAYER, not the pipeline.
 
 - **FMP feeds ALL pipeline runs** — series building, TTM, scoring.
-- **EDGAR is invoked in exactly three cases:** (a) **divergence arbitration** — FMP fails a
-  sanity gate or diverges **>25%** from an EDGAR-visible figure; (b) **filed-tag provenance**
-  on a challenged verdict; (c) **rulings**.
+- **EDGAR is invoked in exactly three cases:** (a) **divergence arbitration** — FMP diverges
+  **>25%** from an EDGAR-visible figure; (b) **filed-tag provenance** on a challenged
+  verdict; (c) **rulings**.
+  - **★ AMENDED 2026-08-28 (Vic ruling 6, doc-level) — "THE SANITY GATE" IS *DEFINED AS* THE
+    EXISTING 25% DIVERGENCE CHECK. IT IS NOT A SECOND, SEPARATE TRIGGER, AND NO NEW MACHINERY
+    IS TO BE BUILT.** The original §1.2(a) read "FMP fails a sanity gate **or** diverges
+    >25%", which a reader can only take as naming TWO triggers — and the first one had no
+    referent anywhere in the runtime, so it was permanently unreachable. That is worse than a
+    missing feature: it is a doctrine clause that looks armed and is not, and the standing
+    response to an unreachable guard is to remove the claim, not to leave it standing as a
+    belief. **The "or" is therefore struck and the two are collapsed into one:** the sanity
+    gate IS the >25% divergence check, which does exist and is measurable.
+    **DO NOT "IMPLEMENT THE SANITY GATE" — there is nothing left to implement.** A future
+    session reading this must not build a second checker; if a genuinely different sanity
+    condition is ever wanted, that is a NEW ruling with its own name, not this clause.
+    Closes census item 9.
 - **EDGAR MACHINERY IS DEMOTED TO AN AUDIT LAYER — NOT UNWOUND, NOT DELETED.** The capex
   chains (including the three-tag chain armed at L-4d.1), the typed withholding reasons and
   `field_provenance` all stay exactly as they are. **DELETING EDGAR-PATH CODE REQUIRES A VIC
@@ -46,8 +59,11 @@ was ruled into existence for. Two resolutions are on the table in order §5 — 
 it (hold the arming until EDGAR is genuinely off the pipeline path), or **(b)** widen the
 doctrine to a fourth case ("classification + panel inputs") and withdraw the rescope. **Not
 chosen here. Vic rules.**
-**Also noted, not blocking: §1.2(a) invokes EDGAR when "FMP fails a sanity gate" — NO SANITY
-GATE EXISTS anywhere in the runtime, so that trigger is currently unreachable.**
+**~~Also noted, not blocking: §1.2(a) invokes EDGAR when "FMP fails a sanity gate" — NO
+SANITY GATE EXISTS anywhere in the runtime, so that trigger is currently unreachable.~~
+✅ CLOSED 2026-08-28 BY RULING 6 — the clause is AMENDED, not implemented: the sanity gate is
+DEFINED as the existing 25% divergence check, the misleading "or" is struck, and no new
+machinery is built. See the amendment under §1.2 above.**
 
 ## ▶ SESSION PICKUP — READ THIS FIRST (rewritten at close, 2026-08-28)
 Opening a session with **"resume — execute the next order in CLAUDE.md"** is enough. This
@@ -185,11 +201,11 @@ re-derivation. L-4b is DONE.**
 
 | | |
 |---|---|
-| HEAD | the **2026-08-28 micro-session close commit** — verify with `git log -1`. A block cannot contain its own hash. |
-| Suite | **1051 passed** |
-| caliber.db md5 | **`8752e75e05a8a7ff225258ec99d36fc3`** (was `19d615fe…`; +1 `stage_flip_approvals` row, the QBTS approval) |
-| Backup | `caliber.db.pre-qbts-approval-19d615fe.bak` |
-| Full state this close | `docs/closes/2026-08-28-micro.md` |
+| HEAD | the **2026-08-28 cleanup close commit** — verify with `git log -1`. A block cannot contain its own hash. |
+| Suite | **1089 passed** |
+| caliber.db md5 | **`8752e75e05a8a7ff225258ec99d36fc3`** — **UNCHANGED; the cleanup session made ZERO production writes** |
+| Backup | `caliber.db.pre-qbts-approval-19d615fe.bak` (prior session; nothing written since) |
+| Full state this close | `docs/closes/2026-08-28-cleanup.md` |
 | Prior closes | `docs/closes/` — index at `docs/closes/README.md` |
 | Open items | the 32-item census in `docs/2026-08-28-closer.md` §8 is the authoritative "what's left" list |
 
@@ -926,9 +942,10 @@ unchanged.** Steps 3–5 are the doctrine rescope Vic ordered as step (e) of the
    SEQUENCE IT — is what is implemented: the pre-flight stays until EDGAR is genuinely off
    the pipeline path.** Re-read doctrine §5 before touching it.
 4. **FMP IS THE SOURCE.** Every pipeline input — series, TTM, scoring, market cap — comes
-   from FMP. **EDGAR is invoked only for arbitration (>25% divergence or a failed sanity
-   gate), filed-tag provenance on a challenged verdict, and rulings.**
-   **NOTE: no sanity gate exists anywhere in the runtime, so that trigger is unreachable.**
+   from FMP. **EDGAR is invoked only for arbitration (>25% divergence), filed-tag provenance
+   on a challenged verdict, and rulings.**
+   **"THE SANITY GATE" *IS* THE 25% DIVERGENCE CHECK — one trigger, not two (ruling 6,
+   2026-08-28). There is nothing separate to build.**
 5. **USD ONLY.** Any non-USD MONETARY score-bearing field is blocked with a typed reason and
    **never converted** (`core/reporting_currency.py`). Any non-USD statement period is
    blocked, never ingested. SKHY is the only current tripper.
@@ -1057,11 +1074,23 @@ checkout is a data-loss hazard; an unverified kill target is a worse one.
     tests/fixtures/ticker set and its fixture_adapter loader were DELETED 2026-08-15; their
     Prov stamps read "yfinance" and offline provenance never matched what production writes.
     That also retires most of the tracked provenance-relabel follow-up below.
-  - TRACKED FOLLOW-UP (provenance relabel): live Prov source strings in core/technicals.py,
-    core/pillars.py, and the shared trajectory builders in core/datatypes.py still read
-    "yfinance*" while stamping FMP-sourced fields. Cosmetic mislabel, no behavioral/grade
-    impact; needs source-threading + test updates. Also probe.py (Phase-0 fixture recorder)
-    still imports yfinance and is now dead — archive/remove when convenient.
+  - **✅ CLOSED 2026-08-28 (rulings 3 + 4) — BOTH HALVES WERE ALREADY DONE, AND THAT IS THE
+    FINDING. The ticket below was STALE, not outstanding.** Kept in full because "we fixed
+    it" and "it was never broken" are different claims and the difference is the record.
+    ORIGINAL TEXT: *live Prov source strings in core/technicals.py, core/pillars.py, and the
+    shared trajectory builders in core/datatypes.py still read "yfinance*" while stamping
+    FMP-sourced fields. Cosmetic mislabel, no behavioral/grade impact; needs source-threading
+    + test updates. Also probe.py (Phase-0 fixture recorder) still imports yfinance and is
+    now dead — archive/remove when convenient.*
+    **MEASURED:** every live Prov source reads `fmp` / `fmp+EDGAR` / `fmp/...` (25 of 25 on
+    NVDA); `analyze_technicals` takes `feed_source` as a PARAMETER and both call sites
+    (evaluate.py, batch/runner.py) pass `yf.feed_source`, stamping `fmp/price_history`. An
+    AST sweep for `yfinance` string literals across all non-test, non-vendor code returns
+    **DOCSTRINGS ONLY** — teardown history, the D/E unit-defect explanation, and lens_select's
+    industry-string examples. **Those docstrings must NOT be "corrected": they are the record
+    of the ratio-vs-percent defect.** **`probe.py` AND `probe_fmp.py` DO NOT EXIST** — both
+    deleted at the fixture migration. **45 historical `field_provenance` rows still read
+    `yfinance/*` and are LEFT UNTOUCHED per ruling 3** (supersede, never purge).
 - core/grading.py — assign_grade(), grade_evaluation(), run_grading(), _fetch_price_at_date(), PriceUnavailable
 - store/models.py — save_grade(), list_grades(), get_ungradeable_evals(), init_db
 - tests/test_grading.py
@@ -1256,8 +1285,10 @@ predict, so MU's estimate lands ~7d early.
 - `python -m tools.record_edgar_fixture TICKER...`, `python -m tools.record_fmp_fixture
   TICKER...`, and `python -m tools.record_fred_fixture` (no args — DGS10 is the only
   series). All three reuse the ADAPTER's own live fetch path, so a fixture cannot drift
-  from what production requests (the Phase-0 probe_fmp.py did drift — it still targets the
-  retired v3 API and writes keys the adapter no longer reads; treat it as dead).
+  from what production requests (the Phase-0 probe_fmp.py did drift — it targeted the
+  retired v3 API and wrote keys the adapter no longer read). **`probe_fmp.py` NO LONGER
+  EXISTS — deleted at the fixture migration; verified absent 2026-08-28.** Retained here as
+  the REASON the recorders reuse the adapter's own path.
   record_fred_fixture requires FRED_API_KEY and fails LOUD without it rather than writing
   a rate-less fixture — under the mandatory-rate ruling that would make every offline eval
   refuse. Re-recording the FRED fixture MOVES THE BASELINE for every valuation score, since
