@@ -20,7 +20,7 @@ flips**; **live-EDGAR pre-flight 28/28 OK**; FRED 10Y 4.67%.
 | | |
 |---|---|
 | HEAD | the **acceptance close commit** — verify with `git log -1`. Previous was `b61757a`. |
-| Suite | **1089 passed** — unchanged (no code changed this session). |
+| Suite | **1091 passed** (1089 at the acceptance run; +2 from the post-acceptance ETF-ordering pins). |
 | caliber.db md5 | **`69dc2328ee3af8a43d506b64665da39b`** (was `8752e75e…`) |
 | Backup | `caliber.db.pre-acceptance-8752e75e.bak`, verified byte-equal to the pre-run db |
 | **PRODUCTION WRITES** | **ONE RUN, FOUR TABLES, ALL RECONCILED EXACTLY.** `evaluations` +24 (expected +24) · `field_provenance` +494 (expected +430..500) · `lifecycle_stage` +24 (expected +24) · `lifecycle_transitions` +1 (expected +1, QBTS only). Every other table **+0**, re-counted at close. |
@@ -62,7 +62,12 @@ construction.
 ## Open
 
 1. QBTS band lags its stage by one evaluation (by design) — Vic may rule.
-2. ETF guard shadowed by the EDGAR hard gate on both paths — one-line fix, unruled.
+2. ~~ETF guard shadowed by the EDGAR hard gate~~ — **✅ RULED AND FIXED 2026-08-28**, same
+   day, immediately after acceptance. Guard moved above `fetch_edgar` on BOTH paths; LYTE and
+   FLTW re-measured at **exit 7 / `etf:not_a_company`** with the EDGAR fetch never attempted.
+   3 pins added (2 verified to fail pre-fix). Suite 1089 → **1091**. **ZERO production
+   writes** — controls routed to scratch DBs; caliber.db md5 `69dc2328` unchanged. The
+   acceptance verdict stands: no universe name has `isEtf=true`.
 3. `price_snapshot` still not captured on completing evals (census 16, PARKED) — these 24
    rows cannot be replay-verified against their own day.
 4. 16 parked census items, each with its re-arm condition.

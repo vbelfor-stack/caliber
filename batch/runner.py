@@ -253,6 +253,22 @@ def run_single_ticker(
         else:
             yf = _fetch(ticker, log=_log)
 
+        # ── ★ ETF / FUND REFUSAL — BATCH SIDE (Vic ruling 2, 2026-08-28;
+        #    REPOSITIONED 2026-08-28 above the EDGAR fetch) ───────────────────
+        #
+        # Mirrors the interactive guard's position exactly, and for the same measured
+        # reason: `fetch_edgar` refuses a fund FIRST with "not found in SEC tickers.json"
+        # (funds have no ticker-level CIK), so the guard below it was unreachable for every
+        # real ETF. Safe outcome, wrong typed reason, accidental mechanism.
+        #
+        # Position also keeps both prior guarantees, which are pinned by line index:
+        # it is above `select_lens` (a fund would otherwise be routed to a company lens)
+        # and above `run_dark_fcf_series`, which is a WRITER — "nothing numeric" is not
+        # satisfied by declining to score if a writer already ran.
+        _etf = etf_refusal(yf)
+        if _etf.refused:
+            raise EtfNotEvaluable(_etf.typed_reason or "etf:not_a_company")
+
         _log("fetching EDGAR...")
         edgar = fetch_edgar(ticker, fixture_path=ed_fx)
 
@@ -270,20 +286,6 @@ def run_single_ticker(
 
         # ── Scoring ───────────────────────────────────────────────────────────
         yf.sic = edgar.sic
-
-        # ── ★ ETF / FUND REFUSAL — BATCH SIDE (Vic ruling 2, 2026-08-28) ────────
-        #
-        # ABOVE `select_lens`, matching the interactive guard exactly. A fund carries a
-        # sector and an industry like anything else, so the selector will route one to a
-        # company lens and everything downstream will look well-formed. The refusal belongs
-        # before the first decision that treats this payload as a company.
-        #
-        # It is also above `run_dark_fcf_series`, which is a WRITER — "nothing numeric" is
-        # not satisfied by declining to score if a writer already ran. Both orderings are
-        # pinned by line index, so neither can be reshuffled quietly.
-        _etf = etf_refusal(yf)
-        if _etf.refused:
-            raise EtfNotEvaluable(_etf.typed_reason or "etf:not_a_company")
 
         lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
 

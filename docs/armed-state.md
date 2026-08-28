@@ -67,6 +67,28 @@ CLAUDE.md points here and carries no armed-state prose.
     read-only. **QBTS `HIGROWTH → YOUNG` was APPROVED 2026-08-28** (`stage_flip_approvals`
     id 1), so the sweep no longer exits 6 on it. **No other flip is approved**, and any NEW
     flip the sweep finds still HALTS.
+- **★ THE ETF / FUND REFUSAL IS ARMED ABOVE THE EDGAR FETCH ON BOTH PATHS (Vic ruling 2,
+  2026-08-28; REPOSITIONED the same day after the acceptance run).**
+  `core/etf_guard.etf_refusal` reads `profile.isEtf` and nothing else — no name matching, no
+  exchange rule, no ticker list. **evaluate.py exits 7** (distinct from crash 1, rate 3,
+  financials 5, stage-flip halt 6); **batch raises `EtfNotEvaluable` → `status='etf_refused'`**.
+  - **★★ POSITION IS THE RULING, AND THE FIRST POSITION WAS WRONG.** It originally sat above
+    `select_lens`, which is correct as far as it goes — but `fetch_edgar` is a HARD GATE and
+    an ETF has **no ticker-level SEC CIK** (funds file under their trust's CIK), so every real
+    fund was refused at the EDGAR gate with "Ticker not found in SEC tickers.json" and NEVER
+    REACHED THE GUARD. **Measured: LYTE and FLTW exited 1, not 7.** Safe outcome, WRONG typed
+    reason, and a first line of defence that was ACCIDENTAL rather than the guard built for
+    it. Now above `fetch_edgar` on both paths; re-measured at **exit 7, `etf:not_a_company`,
+    EDGAR never fetched.** Pinned by line index both above `fetch_edgar` AND below the FMP
+    fetch it depends on.
+  - **UNKNOWN DOES NOT REFUSE** — a stated departure from fail-closed. Refusing on absence
+    would refuse every recorded fixture (they predate the field). Cost named: this guard
+    cannot catch a fund whose payload omits `isEtf`.
+  - **`isEtf` IS PARSED TRI-STATE, NEVER PYTHON TRUTHINESS** — `bool("false")` is `True`, so
+    a truthiness guard would refuse the entire universe while looking like it worked.
+  - **BLAST RADIUS: ZERO of the 28.** No universe name has `isEtf=true`; LYTE and FLTW are
+    the positive controls, and both are held but deliberately outside `tickers.txt`.
+
 - **★ THE USD-ONLY CURRENCY GUARD IS ARMED ON SCORE-BEARING FIELDS (Vic ruling 4,
   2026-08-28).** `adapters.fmp_adapter.apply_currency_guard`, applied at the payload boundary
   so ONE enforcement point covers the live AND fixture paths.

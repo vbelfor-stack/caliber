@@ -144,6 +144,37 @@ class TestEtfGuard:
             src = (ROOT / mod).read_text()
             assert src.index("_etf = etf_refusal") < src.index("lens = select_lens"), mod
 
+    def test_the_refusal_sits_ABOVE_the_EDGAR_FETCH_on_BOTH_paths(self):
+        """★★ THE PIN THE ACCEPTANCE RUN BOUGHT. Vic ruled the guard above `fetch_edgar`
+        on 2026-08-28 after an end-to-end control showed it was UNREACHABLE for every real
+        fund.
+
+        `fetch_edgar` is a HARD GATE (exit 1 interactively; a `failed` row per ticker in
+        batch), and an ETF has NO ticker-level SEC CIK — funds file under their trust's
+        CIK. So LYTE and FLTW were refused with "Ticker not found in SEC tickers.json" and
+        never reached the guard built for them: measured, both exited 1 rather than 7.
+
+        THE OUTCOME WAS SAFE AND THE REASON WAS WRONG, which is the whole defect class this
+        project keeps killing. It also meant the first line of defence was ACCIDENTAL — it
+        rested on funds happening to lack a CIK, not on the guard. A fund whose CIK did
+        resolve would have gone straight past it.
+
+        `etf_refusal` reads only `yf`, so it has no reason to wait behind a network call it
+        does not use. Pinned by line index on both paths so it cannot drift back down."""
+        for mod in ("evaluate.py", "batch/runner.py"):
+            src = (ROOT / mod).read_text()
+            assert src.index("_etf = etf_refusal") < src.index("edgar = fetch_edgar"), (
+                f"{mod}: the ETF guard has fallen back below the EDGAR hard gate — every "
+                f"real fund will be refused with the WRONG typed reason again")
+
+    def test_the_refusal_still_sits_BELOW_the_fmp_fetch_it_depends_on(self):
+        """The guard reads `yf`. Moving it above the fetch that produces `yf` would be a
+        NameError on the refusal path — the one path that must never crash."""
+        for mod, fetch in (("evaluate.py", "yf = fetch_fmp"),
+                           ("batch/runner.py", "yf = _fetch")):
+            src = (ROOT / mod).read_text()
+            assert src.index(fetch) < src.index("_etf = etf_refusal"), mod
+
     def test_the_batch_refusal_sits_ABOVE_the_dark_series_WRITER(self):
         """"Nothing numeric" is not satisfied by declining to score if a writer already ran.
         Same clause that makes the financials gate's position load-bearing."""
@@ -154,7 +185,12 @@ class TestEtfGuard:
         """A policy refusal filed as a crash is the conflation D-2 removed. 7 is distinct
         from crash(1), rate(3), financials(5) and the stage-flip halt(6)."""
         src = (ROOT / "evaluate.py").read_text()
-        block = src.split("_etf = etf_refusal", 1)[1].split("lens = select_lens", 1)[0]
+        # Slice the REFUSAL BLOCK ITSELF, not "everything up to lens selection". The guard
+        # was moved above `fetch_edgar` on 2026-08-28, so the old wider slice now contains
+        # the EDGAR hard gate's own `sys.exit(1)` — which belongs to a different refusal.
+        # A pin whose boundary is "the next unrelated landmark" breaks whenever code moves
+        # between them and says nothing about the thing it was written to protect.
+        block = src.split("_etf = etf_refusal", 1)[1].split("[2/3] Fetching EDGAR", 1)[0]
         assert "sys.exit(7)" in block
         for taken in ("sys.exit(1)", "sys.exit(3)", "sys.exit(5)", "sys.exit(6)"):
             assert taken not in block, f"{taken} would conflate the ETF refusal"

@@ -162,7 +162,24 @@ file under their trust's CIK). It refuses at line 297; the ETF guard sits at lin
   ticker-level CIK, not on the guard that was built for it. The guard is a real backstop for
   any fund whose CIK does resolve, but today it is unreachable for the two names that exist.
 - **FIX IS ONE LINE** (move `etf_refusal` above `fetch_edgar` — it only needs `yf`, which is
-  fetched at :285). **NOT APPLIED: the order says no fixes this session.** Vic rules.
+  fetched at :285). **NOT APPLIED at acceptance: the order said no fixes.** Vic ruled.
+
+> ### ✅ RULED AND FIXED 2026-08-28, IMMEDIATELY AFTER ACCEPTANCE — Vic: *"fix the ETF guard
+> ordering — move it above fetch_edgar"*.
+> Both production paths reordered: `evaluate.py` fetch_fmp(285) → **guard(316)** →
+> fetch_edgar(330) → select_lens(358); `batch/runner.py` `_fetch`(254) → **guard(268)** →
+> fetch_edgar(273) → select_lens(290) → financials(304) → writer(325).
+> **RE-MEASURED END-TO-END: LYTE and FLTW now exit 7 with `etf:not_a_company`, and the EDGAR
+> fetch is NEVER ATTEMPTED** (0 occurrences in either log) — the guard refuses before the
+> network call it never needed. Scratch DB: 0 rows. Production md5 UNCHANGED.
+> **Three pins added**, two verified to fail against the pre-fix ordering: the guard is above
+> `fetch_edgar` on both paths, still below the FMP fetch it depends on (moving it above `yf`
+> would `NameError` on the one path that must never crash), and the exit-7 pin's slice
+> boundary was narrowed — its old boundary was "everything up to `select_lens`", which after
+> the move swallowed the EDGAR gate's own `sys.exit(1)`. *A pin bounded by the next unrelated
+> landmark breaks whenever code moves between them and protects nothing.*
+> **The acceptance verdict is unaffected: no universe name has `isEtf=true`, so no scored
+> row changes.** Suite 1089 → 1091.
 
 ### A4 — "8 names had no E(R)". **MEASUREMENT ARTIFACT IN MY OWN EXTRACTOR, NOT THE SYSTEM.**
 My first regex was `(-?[\d.]+%)` and the output prints positive returns as `+3.4%`, so every
@@ -219,8 +236,9 @@ Declared on the stated bar: (a)–(c) complete with zero unexplained anomalies.
 RATHER THAN ABSORBED — Vic may overrule this verdict on either:**
 1. **QBTS scored on the 20% band, not 30%** (A1) — the no-read-back ordering; 30% applies
    next evaluation.
-2. **The ETF typed reason is unreachable on both production paths** (A3) — found by an
-   out-of-scope control; safety holds, the label is wrong; one-line fix not applied.
+2. ~~**The ETF typed reason is unreachable on both production paths** (A3)~~ — **✅ RULED
+   AND FIXED the same day; see the A3 addendum. Both paths now refuse at exit 7 before the
+   EDGAR fetch. No scored row changed.**
 
 ---
 

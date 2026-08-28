@@ -288,6 +288,43 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         print(f"      FAIL: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # ── ★ ETF / FUND REFUSAL (Vic ruling 2, 2026-08-28; REPOSITIONED 2026-08-28) ──
+    #
+    # ★★ THIS SITS ABOVE THE EDGAR FETCH, AND THE ACCEPTANCE RUN IS WHY.
+    #
+    # It was originally placed above `select_lens` — correct reasoning (a fund carries a
+    # sector and an industry, so the selector would route it to a company lens), but one
+    # gate too late. `fetch_edgar` is a HARD GATE that exits 1, and an ETF has NO
+    # ticker-level SEC CIK (funds file under their trust's CIK). So every real fund was
+    # refused at the EDGAR gate with "Ticker not found in SEC tickers.json" and NEVER
+    # REACHED THIS GUARD. Measured end-to-end on 2026-08-28: LYTE and FLTW both exited 1.
+    #
+    # THE OUTCOME WAS SAFE AND THE REASON WAS WRONG, WHICH IS THE DEFECT. Nothing was
+    # scored and nothing was written — but the refusal said "we could not find this at the
+    # SEC" when the truth is "this is a fund, and no lens, pillar or E(R) applies to it".
+    # That is the WITHHELD_NO_CAPEX / no_revenue mislabel class in a new costume, and the
+    # first line of defence was ACCIDENTAL — it rested on funds happening to lack a CIK
+    # rather than on the guard built for the purpose. A fund whose CIK ever did resolve
+    # would have sailed past it.
+    #
+    # `etf_refusal` needs ONLY `yf`, which the FMP fetch above already produced, so there
+    # is no reason for it to wait behind a second network call it does not use.
+    #
+    # It is a REFUSAL, not a failure: exit 7, distinct from the crash code (1), the rate
+    # refusal (3), the financials refusal (5) and the stage-flip halt (6). Nothing is
+    # computed and NOTHING is written — not even the EDGAR fetch is attempted.
+    _etf = etf_refusal(yf)
+    if _etf.refused:
+        print(f"\n{_divider('=')}", file=sys.stderr)
+        print("  REFUSED TO EVALUATE — THIS IS A FUND, NOT AN OPERATING COMPANY",
+              file=sys.stderr)
+        print(_divider("="), file=sys.stderr)
+        print(f"\n{_etf.detail}\n", file=sys.stderr)
+        print(f"Typed reason: {_etf.typed_reason}", file=sys.stderr)
+        print("\nNothing was computed and NOTHING was written: no lens, no pillars, no "
+              "score,\nno E(R), no lifecycle stage, no evaluation row.", file=sys.stderr)
+        sys.exit(7)
+
     print(f"\n[2/3] Fetching EDGAR data ({'fixture' if fixture_mode else 'live'})...")
     try:
         edgar = fetch_edgar(ticker, fixture_path=ed_fx)
@@ -318,29 +355,6 @@ def evaluate(ticker: str, fixture_mode: bool = False,
         print(f"\n  {xcheck.watch}")
 
     # ── Lens selection ────────────────────────────────────────────────────────
-    # ── ★ ETF / FUND REFUSAL (Vic ruling 2, 2026-08-28) — exit 7 ─────────────
-    #
-    # POSITIONED ABOVE `select_lens` DELIBERATELY, AND THE POSITION IS THE RULING. A fund
-    # carries a `sector` and an `industry` like anything else, so the lens selector will
-    # happily route one to the compounder or cyclical lens and every downstream number will
-    # look well-formed. The refusal has to land before the first decision that treats this
-    # payload as a company, and lens selection is that decision.
-    #
-    # It is a REFUSAL, not a failure: exit 7, distinct from the crash code (1), the rate
-    # refusal (3), the financials refusal (5) and the stage-flip halt (6). Nothing is
-    # computed and NOTHING is written.
-    _etf = etf_refusal(yf)
-    if _etf.refused:
-        print(f"\n{_divider('=')}", file=sys.stderr)
-        print("  REFUSED TO EVALUATE — THIS IS A FUND, NOT AN OPERATING COMPANY",
-              file=sys.stderr)
-        print(_divider("="), file=sys.stderr)
-        print(f"\n{_etf.detail}\n", file=sys.stderr)
-        print(f"Typed reason: {_etf.typed_reason}", file=sys.stderr)
-        print("\nNothing was computed and NOTHING was written: no lens, no pillars, no "
-              "score,\nno E(R), no lifecycle stage, no evaluation row.", file=sys.stderr)
-        sys.exit(7)
-
     lens = select_lens(yf.sector, yf.industry, edgar.sic, ticker=ticker)
     print(f"\n  Valuation lens: {lens_label(lens)} ({lens})")
     _ov = lens_override(ticker)

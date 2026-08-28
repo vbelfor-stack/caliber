@@ -202,7 +202,7 @@ re-derivation. L-4b is DONE.**
 | | |
 |---|---|
 | HEAD | the **2026-08-28 ACCEPTANCE close commit** — verify with `git log -1`. A block cannot contain its own hash. |
-| Suite | **1089 passed** |
+| Suite | **1091 passed** |
 | caliber.db md5 | **`69dc2328ee3af8a43d506b64665da39b`** (was `8752e75e…`; the full-universe acceptance run) |
 | Backup | `caliber.db.pre-acceptance-8752e75e.bak` |
 | Full state this close | `docs/closes/2026-08-28-acceptance.md` |
