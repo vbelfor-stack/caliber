@@ -53,3 +53,6 @@ Thumbs.db
 
 # SKHY/financials-class order (2026-08-28) read-only probe scratch.
 .scratch_skhy/
+
+# Closer order (2026-08-28) read-only measurement scratch.
+.scratch_closer/
