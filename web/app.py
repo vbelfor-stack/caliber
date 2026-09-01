@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Cookie, FastAPI, Form, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 _ROOT = Path(__file__).parent.parent
@@ -37,6 +37,7 @@ from store.models import (
     get_conflicts, get_evaluation, get_overrides_by_key,
     init_db, list_evaluations, list_grades, list_overrides, save_override,
 )
+from web.ask import AskUnavailable, answer as ask_answer, build_context
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
@@ -262,6 +263,56 @@ async def deep_view(
         "overrides": list(overrides.values()),
         "override_msg": override_msg,
     })
+
+
+# ── Ask Claude (read-only dialog on the deep view) ─────────────────────────────
+
+@app.post("/eval/{eval_id}/ask")
+async def deep_ask(
+    request: Request,
+    eval_id: int,
+    caliber_session: Optional[str] = Cookie(None),
+):
+    """
+    Answer a question about ONE stored evaluation. Read-only: this route makes
+    no database write, fetches no feed, and its answer is never an input to a
+    score. It reads the same dicts deep_view renders, so the model sees the
+    page the user is looking at.
+    """
+    if not _is_authed(caliber_session):
+        return JSONResponse({"error": "Not authenticated."}, status_code=401)
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Malformed request body."}, status_code=400)
+
+    question = (payload.get("question") or "").strip()
+    history = payload.get("history") or []
+    if not question:
+        return JSONResponse({"error": "Ask a question first."}, status_code=400)
+    if not isinstance(history, list):
+        return JSONResponse({"error": "Malformed history."}, status_code=400)
+
+    row = get_evaluation(eval_id)
+    if not row:
+        return JSONResponse({"error": "Evaluation not found."}, status_code=404)
+
+    ev = _prep_eval(row)
+    conflicts = get_conflicts(eval_id=eval_id)
+    overrides = get_overrides_by_key(ev["ticker"])
+    for c in conflicts:
+        c["override"] = overrides.get(c["field_key"])
+
+    context = build_context(ev, conflicts, list(overrides.values()))
+
+    try:
+        text = ask_answer(question, context, history)
+    except AskUnavailable as exc:
+        # Loud, not silent: the panel shows the real reason rather than a blank.
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+    return JSONResponse({"answer": text})
 
 
 # ── Compare ───────────────────────────────────────────────────────────────────

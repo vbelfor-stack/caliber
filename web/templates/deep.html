@@ -298,4 +298,103 @@
 </div>
 {% endif %}
 
+
+<!-- ── Ask Claude ─────────────────────────────────────────────────────────── -->
+<div class="section" id="ask-section">
+  <div class="section-head">Ask Claude</div>
+  <div class="txt-muted" style="font-size:0.78rem; margin-bottom:10px;">
+    Read-only. Claude sees this evaluation and how CALIBER works — it cannot run
+    anything, change anything, or save anything.
+  </div>
+
+  <div id="ask-log" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;"></div>
+
+  <form id="ask-form" style="display:flex; gap:8px; align-items:flex-start;">
+    <textarea id="ask-input" rows="2" placeholder="Why did this land on the compounder lens?"
+      style="flex:1; font-family:inherit; font-size:0.88rem; padding:8px; resize:vertical;"></textarea>
+    <button type="submit" id="ask-send" class="btn btn-brass">Ask</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var evalId  = "{{ ev.id }}";
+  var form    = document.getElementById("ask-form");
+  var input   = document.getElementById("ask-input");
+  var sendBtn = document.getElementById("ask-send");
+  var log     = document.getElementById("ask-log");
+  var history = [];
+
+  function bubble(role, text, isError) {
+    var wrap = document.createElement("div");
+    wrap.style.borderLeft = "3px solid " + (isError ? "var(--brick)"
+                                          : role === "user" ? "var(--border)"
+                                          : "var(--brass)");
+    wrap.style.padding = "6px 0 6px 10px";
+
+    var who = document.createElement("div");
+    who.style.cssText = "font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:4px;";
+    who.textContent = isError ? "Unavailable" : (role === "user" ? "You" : "Claude");
+
+    var body = document.createElement("div");
+    body.style.cssText = "font-size:0.88rem; white-space:pre-wrap; line-height:1.5;";
+    body.textContent = text;
+
+    wrap.appendChild(who);
+    wrap.appendChild(body);
+    log.appendChild(wrap);
+    wrap.scrollIntoView({ block: "nearest" });
+    return body;
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var q = input.value.trim();
+    if (!q) return;
+
+    bubble("user", q, false);
+    input.value = "";
+    input.disabled = true;
+    sendBtn.disabled = true;
+    var pending = bubble("assistant", "Thinking\u2026", false);
+
+    fetch("/eval/" + evalId + "/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, history: history })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || res.data.error) {
+          pending.parentNode.style.borderLeftColor = "var(--brick)";
+          pending.parentNode.firstChild.textContent = "Unavailable";
+          pending.textContent = res.data.error || "Request failed.";
+          return;
+        }
+        pending.textContent = res.data.answer;
+        history.push({ role: "user", content: q });
+        history.push({ role: "assistant", content: res.data.answer });
+      })
+      .catch(function (err) {
+        pending.parentNode.style.borderLeftColor = "var(--brick)";
+        pending.parentNode.firstChild.textContent = "Unavailable";
+        pending.textContent = String(err);
+      })
+      .finally(function () {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+      });
+  });
+
+  // Enter sends, Shift+Enter newlines.
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+})();
+</script>
+
 {% endblock %}
